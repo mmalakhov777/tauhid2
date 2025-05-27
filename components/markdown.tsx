@@ -3,6 +3,7 @@ import React, { memo } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { CodeBlock } from './code-block';
+import { CitationMarker } from './citation-marker';
 
 const components: Partial<Components> = {
   // @ts-expect-error
@@ -95,9 +96,89 @@ const components: Partial<Components> = {
 
 const remarkPlugins = [remarkGfm];
 
-const NonMemoizedMarkdown = ({ children }: { children: string }) => {
+interface MarkdownProps {
+  children: string;
+  onCitationClick?: (citationNumber: number) => void;
+}
+
+// Helper function to process text and replace citations
+const processTextWithCitations = (
+  text: string,
+  onCitationClick?: (citationNumber: number) => void,
+  keyPrefix: string = ''
+): React.ReactNode[] => {
+  const parts = text.split(/(\[CIT\d+\])/g);
+  
+  return parts.map((part, index) => {
+    const citationMatch = part.match(/\[CIT(\d+)\]/);
+    if (citationMatch) {
+      const citationNumber = parseInt(citationMatch[1], 10);
+      return (
+        <CitationMarker
+          key={`${keyPrefix}-citation-${index}-${citationNumber}`}
+          number={citationNumber}
+          onClick={() => onCitationClick?.(citationNumber)}
+        />
+      );
+    }
+    // Return text with a key to avoid React warnings
+    return <React.Fragment key={`${keyPrefix}-text-${index}`}>{part}</React.Fragment>;
+  });
+};
+
+const NonMemoizedMarkdown = ({ children, onCitationClick }: MarkdownProps) => {
+  const componentsWithCitations: Partial<Components> = {
+    ...components,
+    // Override text rendering to handle citations
+    p: ({ node, children, ...props }) => {
+      const processedChildren = React.Children.map(children, (child, childIndex) => {
+        if (typeof child === 'string') {
+          return processTextWithCitations(child, onCitationClick, `p-${childIndex}`);
+        }
+        return child;
+      });
+
+      return <p {...props}>{processedChildren}</p>;
+    },
+    // Also handle citations in list items
+    li: ({ node, children, ...props }) => {
+      const processedChildren = React.Children.map(children, (child, childIndex) => {
+        if (typeof child === 'string') {
+          return processTextWithCitations(child, onCitationClick, `li-${childIndex}`);
+        }
+        return child;
+      });
+
+      return <li className="py-1" {...props}>{processedChildren}</li>;
+    },
+    // Handle citations in other text containers
+    strong: ({ node, children, ...props }) => {
+      const processedChildren = React.Children.map(children, (child, childIndex) => {
+        if (typeof child === 'string') {
+          return processTextWithCitations(child, onCitationClick, `strong-${childIndex}`);
+        }
+        return child;
+      });
+
+      return <span className="font-semibold" {...props}>{processedChildren}</span>;
+    },
+    em: ({ node, children, ...props }) => {
+      const processedChildren = React.Children.map(children, (child, childIndex) => {
+        if (typeof child === 'string') {
+          return processTextWithCitations(child, onCitationClick, `em-${childIndex}`);
+        }
+        return child;
+      });
+
+      return <em {...props}>{processedChildren}</em>;
+    },
+  };
+
   return (
-    <ReactMarkdown remarkPlugins={remarkPlugins} components={components}>
+    <ReactMarkdown 
+      remarkPlugins={remarkPlugins} 
+      components={componentsWithCitations}
+    >
       {children}
     </ReactMarkdown>
   );
@@ -105,5 +186,5 @@ const NonMemoizedMarkdown = ({ children }: { children: string }) => {
 
 export const Markdown = memo(
   NonMemoizedMarkdown,
-  (prevProps, nextProps) => prevProps.children === nextProps.children,
+  (prevProps, nextProps) => prevProps.children === nextProps.children && prevProps.onCitationClick === nextProps.onCitationClick,
 );

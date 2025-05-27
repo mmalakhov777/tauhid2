@@ -87,5 +87,18 @@ export function getTrailingMessageId({
 }
 
 export function sanitizeText(text: string) {
-  return text.replace('<has_function_call>', '');
+  // First remove the has_function_call tag
+  let sanitized = text.replace('<has_function_call>', '');
+  
+  // Check if the text contains HTML tags
+  if (sanitized.includes('<p>') || sanitized.includes('<br>') || sanitized.includes('</p>')) {
+    // Strip HTML tags but preserve the text content
+    sanitized = sanitized
+      .replace(/<\/p>\s*<p>/g, '\n\n') // Replace paragraph breaks with double newlines
+      .replace(/<br\s*\/?>/g, '\n') // Replace br tags with newlines
+      .replace(/<[^>]*>/g, '') // Remove all other HTML tags
+      .trim();
+  }
+  
+  return sanitized;
 }

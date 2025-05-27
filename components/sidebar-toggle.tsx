@@ -13,7 +13,12 @@ import { Button } from './ui/button';
 export function SidebarToggle({
   className,
 }: ComponentProps<typeof SidebarTrigger>) {
-  const { toggleSidebar } = useSidebar();
+  const { toggleSidebar, isMobile } = useSidebar();
+
+  // Don't render on desktop since sidebar is always expanded
+  if (!isMobile) {
+    return null;
+  }
 
   return (
     <Tooltip>

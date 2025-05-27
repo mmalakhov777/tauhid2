@@ -27,8 +27,9 @@ import {
   type DBMessage,
   type Chat,
   stream,
+  vectorSearchResult,
+  type VectorSearchResult,
 } from './schema';
-import type { ArtifactKind } from '@/components/artifact';
 import { generateUUID } from '../utils';
 import { generateHashedPassword } from './utils';
 import type { VisibilityType } from '@/components/visibility-selector';
@@ -277,132 +278,6 @@ export async function getVotesByChatId({ id }: { id: string }) {
   }
 }
 
-export async function saveDocument({
-  id,
-  title,
-  kind,
-  content,
-  userId,
-}: {
-  id: string;
-  title: string;
-  kind: ArtifactKind;
-  content: string;
-  userId: string;
-}) {
-  try {
-    return await db
-      .insert(document)
-      .values({
-        id,
-        title,
-        kind,
-        content,
-        userId,
-        createdAt: new Date(),
-      })
-      .returning();
-  } catch (error) {
-    throw new ChatSDKError('bad_request:database', 'Failed to save document');
-  }
-}
-
-export async function getDocumentsById({ id }: { id: string }) {
-  try {
-    const documents = await db
-      .select()
-      .from(document)
-      .where(eq(document.id, id))
-      .orderBy(asc(document.createdAt));
-
-    return documents;
-  } catch (error) {
-    throw new ChatSDKError(
-      'bad_request:database',
-      'Failed to get documents by id',
-    );
-  }
-}
-
-export async function getDocumentById({ id }: { id: string }) {
-  try {
-    const [selectedDocument] = await db
-      .select()
-      .from(document)
-      .where(eq(document.id, id))
-      .orderBy(desc(document.createdAt));
-
-    return selectedDocument;
-  } catch (error) {
-    throw new ChatSDKError(
-      'bad_request:database',
-      'Failed to get document by id',
-    );
-  }
-}
-
-export async function deleteDocumentsByIdAfterTimestamp({
-  id,
-  timestamp,
-}: {
-  id: string;
-  timestamp: Date;
-}) {
-  try {
-    await db
-      .delete(suggestion)
-      .where(
-        and(
-          eq(suggestion.documentId, id),
-          gt(suggestion.documentCreatedAt, timestamp),
-        ),
-      );
-
-    return await db
-      .delete(document)
-      .where(and(eq(document.id, id), gt(document.createdAt, timestamp)))
-      .returning();
-  } catch (error) {
-    throw new ChatSDKError(
-      'bad_request:database',
-      'Failed to delete documents by id after timestamp',
-    );
-  }
-}
-
-export async function saveSuggestions({
-  suggestions,
-}: {
-  suggestions: Array<Suggestion>;
-}) {
-  try {
-    return await db.insert(suggestion).values(suggestions);
-  } catch (error) {
-    throw new ChatSDKError(
-      'bad_request:database',
-      'Failed to save suggestions',
-    );
-  }
-}
-
-export async function getSuggestionsByDocumentId({
-  documentId,
-}: {
-  documentId: string;
-}) {
-  try {
-    return await db
-      .select()
-      .from(suggestion)
-      .where(and(eq(suggestion.documentId, documentId)));
-  } catch (error) {
-    throw new ChatSDKError(
-      'bad_request:database',
-      'Failed to get suggestions by document id',
-    );
-  }
-}
-
 export async function getMessageById({ id }: { id: string }) {
   try {
     return await db.select().from(message).where(eq(message.id, id));
@@ -533,6 +408,101 @@ export async function getStreamIdsByChatId({ chatId }: { chatId: string }) {
     throw new ChatSDKError(
       'bad_request:database',
       'Failed to get stream ids by chat id',
+    );
+  }
+}
+
+export async function saveVectorSearchResult({
+  messageId,
+  chatId,
+  improvedQueries,
+  citations,
+  searchResultCounts,
+  searchDurationMs,
+}: {
+  messageId: string;
+  chatId: string;
+  improvedQueries: string[];
+  citations: any[];
+  searchResultCounts: {
+    classic: number;
+    modern: number;
+    risale: number;
+    youtube: number;
+  };
+  searchDurationMs?: number;
+}) {
+  try {
+    return await db.insert(vectorSearchResult).values({
+      messageId,
+      chatId,
+      improvedQueries,
+      citations,
+      citationCount: citations.length,
+      searchResultCounts,
+      searchDurationMs,
+      searchTimestamp: new Date(),
+    });
+  } catch (error) {
+    throw new ChatSDKError(
+      'bad_request:database',
+      'Failed to save vector search result',
+    );
+  }
+}
+
+export async function getVectorSearchResultByMessageId({
+  messageId,
+}: {
+  messageId: string;
+}) {
+  try {
+    const [result] = await db
+      .select()
+      .from(vectorSearchResult)
+      .where(eq(vectorSearchResult.messageId, messageId));
+    return result;
+  } catch (error) {
+    throw new ChatSDKError(
+      'bad_request:database',
+      'Failed to get vector search result by message id',
+    );
+  }
+}
+
+export async function getVectorSearchResultsByChatId({
+  chatId,
+}: {
+  chatId: string;
+}) {
+  try {
+    return await db
+      .select()
+      .from(vectorSearchResult)
+      .where(eq(vectorSearchResult.chatId, chatId))
+      .orderBy(asc(vectorSearchResult.createdAt));
+  } catch (error) {
+    throw new ChatSDKError(
+      'bad_request:database',
+      'Failed to get vector search results by chat id',
+    );
+  }
+}
+
+export async function getSuggestionsByDocumentId({
+  documentId,
+}: {
+  documentId: string;
+}) {
+  try {
+    return await db
+      .select()
+      .from(suggestion)
+      .where(eq(suggestion.documentId, documentId));
+  } catch (error) {
+    throw new ChatSDKError(
+      'bad_request:database',
+      'Failed to get suggestions by document id',
     );
   }
 }

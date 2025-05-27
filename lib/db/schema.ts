@@ -9,6 +9,8 @@ import {
   primaryKey,
   foreignKey,
   boolean,
+  integer,
+  index,
 } from 'drizzle-orm/pg-core';
 
 export const user = pgTable('User', {
@@ -168,3 +170,29 @@ export const stream = pgTable(
 );
 
 export type Stream = InferSelectModel<typeof stream>;
+
+export const vectorSearchResult = pgTable(
+  'VectorSearchResult',
+  {
+    id: uuid('id').primaryKey().notNull().defaultRandom(),
+    messageId: uuid('messageId')
+      .notNull()
+      .references(() => message.id, { onDelete: 'cascade' }),
+    chatId: uuid('chatId')
+      .notNull()
+      .references(() => chat.id, { onDelete: 'cascade' }),
+    improvedQueries: json('improvedQueries').notNull(),
+    searchTimestamp: timestamp('searchTimestamp').notNull().defaultNow(),
+    citations: json('citations').notNull(),
+    citationCount: integer('citationCount').notNull().default(0),
+    searchResultCounts: json('searchResultCounts').notNull(),
+    searchDurationMs: integer('searchDurationMs'),
+    createdAt: timestamp('createdAt').notNull().defaultNow(),
+  },
+  (table) => ({
+    messageIdIdx: index('idx_vector_search_message_id').on(table.messageId),
+    chatIdIdx: index('idx_vector_search_chat_id').on(table.chatId),
+  }),
+);
+
+export type VectorSearchResult = InferSelectModel<typeof vectorSearchResult>;

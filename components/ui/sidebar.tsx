@@ -77,6 +77,12 @@ const SidebarProvider = React.forwardRef<
     const setOpen = React.useCallback(
       (value: boolean | ((value: boolean) => boolean)) => {
         const openState = typeof value === 'function' ? value(open) : value;
+        
+        // Force sidebar to always be open on desktop
+        if (!isMobile && !openState) {
+          return; // Prevent closing on desktop
+        }
+        
         if (setOpenProp) {
           setOpenProp(openState);
         } else {
@@ -86,15 +92,15 @@ const SidebarProvider = React.forwardRef<
         // This sets the cookie to keep the sidebar state.
         document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`;
       },
-      [setOpenProp, open],
+      [setOpenProp, open, isMobile],
     );
 
     // Helper to toggle the sidebar.
     const toggleSidebar = React.useCallback(() => {
       return isMobile
         ? setOpenMobile((open) => !open)
-        : setOpen((open) => !open);
-    }, [isMobile, setOpen, setOpenMobile]);
+        : undefined; // Disable toggle on desktop
+    }, [isMobile, setOpenMobile]);
 
     // Adds a keyboard shortcut to toggle the sidebar.
     React.useEffect(() => {
@@ -104,22 +110,26 @@ const SidebarProvider = React.forwardRef<
           (event.metaKey || event.ctrlKey)
         ) {
           event.preventDefault();
-          toggleSidebar();
+          // Only allow toggle on mobile
+          if (isMobile) {
+            toggleSidebar();
+          }
         }
       };
 
       window.addEventListener('keydown', handleKeyDown);
       return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [toggleSidebar]);
+    }, [toggleSidebar, isMobile]);
 
     // We add a state so that we can do data-state="expanded" or "collapsed".
     // This makes it easier to style the sidebar with Tailwind classes.
-    const state = open ? 'expanded' : 'collapsed';
+    // Force expanded state on desktop
+    const state = (!isMobile || open) ? 'expanded' : 'collapsed';
 
     const contextValue = React.useMemo<SidebarContext>(
       () => ({
         state,
-        open,
+        open: !isMobile || open, // Force open on desktop
         setOpen,
         isMobile,
         openMobile,
@@ -271,7 +281,7 @@ const SidebarTrigger = React.forwardRef<
   React.ElementRef<typeof Button>,
   React.ComponentProps<typeof Button>
 >(({ className, onClick, ...props }, ref) => {
-  const { toggleSidebar } = useSidebar();
+  const { toggleSidebar, isMobile } = useSidebar();
 
   return (
     <Button
@@ -282,7 +292,10 @@ const SidebarTrigger = React.forwardRef<
       className={cn('h-7 w-7', className)}
       onClick={(event) => {
         onClick?.(event);
-        toggleSidebar();
+        // Only allow toggle on mobile
+        if (isMobile) {
+          toggleSidebar();
+        }
       }}
       {...props}
     >
@@ -297,7 +310,12 @@ const SidebarRail = React.forwardRef<
   HTMLButtonElement,
   React.ComponentProps<'button'>
 >(({ className, ...props }, ref) => {
-  const { toggleSidebar } = useSidebar();
+  const { toggleSidebar, isMobile } = useSidebar();
+
+  // Don't render on desktop since sidebar is always expanded
+  if (!isMobile) {
+    return null;
+  }
 
   return (
     <button
@@ -658,9 +676,9 @@ const SidebarMenuSkeleton = React.forwardRef<
     showIcon?: boolean;
   }
 >(({ className, showIcon = false, ...props }, ref) => {
-  // Random width between 50 to 90%.
+  // Fixed width to prevent hydration mismatch
   const width = React.useMemo(() => {
-    return `${Math.floor(Math.random() * 40) + 50}%`;
+    return '70%';
   }, []);
 
   return (

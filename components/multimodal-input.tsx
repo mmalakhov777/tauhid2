@@ -27,6 +27,9 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { ArrowDown } from 'lucide-react';
 import { useScrollToBottom } from '@/hooks/use-scroll-to-bottom';
 import type { VisibilityType } from './visibility-selector';
+import { ModelSelector } from '@/components/model-selector';
+import { VisibilitySelector } from './visibility-selector';
+import type { Session } from 'next-auth';
 
 function PureMultimodalInput({
   chatId,
@@ -42,6 +45,8 @@ function PureMultimodalInput({
   handleSubmit,
   className,
   selectedVisibilityType,
+  selectedModelId,
+  session,
 }: {
   chatId: string;
   input: UseChatHelpers['input'];
@@ -56,6 +61,8 @@ function PureMultimodalInput({
   handleSubmit: UseChatHelpers['handleSubmit'];
   className?: string;
   selectedVisibilityType: VisibilityType;
+  selectedModelId: string;
+  session: Session | null;
 }) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
@@ -76,7 +83,7 @@ function PureMultimodalInput({
   const resetHeight = () => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = '98px';
+      textareaRef.current.style.height = '40px';
     }
   };
 
@@ -112,12 +119,43 @@ function PureMultimodalInput({
   const submitForm = useCallback(() => {
     window.history.replaceState({}, '', `/chat/${chatId}`);
 
-    handleSubmit(undefined, {
+    // Get selected language from localStorage
+    const selectedLanguage = localStorage.getItem('selectedLanguage') || 'en';
+    console.log('🔍 Selected language from localStorage:', selectedLanguage);
+    
+    // Language names mapping
+    const languageNames: { [key: string]: string } = {
+      'en': 'English',
+      'tr': 'Turkish',
+      'ar': 'Arabic',
+      'ru': 'Russian',
+      'de': 'German',
+      'fr': 'French',
+      'es': 'Spanish',
+    };
+
+    const languageName = languageNames[selectedLanguage] || 'English';
+    console.log('🔍 Language name:', languageName);
+    
+    // Create the final input with language instruction if not English
+    let finalInput = input;
+    if (selectedLanguage !== 'en') {
+      finalInput = `${input}\n\n[Answer in ${languageName}]`;
+      console.log('🔍 Final input with language instruction:', finalInput);
+    } else {
+      console.log('🔍 English selected, no language instruction added');
+    }
+
+    // Use append to add the message with the language instruction
+    append({
+      role: 'user',
+      content: finalInput,
       experimental_attachments: attachments,
     });
 
     setAttachments([]);
     setLocalStorageInput('');
+    setInput('');
     resetHeight();
 
     if (width && width > 768) {
@@ -125,11 +163,13 @@ function PureMultimodalInput({
     }
   }, [
     attachments,
-    handleSubmit,
+    append,
     setAttachments,
     setLocalStorageInput,
     width,
     chatId,
+    input,
+    setInput,
   ]);
 
   const uploadFile = async (file: File) => {
@@ -196,7 +236,7 @@ function PureMultimodalInput({
   return (
     <div className="relative w-full flex flex-col gap-4">
       <AnimatePresence>
-        {!isAtBottom && (
+        {!isAtBottom && messages.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -219,16 +259,6 @@ function PureMultimodalInput({
           </motion.div>
         )}
       </AnimatePresence>
-
-      {messages.length === 0 &&
-        attachments.length === 0 &&
-        uploadQueue.length === 0 && (
-          <SuggestedActions
-            append={append}
-            chatId={chatId}
-            selectedVisibilityType={selectedVisibilityType}
-          />
-        )}
 
       <input
         type="file"
@@ -262,49 +292,66 @@ function PureMultimodalInput({
         </div>
       )}
 
-      <Textarea
-        data-testid="multimodal-input"
-        ref={textareaRef}
-        placeholder="Send a message..."
-        value={input}
-        onChange={handleInput}
-        className={cx(
-          'min-h-[24px] max-h-[calc(75dvh)] overflow-hidden resize-none rounded-2xl !text-base bg-muted pb-10 dark:border-zinc-700',
-          className,
-        )}
-        rows={2}
-        autoFocus
-        onKeyDown={(event) => {
-          if (
-            event.key === 'Enter' &&
-            !event.shiftKey &&
-            !event.nativeEvent.isComposing
-          ) {
-            event.preventDefault();
+      <div className="relative">
+        <Textarea
+          data-testid="multimodal-input"
+          ref={textareaRef}
+          placeholder="Send a message..."
+          value={input}
+          onChange={handleInput}
+          className={cx(
+            messages.length === 0 ? 'min-h-[60px]' : 'min-h-[40px]',
+            'max-h-[calc(75dvh)] overflow-hidden resize-none rounded-2xl !text-base bg-muted pb-10 dark:border-zinc-700',
+            className,
+          )}
+          rows={messages.length === 0 ? 3 : 2}
+          autoFocus
+          onKeyDown={(event) => {
+            if (
+              event.key === 'Enter' &&
+              !event.shiftKey &&
+              !event.nativeEvent.isComposing
+            ) {
+              event.preventDefault();
 
-            if (status !== 'ready') {
-              toast.error('Please wait for the model to finish its response!');
-            } else {
-              submitForm();
+              if (status !== 'ready') {
+                toast.error('Please wait for the model to finish its response!');
+              } else {
+                submitForm();
+              }
             }
-          }
-        }}
-      />
+          }}
+        />
 
-      <div className="absolute bottom-0 p-2 w-fit flex flex-row justify-start">
-        <AttachmentsButton fileInputRef={fileInputRef} status={status} />
-      </div>
-
-      <div className="absolute bottom-0 right-0 p-2 w-fit flex flex-row justify-end">
-        {status === 'submitted' ? (
-          <StopButton stop={stop} setMessages={setMessages} />
-        ) : (
-          <SendButton
-            input={input}
-            submitForm={submitForm}
-            uploadQueue={uploadQueue}
+        {/* Model and Visibility Selectors - Bottom Left */}
+        <div className="absolute bottom-0 left-0 p-2 flex flex-row gap-1 items-center">
+          {session?.user && (
+            <ModelSelector
+              session={session}
+              selectedModelId={selectedModelId}
+              className="!h-8 !text-xs !px-2 !border-0 !bg-transparent hover:!bg-muted/50 !md:px-2 !md:h-8"
+            />
+          )}
+          <VisibilitySelector
+            chatId={chatId}
+            selectedVisibilityType={selectedVisibilityType}
+            className="!h-8 !text-xs !px-2 !border-0 !bg-transparent hover:!bg-muted/50 !flex !md:flex !md:px-2 !md:h-8"
           />
-        )}
+        </div>
+
+        {/* Attachment and Submit Buttons - Bottom Right */}
+        <div className="absolute bottom-0 right-0 p-2 w-fit flex flex-row justify-end gap-1">
+          <AttachmentsButton fileInputRef={fileInputRef} status={status} />
+          {status === 'submitted' ? (
+            <StopButton stop={stop} setMessages={setMessages} />
+          ) : (
+            <SendButton
+              input={input}
+              submitForm={submitForm}
+              uploadQueue={uploadQueue}
+            />
+          )}
+        </div>
       </div>
     </div>
   );
@@ -318,6 +365,7 @@ export const MultimodalInput = memo(
     if (!equal(prevProps.attachments, nextProps.attachments)) return false;
     if (prevProps.selectedVisibilityType !== nextProps.selectedVisibilityType)
       return false;
+    if (prevProps.selectedModelId !== nextProps.selectedModelId) return false;
 
     return true;
   },
@@ -333,7 +381,7 @@ function PureAttachmentsButton({
   return (
     <Button
       data-testid="attachments-button"
-      className="rounded-md rounded-bl-lg p-[7px] h-fit dark:border-zinc-700 hover:dark:bg-zinc-900 hover:bg-zinc-200"
+      className="rounded-full p-1.5 h-fit border dark:border-zinc-600"
       onClick={(event) => {
         event.preventDefault();
         fileInputRef.current?.click();

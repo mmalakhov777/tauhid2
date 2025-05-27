@@ -1,7 +1,6 @@
 import type { UIMessage } from 'ai';
 import { PreviewMessage, ThinkingMessage } from './message';
-import { Greeting } from './greeting';
-import { memo } from 'react';
+import { memo, useState, useEffect } from 'react';
 import type { Vote } from '@/lib/db/schema';
 import equal from 'fast-deep-equal';
 import type { UseChatHelpers } from '@ai-sdk/react';
@@ -16,7 +15,8 @@ interface MessagesProps {
   setMessages: UseChatHelpers['setMessages'];
   reload: UseChatHelpers['reload'];
   isReadonly: boolean;
-  isArtifactVisible: boolean;
+  vectorSearchProgress?: any;
+  vectorSearchData?: any;
 }
 
 function PureMessages({
@@ -27,6 +27,8 @@ function PureMessages({
   setMessages,
   reload,
   isReadonly,
+  vectorSearchProgress,
+  vectorSearchData,
 }: MessagesProps) {
   const {
     containerRef: messagesContainerRef,
@@ -39,13 +41,46 @@ function PureMessages({
     status,
   });
 
+  const [messageVectorData, setMessageVectorData] = useState<Record<string, any>>({});
+
+  // Load vector search data for existing messages
+  useEffect(() => {
+    const loadVectorData = async () => {
+      for (const message of messages) {
+        if (message.role === 'assistant' && !messageVectorData[message.id]) {
+          try {
+            const response = await fetch(`/api/vector-search/${message.id}`);
+            if (response.ok) {
+              const result = await response.json();
+              // Only set data if result is not null and has the expected structure
+              if (result && (result.improvedQueries || result.citations)) {
+                setMessageVectorData(prev => ({
+                  ...prev,
+                  [message.id]: {
+                    improvedQueries: result.improvedQueries || [],
+                    citations: result.citations || [],
+                    searchResults: result.searchResultCounts || {},
+                  }
+                }));
+              }
+            } else {
+              console.log('Failed to fetch vector data for message:', message.id, response.status);
+            }
+          } catch (error) {
+            console.error('Failed to load vector data for message:', message.id, error);
+          }
+        }
+      }
+    };
+
+    loadVectorData();
+  }, [messages, messageVectorData]);
+
   return (
     <div
       ref={messagesContainerRef}
       className="flex flex-col min-w-0 gap-6 flex-1 overflow-y-scroll pt-4 relative"
     >
-      {messages.length === 0 && <Greeting />}
-
       {messages.map((message, index) => (
         <PreviewMessage
           key={message.id}
@@ -63,12 +98,18 @@ function PureMessages({
           requiresScrollPadding={
             hasSentMessage && index === messages.length - 1
           }
+          vectorSearchData={
+            message.role === 'assistant' 
+              ? (messageVectorData[message.id] || (index === messages.length - 1 ? vectorSearchData : null))
+              : null
+          }
+          isFirstAssistantMessagePart={message.role === 'assistant' && index === messages.length - 1}
         />
       ))}
 
       {status === 'submitted' &&
         messages.length > 0 &&
-        messages[messages.length - 1].role === 'user' && <ThinkingMessage />}
+        messages[messages.length - 1].role === 'user' && <ThinkingMessage vectorSearchProgress={vectorSearchProgress} />}
 
       <motion.div
         ref={messagesEndRef}
@@ -81,13 +122,13 @@ function PureMessages({
 }
 
 export const Messages = memo(PureMessages, (prevProps, nextProps) => {
-  if (prevProps.isArtifactVisible && nextProps.isArtifactVisible) return true;
-
   if (prevProps.status !== nextProps.status) return false;
   if (prevProps.status && nextProps.status) return false;
   if (prevProps.messages.length !== nextProps.messages.length) return false;
   if (!equal(prevProps.messages, nextProps.messages)) return false;
   if (!equal(prevProps.votes, nextProps.votes)) return false;
+  if (!equal(prevProps.vectorSearchProgress, nextProps.vectorSearchProgress)) return false;
+  if (!equal(prevProps.vectorSearchData, nextProps.vectorSearchData)) return false;
 
   return true;
 });

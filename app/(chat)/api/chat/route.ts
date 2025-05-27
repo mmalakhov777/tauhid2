@@ -2,6 +2,7 @@ import {
   appendClientMessage,
   appendResponseMessages,
   createDataStream,
+  createDataStreamResponse,
   smoothStream,
   streamText,
 } from 'ai';
@@ -16,14 +17,12 @@ import {
   getStreamIdsByChatId,
   saveChat,
   saveMessages,
+  saveVectorSearchResult,
 } from '@/lib/db/queries';
 import { generateUUID, getTrailingMessageId } from '@/lib/utils';
 import { generateTitleFromUserMessage } from '../../actions';
-import { createDocument } from '@/lib/ai/tools/create-document';
-import { updateDocument } from '@/lib/ai/tools/update-document';
-import { requestSuggestions } from '@/lib/ai/tools/request-suggestions';
 import { getWeather } from '@/lib/ai/tools/get-weather';
-import { isProductionEnvironment } from '@/lib/constants';
+import { isProductionEnvironment, isVectorSearchEnabled } from '@/lib/constants';
 import { myProvider } from '@/lib/ai/providers';
 import { entitlementsByUserType } from '@/lib/ai/entitlements';
 import { postRequestBodySchema, type PostRequestBody } from './schema';
@@ -36,6 +35,14 @@ import { after } from 'next/server';
 import type { Chat } from '@/lib/db/schema';
 import { differenceInSeconds } from 'date-fns';
 import { ChatSDKError } from '@/lib/errors';
+import {
+  performVectorSearch,
+  performVectorSearchWithProgress,
+  buildConversationHistory,
+  getContextByMessageId,
+  messageContextMap,
+  buildContextBlock,
+} from '@/lib/ai/vector-search';
 
 export const maxDuration = 60;
 
@@ -62,6 +69,14 @@ function getStreamContext() {
 }
 
 export async function POST(request: Request) {
+  // Check if this is a vector search request
+  const url = new URL(request.url);
+  const isVectorSearchRequest = url.searchParams.get('vector') === '1';
+  const isStreamRequest = url.searchParams.get('stream') === '1';
+  
+  // console.log('Vector search enabled:', isVectorSearchEnabled);
+  // console.log('Is vector search request:', isVectorSearchRequest);
+
   let requestBody: PostRequestBody;
 
   try {
@@ -72,7 +87,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { id, message, selectedChatModel, selectedVisibilityType } =
+    const { id, message, selectedChatModel, selectedVisibilityType, selectedLanguage } =
       requestBody;
 
     const session = await auth();
@@ -119,6 +134,52 @@ export async function POST(request: Request) {
       message,
     });
 
+    // Handle vector search request
+    if (isVectorSearchRequest && !isStreamRequest) {
+      // Step 1: Return citations and messageId only
+      const conversationHistory = buildConversationHistory(messages);
+      const userMessageContent = message.content || '';
+      
+      const searchResults = await performVectorSearch(
+        userMessageContent,
+        conversationHistory,
+        selectedChatModel
+      );
+
+      // Filter out citations with minimal metadata before sending to frontend
+      const filteredCitations = searchResults.citations.filter((c: any) => {
+        // Check for classic sources with only answer/question/text
+        if (!c.namespace && c.metadata) {
+          const metadataKeys = Object.keys(c.metadata);
+          const specificKeys = ['answer', 'question', 'text'];
+          const hasExactlySpecificKeys =
+              metadataKeys.length === specificKeys.length &&
+              specificKeys.every(key => metadataKeys.includes(key));
+          
+          if (hasExactlySpecificKeys) {
+            console.log(`[route.ts] 🗑️ Filtering out citation with minimal metadata (non-streaming):`, {
+              id: c.id,
+              metadataKeys
+            });
+            return false;
+          }
+        }
+        return true;
+      });
+
+      return new Response(
+        JSON.stringify({
+          messageId: searchResults.messageId,
+          citations: filteredCitations, // Use filtered citations
+          improvedQueries: searchResults.improvedQueries,
+        }),
+        { 
+          status: 200, 
+          headers: { 'Content-Type': 'application/json' } 
+        }
+      );
+    }
+
     const { longitude, latitude, city, country } = geolocation(request);
 
     const requestHints: RequestHints = {
@@ -144,32 +205,163 @@ export async function POST(request: Request) {
     const streamId = generateUUID();
     await createStreamId({ streamId, chatId: id });
 
+    // Get messageId from request body for vector search context
+    let messageId = (requestBody as any).messageId;
+    let contextBlock = '';
+    let modifiedSystemPrompt = systemPrompt({ selectedChatModel, requestHints });
+    let vectorSearchProgressUpdates: any[] = [];
+
+    // Add language instruction to system prompt
+    const languageNames: { [key: string]: string } = {
+      'en': 'English',
+      'tr': 'Turkish',
+      'ar': 'Arabic',
+      'ru': 'Russian',
+      'de': 'German',
+      'fr': 'French',
+      'es': 'Spanish',
+    };
+
+    const languageName = languageNames[selectedLanguage || 'en'] || 'English';
+    
+    // More flexible language instruction that follows user's request
+    let languageInstruction = '';
+    if (selectedLanguage && selectedLanguage !== 'en') {
+      languageInstruction = `\n\nLanguage Preference: The user has set their preferred language to ${languageName}. If the user specifically requests a response in ${languageName} (indicated by "[Answer in ${languageName}]" in their message), please respond in ${languageName}. Otherwise, respond in the language that best serves the user's needs and context.`;
+    }
+    
+    modifiedSystemPrompt = modifiedSystemPrompt + languageInstruction;
+
+    // Automatically perform vector search if enabled and no messageId provided
+    if (isVectorSearchEnabled && !messageId) {
+      // console.log('Performing automatic vector search...');
+      const conversationHistory = buildConversationHistory(messages);
+      const userMessageContent = message.content || '';
+      
+      const searchStartTime = Date.now();
+      
+      try {
+        const searchResults = await performVectorSearchWithProgress(
+          userMessageContent,
+          conversationHistory,
+          selectedChatModel,
+          (progress) => {
+            // console.log('Vector search progress:', progress);
+            vectorSearchProgressUpdates.push(progress);
+          }
+        );
+        messageId = searchResults.messageId;
+        // console.log('Vector search completed, messageId:', messageId);
+        
+        // Calculate search duration
+        const searchDurationMs = Date.now() - searchStartTime;
+        
+        // Filter out citations with minimal metadata before sending to frontend
+        const filteredCitations = searchResults.citations.filter((c: any) => {
+          // Check for classic sources with only answer/question/text
+          if (!c.namespace && c.metadata) {
+            const metadataKeys = Object.keys(c.metadata);
+            const specificKeys = ['answer', 'question', 'text'];
+            const hasExactlySpecificKeys =
+                metadataKeys.length === specificKeys.length &&
+                specificKeys.every(key => metadataKeys.includes(key));
+            
+            if (hasExactlySpecificKeys) {
+              console.log(`[route.ts] 🗑️ Filtering out citation with minimal metadata before sending to frontend:`, {
+                id: c.id,
+                metadataKeys
+              });
+              return false;
+            }
+          }
+          return true;
+        });
+        
+        console.log(`[route.ts] Citations after filtering: ${filteredCitations.length} (was ${searchResults.citations.length})`);
+        
+        // Store search results for later saving to database
+        const searchResultCounts = {
+          classic: filteredCitations.filter((c: any) => c.metadata?.type === 'classic' || c.metadata?.type === 'CLS' || (!c.metadata?.type && !c.namespace)).length,
+          modern: filteredCitations.filter((c: any) => c.metadata?.type === 'modern' || c.metadata?.type === 'MOD').length,
+          risale: filteredCitations.filter((c: any) => c.metadata?.type === 'risale' || c.metadata?.type === 'RIS' || (c.namespace && ['Sozler-Bediuzzaman_Said_Nursi', 'Mektubat-Bediuzzaman_Said_Nursi', 'lemalar-bediuzzaman_said_nursi', 'Hasir_Risalesi-Bediuzzaman_Said_Nursi', 'Otuz_Uc_Pencere-Bediuzzaman_Said_Nursi', 'Hastalar_Risalesi-Bediuzzaman_Said_Nursi', 'ihlas_risaleleri-bediuzzaman_said_nursi', 'enne_ve_zerre_risalesi-bediuzzaman_said_nursi', 'tabiat_risalesi-bediuzzaman_said_nursi', 'kader_risalesi-bediuzzaman_said_nursi'].includes(c.namespace))).length,
+          youtube: filteredCitations.filter((c: any) => c.metadata?.type === 'youtube' || c.metadata?.type === 'YT' || (c.namespace && ['4455', 'Islam_The_Ultimate_Peace', '2238', 'Islamic_Guidance', '2004', 'MercifulServant', '1572', 'Towards_Eternity'].includes(c.namespace))).length
+        };
+        
+        // Log metadata keys for classical sources
+        filteredCitations.forEach((c: any) => {
+          if ((c.metadata?.type === 'classic' || c.metadata?.type === 'CLS' || (!c.metadata?.type && !c.namespace)) && c.metadata) {
+            console.log(`[chat/route.ts] Classic source metadata keys (after filtering):`, Object.keys(c.metadata));
+          }
+        });
+        
+        // Store vector search data to save after assistant message is created
+        (globalThis as any).__vectorSearchDataToSave = {
+          chatId: id,
+          improvedQueries: searchResults.improvedQueries,
+          citations: filteredCitations, // Use filtered citations
+          searchResultCounts,
+          searchDurationMs,
+        };
+        
+        // Add the final update with filtered citations
+        vectorSearchProgressUpdates.push({
+          step: 4, // Final step with all data
+          improvedQueries: searchResults.improvedQueries,
+          searchResults: searchResultCounts,
+          citations: filteredCitations // Use filtered citations
+        });
+      } catch (error) {
+        console.error('Automatic vector search failed:', error);
+        // Continue without vector search on error
+      }
+    }
+
+    if (messageId && messageContextMap.has(messageId)) {
+      // Build context block from stored citations
+      const allContexts = getContextByMessageId(messageId);
+      contextBlock = buildContextBlock(
+        allContexts.filter((ctx: any) => ctx.metadata?.type === 'classic' || ctx.metadata?.type === 'CLS' || (!ctx.metadata?.type && !ctx.namespace)),
+        allContexts.filter((ctx: any) => ctx.metadata?.type === 'modern' || ctx.metadata?.type === 'MOD'),
+        allContexts.filter((ctx: any) => ctx.metadata?.type === 'risale' || ctx.metadata?.type === 'RIS' || (ctx.namespace && ['Sozler-Bediuzzaman_Said_Nursi', 'Mektubat-Bediuzzaman_Said_Nursi', 'lemalar-bediuzzaman_said_nursi', 'Hasir_Risalesi-Bediuzzaman_Said_Nursi', 'Otuz_Uc_Pencere-Bediuzzaman_Said_Nursi', 'Hastalar_Risalesi-Bediuzzaman_Said_Nursi', 'ihlas_risaleleri-bediuzzaman_said_nursi', 'enne_ve_zerre_risalesi-bediuzzaman_said_nursi', 'tabiat_risalesi-bediuzzaman_said_nursi', 'kader_risalesi-bediuzzaman_said_nursi'].includes(ctx.namespace))),
+        allContexts.filter((ctx: any) => ctx.metadata?.type === 'youtube' || ctx.metadata?.type === 'YT' || (ctx.namespace && ['4455', 'Islam_The_Ultimate_Peace', '2238', 'Islamic_Guidance', '2004', 'MercifulServant', '1572', 'Towards_Eternity'].includes(ctx.namespace)))
+      );
+
+      // Append context block to system prompt
+      modifiedSystemPrompt = modifiedSystemPrompt + '\n\n' + contextBlock;
+    }
+
     const stream = createDataStream({
-      execute: (dataStream) => {
+      execute: async (buffer) => {
+        // Send all vector search progress updates first
+        if (vectorSearchProgressUpdates.length > 0) {
+          // console.log('Sending vector search progress updates:', vectorSearchProgressUpdates.length);
+          for (let i = 0; i < vectorSearchProgressUpdates.length; i++) {
+            const progress = vectorSearchProgressUpdates[i];
+            // console.log('Writing progress update:', progress);
+            buffer.writeData({
+              type: 'vector-search-progress',
+              progress: JSON.stringify(progress)
+            });
+            // Remove delay between updates
+          }
+          // Remove extra delay before starting text stream
+        }
+
         const result = streamText({
           model: myProvider.languageModel(selectedChatModel),
-          system: systemPrompt({ selectedChatModel, requestHints }),
-          messages,
+          system: modifiedSystemPrompt,
+          messages: messages,
           maxSteps: 5,
           experimental_activeTools:
             selectedChatModel === 'chat-model-reasoning'
               ? []
               : [
                   'getWeather',
-                  'createDocument',
-                  'updateDocument',
-                  'requestSuggestions',
                 ],
           experimental_transform: smoothStream({ chunking: 'word' }),
           experimental_generateMessageId: generateUUID,
           tools: {
             getWeather,
-            createDocument: createDocument({ session, dataStream }),
-            updateDocument: updateDocument({ session, dataStream }),
-            requestSuggestions: requestSuggestions({
-              session,
-              dataStream,
-            }),
           },
           onFinish: async ({ response }) => {
             if (session.user?.id) {
@@ -202,6 +394,22 @@ export async function POST(request: Request) {
                     },
                   ],
                 });
+                
+                // Save vector search results if available
+                const vectorSearchData = (globalThis as any).__vectorSearchDataToSave;
+                if (vectorSearchData) {
+                  try {
+                    await saveVectorSearchResult({
+                      messageId: assistantId,
+                      ...vectorSearchData,
+                    });
+                    // console.log('Vector search results saved to database');
+                    // Clean up
+                    delete (globalThis as any).__vectorSearchDataToSave;
+                  } catch (error) {
+                    console.error('Failed to save vector search results:', error);
+                  }
+                }
               } catch (_) {
                 console.error('Failed to save chat');
               }
@@ -215,7 +423,7 @@ export async function POST(request: Request) {
 
         result.consumeStream();
 
-        result.mergeIntoDataStream(dataStream, {
+        result.mergeIntoDataStream(buffer, {
           sendReasoning: true,
         });
       },
@@ -226,12 +434,19 @@ export async function POST(request: Request) {
 
     const streamContext = getStreamContext();
 
+    // Add custom headers if using vector search
+    const headers: Record<string, string> = {};
+    if (messageId) {
+      headers['x-message-id'] = messageId;
+    }
+
     if (streamContext) {
       return new Response(
         await streamContext.resumableStream(streamId, () => stream),
+        { headers }
       );
     } else {
-      return new Response(stream);
+      return new Response(stream, { headers });
     }
   } catch (error) {
     if (error instanceof ChatSDKError) {
@@ -244,12 +459,22 @@ export async function GET(request: Request) {
   const streamContext = getStreamContext();
   const resumeRequestedAt = new Date();
 
+  const { searchParams } = new URL(request.url);
+  const chatId = searchParams.get('chatId');
+  const messageId = searchParams.get('messageId');
+
+  // Handle messageId request for vector search context
+  if (messageId) {
+    const citations = getContextByMessageId(messageId);
+    return new Response(
+      JSON.stringify({ citations }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
+    );
+  }
+
   if (!streamContext) {
     return new Response(null, { status: 204 });
   }
-
-  const { searchParams } = new URL(request.url);
-  const chatId = searchParams.get('chatId');
 
   if (!chatId) {
     return new ChatSDKError('bad_request:api').toResponse();

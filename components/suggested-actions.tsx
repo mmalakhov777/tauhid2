@@ -5,6 +5,7 @@ import { Button } from './ui/button';
 import { memo } from 'react';
 import type { UseChatHelpers } from '@ai-sdk/react';
 import type { VisibilityType } from './visibility-selector';
+import { Plus } from 'lucide-react';
 
 interface SuggestedActionsProps {
   chatId: string;
@@ -19,60 +20,68 @@ function PureSuggestedActions({
 }: SuggestedActionsProps) {
   const suggestedActions = [
     {
-      title: 'What are the advantages',
-      label: 'of using Next.js?',
-      action: 'What are the advantages of using Next.js?',
+      title: 'What are the five pillars of Islam and their significance',
+      action: 'What are the five pillars of Islam and their significance?',
     },
     {
-      title: 'Write code to',
-      label: `demonstrate djikstra's algorithm`,
-      action: `Write code to demonstrate djikstra's algorithm`,
+      title: 'Explain the difference between fard, wajib, and sunnah in Islamic jurisprudence',
+      action: 'Explain the difference between fard, wajib, and sunnah in Islamic jurisprudence',
     },
     {
-      title: 'Help me write an essay',
-      label: `about silicon valley`,
-      action: `Help me write an essay about silicon valley`,
+      title: 'What are the conditions for valid wudu (ablution) according to fiqh',
+      action: 'What are the conditions for valid wudu (ablution) according to fiqh?',
     },
     {
-      title: 'What is the weather',
-      label: 'in San Francisco?',
-      action: 'What is the weather in San Francisco?',
+      title: 'How does Islamic inheritance law (mirath) distribute wealth among heirs',
+      action: 'How does Islamic inheritance law (mirath) distribute wealth among heirs?',
+    },
+    {
+      title: 'What are the rulings on zakat calculation and distribution in Islam',
+      action: 'What are the rulings on zakat calculation and distribution in Islam?',
     },
   ];
 
   return (
     <div
       data-testid="suggested-actions"
-      className="grid sm:grid-cols-2 gap-2 w-full"
+      className="w-full"
     >
-      {suggestedActions.map((suggestedAction, index) => (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: 20 }}
-          transition={{ delay: 0.05 * index }}
-          key={`suggested-action-${suggestedAction.title}-${index}`}
-          className={index > 1 ? 'hidden sm:block' : 'block'}
-        >
-          <Button
-            variant="ghost"
-            onClick={async () => {
-              window.history.replaceState({}, '', `/chat/${chatId}`);
-
-              append({
-                role: 'user',
-                content: suggestedAction.action,
-              });
-            }}
-            className="text-left border rounded-xl px-4 py-3.5 text-sm flex-1 gap-1 sm:flex-col w-full h-auto justify-start items-start"
+      <div className="flex items-center gap-2 mb-3">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+        <p className="text-sm font-medium">Examples</p>
+      </div>
+      
+      <div className="flex flex-col gap-0">
+        {suggestedActions.map((suggestedAction, index) => (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            transition={{ delay: 0.05 * index }}
+            key={`suggested-action-${index}`}
           >
-            <span className="font-medium">{suggestedAction.title}</span>
-            <span className="text-muted-foreground">
-              {suggestedAction.label}
-            </span>
-          </Button>
-        </motion.div>
-      ))}
+            <Button
+              variant="ghost"
+              onClick={async () => {
+                window.history.replaceState({}, '', `/chat/${chatId}`);
+
+                append({
+                  role: 'user',
+                  content: suggestedAction.action,
+                });
+              }}
+              className="w-full justify-between text-left px-0 py-2 h-auto hover:bg-transparent border-b border-border/30 rounded-none last:border-b-0 group"
+            >
+              <span className="text-base font-normal pr-4 text-muted-foreground group-hover:text-foreground transition-colors duration-200">{suggestedAction.title}</span>
+              <Plus className="h-4 w-4 text-muted-foreground shrink-0 group-hover:text-foreground transition-colors duration-200" />
+            </Button>
+          </motion.div>
+        ))}
+      </div>
     </div>
   );
 }

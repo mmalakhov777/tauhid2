@@ -60,20 +60,3 @@ export const titleModel = new MockLanguageModelV1({
     rawCall: { rawPrompt: null, rawSettings: {} },
   }),
 });
-
-export const artifactModel = new MockLanguageModelV1({
-  doGenerate: async () => ({
-    rawCall: { rawPrompt: null, rawSettings: {} },
-    finishReason: 'stop',
-    usage: { promptTokens: 10, completionTokens: 20 },
-    text: `Hello, world!`,
-  }),
-  doStream: async ({ prompt }) => ({
-    stream: simulateReadableStream({
-      chunkDelayInMs: 50,
-      initialDelayInMs: 100,
-      chunks: getResponseChunksByPrompt(prompt),
-    }),
-    rawCall: { rawPrompt: null, rawSettings: {} },
-  }),
-});
