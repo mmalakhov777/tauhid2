@@ -252,7 +252,7 @@ const PurePreviewMessage = ({
                                     className={cn(
                                       "px-4 py-2 text-sm font-medium border-b-2 transition-colors",
                                       activeTab === 'response' 
-                                        ? "border-primary text-primary" 
+                                        ? "border-foreground text-foreground" 
                                         : "border-transparent text-muted-foreground hover:text-foreground"
                                     )}
                                   >
@@ -263,7 +263,7 @@ const PurePreviewMessage = ({
                                     className={cn(
                                       "px-4 py-2 text-sm font-medium border-b-2 transition-colors",
                                       activeTab === 'sources' 
-                                        ? "border-primary text-primary" 
+                                        ? "border-foreground text-foreground" 
                                         : "border-transparent text-muted-foreground hover:text-foreground"
                                     )}
                                   >
@@ -274,7 +274,7 @@ const PurePreviewMessage = ({
                                     className={cn(
                                       "px-4 py-2 text-sm font-medium border-b-2 transition-colors",
                                       activeTab === 'tasks' 
-                                        ? "border-primary text-primary" 
+                                        ? "border-foreground text-foreground" 
                                         : "border-transparent text-muted-foreground hover:text-foreground"
                                     )}
                                   >

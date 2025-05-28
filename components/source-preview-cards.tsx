@@ -48,7 +48,7 @@ export function SourcePreviewCards({
               setHighlightedCitation(null);
             }}
           >
-            <div className="font-semibold text-primary mb-1 line-clamp-2">
+            <div className="font-semibold text-foreground mb-1 line-clamp-2">
               {type === 'RIS' && citation.metadata?.book_name 
                 ? formatBookOrNamespace(citation.metadata.book_name)
                 : type === 'YT' && citation.namespace
@@ -84,11 +84,11 @@ export function SourcePreviewCards({
       {eligibleCitations.length > 3 && (
         <div 
           key="more-sources-card"
-          className="rounded border bg-primary/10 p-2 text-xs cursor-pointer hover:bg-primary/20 transition-colors flex items-center justify-center"
+          className="rounded border bg-secondary/50 p-2 text-xs cursor-pointer hover:bg-secondary/70 transition-colors flex items-center justify-center"
           onClick={() => setActiveTab('sources')}
         >
           <div className="text-center">
-            <div className="text-2xl font-bold text-primary">
+            <div className="text-2xl font-bold text-foreground">
               +{eligibleCitations.length - 3}
             </div>
             <div className="text-[10px] text-muted-foreground">

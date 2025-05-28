@@ -300,11 +300,11 @@ function PureMultimodalInput({
           value={input}
           onChange={handleInput}
           className={cx(
-            messages.length === 0 ? 'min-h-[60px]' : 'min-h-[40px]',
+            messages.length === 0 ? 'min-h-[80px]' : 'min-h-[40px]',
             'max-h-[calc(75dvh)] overflow-hidden resize-none rounded-2xl !text-base bg-muted pb-10 dark:border-zinc-700',
             className,
           )}
-          rows={messages.length === 0 ? 3 : 2}
+          rows={messages.length === 0 ? 4 : 2}
           autoFocus
           onKeyDown={(event) => {
             if (

@@ -61,8 +61,8 @@ export function AppSidebar({ user }: { user: User | undefined }) {
   };
 
   return (
-    <Sidebar className="group-data-[side=left]:border-r-0 bg-sidebar border-sidebar-border">
-      <SidebarHeader className="bg-sidebar-accent/50 border-b border-sidebar-border">
+    <Sidebar className="group-data-[side=left]:border-r-0">
+      <SidebarHeader>
         <SidebarMenu>
           <div className="flex flex-row justify-between items-center">
             <Link
@@ -72,15 +72,14 @@ export function AppSidebar({ user }: { user: User | undefined }) {
               }}
               className="flex flex-row gap-3 items-center"
             >
-              <div className="px-3 py-2 hover:bg-sidebar-accent rounded-md cursor-pointer flex items-center gap-3 transition-colors">
+              <div className="px-2 hover:bg-muted rounded-md cursor-pointer py-1 flex items-center gap-3">
                 <Image
-                  src="/assets/logonewblack.png"
+                  src="/assets/logowithtext.png"
                   alt="Logo"
-                  width={160}
-                  height={60}
-                  className="h-12 w-auto"
+                  width={350}
+                  height={150}
+                  className="h-24 w-auto"
                 />
-                <span className="text-lg font-semibold text-sidebar-foreground">Mustafid AI</span>
               </div>
             </Link>
             <Tooltip>
@@ -88,7 +87,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                 <Button
                   variant="ghost"
                   type="button"
-                  className="p-2 h-fit hover:bg-sidebar-accent text-sidebar-foreground border border-sidebar-border"
+                  className="p-2 h-fit"
                   onClick={() => {
                     setOpenMobile(false);
                     router.push('/');
@@ -103,35 +102,33 @@ export function AppSidebar({ user }: { user: User | undefined }) {
           </div>
         </SidebarMenu>
       </SidebarHeader>
-      <SidebarContent className="bg-sidebar">
+      <SidebarContent>
         <SidebarHistory user={user} />
       </SidebarContent>
-      <SidebarFooter className="bg-sidebar-accent/30 border-t border-sidebar-border">
-        <div className="flex flex-row items-center gap-2 p-2">
+      <SidebarFooter>
+        <div className="flex flex-row items-center gap-2">
           <div className="flex-shrink-0">
             <SidebarMenu>
               <SidebarMenuItem>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <SidebarMenuButton
-                      className="data-[state=open]:bg-sidebar-primary data-[state=open]:text-sidebar-primary-foreground bg-sidebar-accent hover:bg-sidebar-primary hover:text-sidebar-primary-foreground h-10 w-fit px-3 border border-sidebar-border transition-colors"
+                      className="data-[state=open]:bg-sidebar-accent bg-background data-[state=open]:text-sidebar-accent-foreground h-10 w-fit px-2"
                     >
                       <GlobeIcon size={16} />
-                      <span className="text-sm font-medium">
+                      <span className="text-sm">
                         {languages.find(lang => lang.code === selectedLanguage)?.name.slice(0, 2).toUpperCase() || 'EN'}
                       </span>
                     </SidebarMenuButton>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-[200px] bg-sidebar-accent border-sidebar-border">
-                    <DropdownMenuLabel className="text-sidebar-foreground">Select Language</DropdownMenuLabel>
-                    <DropdownMenuSeparator className="bg-sidebar-border" />
+                  <DropdownMenuContent align="start" className="w-[200px]">
+                    <DropdownMenuLabel>Select Language</DropdownMenuLabel>
+                    <DropdownMenuSeparator />
                     {languages.map((lang) => (
                       <DropdownMenuItem
                         key={lang.code}
                         onClick={() => handleLanguageChange(lang.code)}
-                        className={`text-sidebar-foreground hover:bg-sidebar-primary hover:text-sidebar-primary-foreground transition-colors ${
-                          selectedLanguage === lang.code ? 'bg-sidebar-primary text-sidebar-primary-foreground' : ''
-                        }`}
+                        className={selectedLanguage === lang.code ? 'bg-accent' : ''}
                       >
                         {lang.name}
                       </DropdownMenuItem>

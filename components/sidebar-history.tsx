@@ -152,7 +152,7 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
     return (
       <SidebarGroup>
         <SidebarGroupContent>
-          <div className="px-2 text-sidebar-foreground/60 w-full flex flex-row justify-center items-center text-sm gap-2">
+          <div className="px-2 text-zinc-500 w-full flex flex-row justify-center items-center text-sm gap-2">
             Login to save and revisit previous chats!
           </div>
         </SidebarGroupContent>
@@ -174,7 +174,7 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
                 className="rounded-md h-8 flex gap-2 px-2 items-center"
               >
                 <div
-                  className="h-4 rounded-md flex-1 max-w-[--skeleton-width] bg-sidebar-accent"
+                  className="h-4 rounded-md flex-1 max-w-[--skeleton-width] bg-sidebar-accent-foreground/10"
                   style={
                     {
                       '--skeleton-width': `${item}%`,
@@ -193,7 +193,7 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
     return (
       <SidebarGroup>
         <SidebarGroupContent>
-          <div className="px-2 text-sidebar-foreground/60 w-full flex flex-row justify-center items-center text-sm gap-2">
+          <div className="px-2 text-zinc-500 w-full flex flex-row justify-center items-center text-sm gap-2">
             Your conversations will appear here once you start chatting!
           </div>
         </SidebarGroupContent>
@@ -329,11 +329,11 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
           />
 
           {hasReachedEnd ? (
-            <div className="px-2 text-sidebar-foreground/60 w-full flex flex-row justify-center items-center text-sm gap-2 mt-8">
+            <div className="px-2 text-zinc-500 w-full flex flex-row justify-center items-center text-sm gap-2 mt-8">
               You have reached the end of your chat history.
             </div>
           ) : (
-            <div className="p-2 text-sidebar-foreground/60 flex flex-row gap-2 items-center mt-8">
+            <div className="p-2 text-zinc-500 dark:text-zinc-400 flex flex-row gap-2 items-center mt-8">
               <div className="animate-spin">
                 <LoaderIcon />
               </div>
