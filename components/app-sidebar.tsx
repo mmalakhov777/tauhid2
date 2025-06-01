@@ -72,7 +72,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
               }}
               className="flex flex-row gap-3 items-center"
             >
-              <div className="px-2 hover:bg-muted rounded-md cursor-pointer py-1 flex items-center gap-3">
+              <div className="px-2 hover:bg-muted rounded-md cursor-pointer py-1 flex items-center gap-3 transition-colors duration-200">
                 <Image
                   src="/assets/logowithtext.png"
                   alt="Logo"
@@ -87,7 +87,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                 <Button
                   variant="ghost"
                   type="button"
-                  className="p-2 h-fit"
+                  className="p-2 h-fit hover:bg-muted transition-colors duration-200"
                   onClick={() => {
                     setOpenMobile(false);
                     router.push('/');
@@ -113,22 +113,24 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <SidebarMenuButton
-                      className="data-[state=open]:bg-sidebar-accent bg-background data-[state=open]:text-sidebar-accent-foreground h-10 w-fit px-2"
+                      className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground h-10 w-fit px-2 bg-card border border-border hover:bg-card/80 transition-colors duration-200"
                     >
                       <GlobeIcon size={16} />
-                      <span className="text-sm">
+                      <span className="text-sm font-medium">
                         {languages.find(lang => lang.code === selectedLanguage)?.name.slice(0, 2).toUpperCase() || 'EN'}
                       </span>
                     </SidebarMenuButton>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-[200px]">
-                    <DropdownMenuLabel>Select Language</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
+                  <DropdownMenuContent align="start" className="w-[200px] bg-popover border border-border shadow-lg">
+                    <DropdownMenuLabel className="text-popover-foreground">Select Language</DropdownMenuLabel>
+                    <DropdownMenuSeparator className="bg-border" />
                     {languages.map((lang) => (
                       <DropdownMenuItem
                         key={lang.code}
                         onClick={() => handleLanguageChange(lang.code)}
-                        className={selectedLanguage === lang.code ? 'bg-accent' : ''}
+                        className={`text-popover-foreground hover:bg-accent hover:text-accent-foreground transition-colors duration-200 ${
+                          selectedLanguage === lang.code ? 'bg-accent text-accent-foreground' : ''
+                        }`}
                       >
                         {lang.name}
                       </DropdownMenuItem>

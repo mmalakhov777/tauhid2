@@ -166,7 +166,7 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber }: Cit
                 
                 {/* Classical Source with 40/60 split layout for Fatawa Qazi Khan */}
                 {isFatawaQaziKhan && (
-                  <div className="rounded-lg border bg-muted/20 overflow-hidden">
+                  <div className="rounded-lg border border-border bg-card/50 overflow-hidden shadow-lg">
                     <div className="flex gap-0">
                       {/* Cover Image - 40% */}
                       <div className="w-[40%] flex-shrink-0">
@@ -183,7 +183,7 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber }: Cit
                       <div className="flex-1 flex flex-col justify-center gap-3 p-4">
                         {/* Source as title */}
                         {citation.metadata?.source && (
-                          <div className="text-base font-semibold text-foreground">
+                          <div className="text-base font-semibold text-card-foreground">
                             {citation.metadata.source}
                           </div>
                         )}
@@ -216,7 +216,7 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber }: Cit
 
                 {/* Classical Source with 40/60 split layout for Rad-ul-Muhtar */}
                 {isRaddulMuhtar && (
-                  <div className="rounded-lg border bg-muted/20 overflow-hidden">
+                  <div className="rounded-lg border border-border bg-card/50 overflow-hidden shadow-lg">
                     <div className="flex gap-0">
                       {/* Cover Image - 40% */}
                       <div className="w-[40%] flex-shrink-0">
@@ -233,7 +233,7 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber }: Cit
                       <div className="flex-1 flex flex-col justify-center gap-3 p-4">
                         {/* Source as title */}
                         {citation.metadata?.source && (
-                          <div className="text-base font-semibold text-foreground">
+                          <div className="text-base font-semibold text-card-foreground">
                             {citation.metadata.source}
                           </div>
                         )}
@@ -280,7 +280,7 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber }: Cit
                 {!isYouTube && !isFatawaQaziKhan && !isRaddulMuhtar && !isRisale && (
                   <div>
                     <h3 className="text-sm font-semibold text-muted-foreground mb-2">Full Text</h3>
-                    <div className="bg-muted/30 rounded-lg p-4 text-sm leading-relaxed">
+                    <div className="bg-muted/50 rounded-lg p-4 text-sm leading-relaxed border border-border">
                       {citation.text || '[No text available]'}
                     </div>
                   </div>
@@ -314,21 +314,21 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber }: Cit
                         {citation.metadata?.question && (
                           <div className="mt-4">
                             <div className="text-sm font-semibold text-muted-foreground mb-1">Question</div>
-                            <div className="text-sm bg-muted/30 rounded-lg p-3">{citation.metadata.question}</div>
+                            <div className="text-sm bg-muted/50 rounded-lg p-3 border border-border">{citation.metadata.question}</div>
                           </div>
                         )}
                         
                         {citation.metadata?.answer && (
                           <div className="mt-4">
                             <div className="text-sm font-semibold text-muted-foreground mb-1">Answer</div>
-                            <div className="text-sm bg-muted/30 rounded-lg p-3">{citation.metadata.answer}</div>
+                            <div className="text-sm bg-muted/50 rounded-lg p-3 border border-border">{citation.metadata.answer}</div>
                           </div>
                         )}
                         
                         {citation.metadata?.context && (
                           <div className="mt-4">
                             <div className="text-sm font-semibold text-muted-foreground mb-1">Context</div>
-                            <div className="text-sm bg-muted/30 rounded-lg p-3">{citation.metadata.context}</div>
+                            <div className="text-sm bg-muted/50 rounded-lg p-3 border border-border">{citation.metadata.context}</div>
                           </div>
                         )}
                       </>
@@ -338,28 +338,28 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber }: Cit
                         {citation.metadata?.question && (
                           <div className="mt-4">
                             <div className="text-sm font-semibold text-muted-foreground mb-1">Question</div>
-                            <div className="text-sm bg-muted/30 rounded-lg p-3">{citation.metadata.question}</div>
+                            <div className="text-sm bg-muted/50 rounded-lg p-3 border border-border">{citation.metadata.question}</div>
                           </div>
                         )}
                         
                         {citation.metadata?.answer && (
                           <div className="mt-4">
                             <div className="text-sm font-semibold text-muted-foreground mb-1">Answer</div>
-                            <div className="text-sm bg-muted/30 rounded-lg p-3">{citation.metadata.answer}</div>
+                            <div className="text-sm bg-muted/50 rounded-lg p-3 border border-border">{citation.metadata.answer}</div>
                           </div>
                         )}
                         
                         {citation.metadata?.interpretation && (
                           <div className="mt-4">
                             <div className="text-sm font-semibold text-muted-foreground mb-1">Interpretation</div>
-                            <div className="text-sm bg-muted/30 rounded-lg p-3">{citation.metadata.interpretation}</div>
+                            <div className="text-sm bg-muted/50 rounded-lg p-3 border border-border">{citation.metadata.interpretation}</div>
                           </div>
                         )}
                         
                         {citation.metadata?.modern_usage && (
                           <div className="mt-4">
                             <div className="text-sm font-semibold text-muted-foreground mb-1">Modern Usage</div>
-                            <div className="text-sm bg-muted/30 rounded-lg p-3">{citation.metadata.modern_usage}</div>
+                            <div className="text-sm bg-muted/50 rounded-lg p-3 border border-border">{citation.metadata.modern_usage}</div>
                           </div>
                         )}
                       </>
@@ -370,23 +370,23 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber }: Cit
                         <h3 className="text-sm font-semibold text-muted-foreground mb-2">Metadata</h3>
                         
                         {citation.metadata?.book_name && (
-                          <div className="flex justify-between py-2 border-b">
+                          <div className="flex justify-between py-2 border-b border-border">
                             <span className="text-sm text-muted-foreground">Book Name</span>
-                            <span className="text-sm font-mono">{citation.metadata.book_name}</span>
+                            <span className="text-sm font-mono text-foreground">{citation.metadata.book_name}</span>
                           </div>
                         )}
                         
                         {citation.metadata?.page_number && (
-                          <div className="flex justify-between py-2 border-b">
+                          <div className="flex justify-between py-2 border-b border-border">
                             <span className="text-sm text-muted-foreground">Page Number</span>
-                            <span className="text-sm font-mono">{citation.metadata.page_number}</span>
+                            <span className="text-sm font-mono text-foreground">{citation.metadata.page_number}</span>
                           </div>
                         )}
 
                         {citation.query && (
-                          <div className="py-2 border-b">
+                          <div className="py-2 border-b border-border">
                             <span className="text-sm text-muted-foreground">Search Query</span>
-                            <div className="mt-1 text-sm font-mono bg-muted/50 rounded p-2">
+                            <div className="mt-1 text-sm font-mono bg-muted/50 rounded p-2 border border-border">
                               {citation.query}
                             </div>
                           </div>
@@ -396,37 +396,37 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber }: Cit
                       // Non-YouTube, non-Classical citations show all fields as before
                       <>
                         {citation.score !== undefined && (
-                          <div className="flex justify-between py-2 border-b">
+                          <div className="flex justify-between py-2 border-b border-border">
                             <span className="text-sm text-muted-foreground">Relevance Score</span>
-                            <span className="text-sm font-mono">{citation.score.toFixed(4)}</span>
+                            <span className="text-sm font-mono text-foreground">{citation.score.toFixed(4)}</span>
                           </div>
                         )}
                         
                         {citation.metadata?.source && (
-                          <div className="flex justify-between py-2 border-b">
+                          <div className="flex justify-between py-2 border-b border-border">
                             <span className="text-sm text-muted-foreground">Source</span>
-                            <span className="text-sm font-mono">{citation.metadata.source}</span>
+                            <span className="text-sm font-mono text-foreground">{citation.metadata.source}</span>
                           </div>
                         )}
                         
                         {citation.namespace && (
-                          <div className="flex justify-between py-2 border-b">
+                          <div className="flex justify-between py-2 border-b border-border">
                             <span className="text-sm text-muted-foreground">Namespace</span>
-                            <span className="text-sm font-mono">{citation.namespace}</span>
+                            <span className="text-sm font-mono text-foreground">{citation.namespace}</span>
                           </div>
                         )}
                         
                         {citation.id && (
-                          <div className="flex justify-between py-2 border-b">
+                          <div className="flex justify-between py-2 border-b border-border">
                             <span className="text-sm text-muted-foreground">ID</span>
-                            <span className="text-xs font-mono">{citation.id}</span>
+                            <span className="text-xs font-mono text-foreground">{citation.id}</span>
                           </div>
                         )}
 
                         {citation.query && (
-                          <div className="py-2 border-b">
+                          <div className="py-2 border-b border-border">
                             <span className="text-sm text-muted-foreground">Search Query</span>
-                            <div className="mt-1 text-sm font-mono bg-muted/50 rounded p-2">
+                            <div className="mt-1 text-sm font-mono bg-muted/50 rounded p-2 border border-border">
                               {citation.query}
                             </div>
                           </div>
@@ -446,9 +446,9 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber }: Cit
                         if (key === 'source' || key === 'type' || key === 'thumbnail_url' || key === 'video_id' || key === 'timestamp') return null;
                         
                         return (
-                          <div key={key} className="flex justify-between py-2 border-b">
+                          <div key={key} className="flex justify-between py-2 border-b border-border">
                             <span className="text-sm text-muted-foreground">{key}</span>
-                            <span className="text-sm">{String(value)}</span>
+                            <span className="text-sm text-foreground">{String(value)}</span>
                           </div>
                         );
                       })}

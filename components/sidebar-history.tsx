@@ -27,6 +27,7 @@ import { fetcher } from '@/lib/utils';
 import { ChatItem } from './sidebar-history-item';
 import useSWRInfinite from 'swr/infinite';
 import { LoaderIcon } from './icons';
+import { SkeletonWave } from './ui/skeleton';
 
 type GroupedChats = {
   today: Chat[];
@@ -167,19 +168,18 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
           Today
         </div>
         <SidebarGroupContent>
-          <div className="flex flex-col">
-            {[44, 32, 28, 64, 52].map((item) => (
+          <div className="flex flex-col gap-1">
+            {[44, 32, 28, 64, 52].map((item, index) => (
               <div
                 key={item}
                 className="rounded-md h-8 flex gap-2 px-2 items-center"
               >
-                <div
-                  className="h-4 rounded-md flex-1 max-w-[--skeleton-width] bg-sidebar-accent-foreground/10"
-                  style={
-                    {
-                      '--skeleton-width': `${item}%`,
-                    } as React.CSSProperties
-                  }
+                <SkeletonWave
+                  className="h-4 flex-1 rounded-md"
+                  delay={index * 0.1}
+                  style={{
+                    maxWidth: `${item}%`,
+                  }}
                 />
               </div>
             ))}

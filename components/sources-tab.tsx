@@ -1,233 +1,390 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import { Youtube } from 'lucide-react';
-import { determineCitationType, filterEligibleCitations } from './citation-utils';
+import { Youtube, BookOpen, ScrollText } from 'lucide-react';
+import { determineCitationType, filterEligibleCitations, RIS_NAMESPACES, YT_NAMESPACES } from './citation-utils';
+import { ChevronDownIcon } from './icons';
+import { AnimatePresence, motion } from 'framer-motion';
+import { useState } from 'react';
 
 interface SourcesTabProps {
   vectorSearchData: {
     citations: any[];
+    improvedQueries?: string[];
   };
   setModalCitation: (citation: { citation: any; number: number } | null) => void;
 }
 
 export function SourcesTab({ vectorSearchData, setModalCitation }: SourcesTabProps) {
+  const [isQueryMappingExpanded, setIsQueryMappingExpanded] = useState(false);
   const eligibleCitations = filterEligibleCitations(vectorSearchData.citations);
 
+  // Separate YouTube citations from others
+  const youTubeCitations = eligibleCitations.filter((item: {citation: any, i: number}) => {
+    const type = determineCitationType(item.citation);
+    return type === 'YT' || type === 'youtube';
+  });
+
+  const otherCitations = eligibleCitations.filter((item: {citation: any, i: number}) => {
+    const type = determineCitationType(item.citation);
+    return type !== 'YT' && type !== 'youtube';
+  });
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-      {eligibleCitations.map((item: {citation: any, i: number}) => {
-        const { citation, i } = item;
-        const type = determineCitationType(citation);
-        const isYouTube = type === 'YT' || type === 'youtube';
-        const thumbnailUrl = citation.metadata?.thumbnail_url;
-        const isFatawaQaziKhan = type === 'CLS' && (
-          citation.metadata?.source_file?.includes('FATAWA-QAZI-KHAN-')
-        );
-        const isRaddulMuhtar = type === 'CLS' && citation.metadata?.source_file?.startsWith('Rad-ul-Muhtar-Vol');
-        
-        return (
-          <div 
-            key={`source-${citation.id || i}`} 
-            className={cn(
-              "rounded border bg-muted/40 flex flex-col transition-all cursor-pointer hover:bg-muted/30 overflow-hidden",
-              isYouTube && "h-full p-0"
-            )}
-            onClick={() => {
-              console.log('🎯 Preview card clicked - Citation Index:', i);
-              console.log('🎯 Preview card clicked - Citation Data:', citation);
-              console.log('🎯 Preview card clicked - Citation Metadata:', citation.metadata);
-              console.log('🎯 Preview card clicked - Citation Namespace:', citation.namespace);
-              setModalCitation({ 
-                citation: citation, 
-                number: i + 1
-              });
-            }}
-          >
-            {/* YouTube Thumbnail */}
-            {isYouTube && thumbnailUrl && (
-              <div className="relative size-full aspect-video rounded overflow-hidden bg-muted group">
-                <img 
-                  src={thumbnailUrl} 
-                  alt="YouTube video thumbnail"
-                  className="size-full object-cover"
-                />
-                {citation.namespace && (
-                  <div className="absolute top-2 left-2 bg-black/80 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
-                    <Youtube className="size-3" />
-                    <span>{citation.namespace.replace(/_/g, ' ')}</span>
-                  </div>
-                )}
-                {citation.metadata?.timestamp && typeof citation.metadata.timestamp === 'number' && !isNaN(citation.metadata.timestamp) && (
-                  <div className="absolute bottom-2 left-2 bg-black/80 text-white text-[10px] px-1.5 py-0.5 rounded">
-                    {Math.floor(citation.metadata.timestamp / 60)}:{(citation.metadata.timestamp % 60).toString().padStart(2, '0')}
-                  </div>
-                )}
-              </div>
-            )}
-            
-            {/* Classical Source Layout with 40/60 split */}
-            {type === 'CLS' && isFatawaQaziKhan ? (
-              <div className="flex gap-3">
-                {/* Cover Image - 40% */}
-                <div className="w-2/5 shrink-0">
-                  <div className="relative size-full rounded-l overflow-hidden bg-muted">
-                    <img 
-                      src="/images/fatawa-qazi-khan.png" 
-                      alt="Fatawa Qazi Khan cover"
-                      className="size-full object-cover object-center"
-                    />
-                  </div>
-                </div>
-                
-                {/* Content - 60% */}
-                <div className="flex-1 flex flex-col justify-center gap-2 py-3 pr-3">
-                  {/* Source as title */}
-                  {citation.metadata?.source && (
-                    <div className="text-sm font-semibold text-foreground line-clamp-1">
-                      {citation.metadata.source}
+    <div className="space-y-6">
+      {/* Other Cards - 2 per row */}
+      {otherCitations.length > 0 && (
+        <div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {otherCitations.map((item: {citation: any, i: number}) => {
+              const { citation, i } = item;
+              const type = determineCitationType(citation);
+              const isFatawaQaziKhan = type === 'CLS' && (
+                citation.metadata?.source_file?.includes('FATAWA-QAZI-KHAN-')
+              );
+              const isRaddulMuhtar = type === 'CLS' && citation.metadata?.source_file?.startsWith('Rad-ul-Muhtar-Vol');
+              
+              return (
+                <div 
+                  key={`source-${citation.id || i}`} 
+                  className="rounded-lg border border-border bg-card/50 flex flex-col transition-all duration-200 cursor-pointer hover:bg-card/70 hover:shadow-md overflow-hidden shadow-sm"
+                  onClick={() => {
+                    console.log('🎯 Preview card clicked - Citation Index:', i);
+                    console.log('🎯 Preview card clicked - Citation Data:', citation);
+                    console.log('🎯 Preview card clicked - Citation Metadata:', citation.metadata);
+                    console.log('🎯 Preview card clicked - Citation Namespace:', citation.namespace);
+                    setModalCitation({ 
+                      citation: citation, 
+                      number: i + 1
+                    });
+                  }}
+                >
+                  {/* Classical Source Layout with 40/60 split */}
+                  {type === 'CLS' && isFatawaQaziKhan ? (
+                    <div className="flex gap-3">
+                      {/* Cover Image - 40% */}
+                      <div className="w-2/5 shrink-0">
+                        <div className="relative size-full rounded-l overflow-hidden bg-muted">
+                          <img 
+                            src="/images/fatawa-qazi-khan.png" 
+                            alt="Fatawa Qazi Khan cover"
+                            className="size-full object-cover object-center"
+                          />
+                        </div>
+                      </div>
+                      
+                      {/* Content - 60% */}
+                      <div className="flex-1 flex flex-col justify-center gap-2 py-3 pr-3">
+                        {/* Source as title */}
+                        {citation.metadata?.source && (
+                          <div className="text-sm font-semibold text-card-foreground line-clamp-1">
+                            {citation.metadata.source}
+                          </div>
+                        )}
+                        
+                        {/* Text preview */}
+                        <div className="text-[10px] text-muted-foreground line-clamp-2 italic">
+                          {citation.text?.slice(0, 80)}...
+                        </div>
+                        
+                        {/* Metadata */}
+                        <div className="flex flex-col gap-0.5 text-[10px] text-muted-foreground mt-auto">
+                          <span className="truncate">Fatawa Qazi Khan</span>
+                          {citation.metadata?.volume && (
+                            <div>Volume: {citation.metadata.volume}</div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ) : type === 'CLS' && isRaddulMuhtar ? (
+                    <div className="flex gap-3">
+                      {/* Cover Image - 40% */}
+                      <div className="w-2/5 shrink-0">
+                        <div className="relative size-full rounded-l overflow-hidden bg-muted">
+                          <img 
+                            src="/images/raddul-muhtaar.png" 
+                            alt="Rad-ul-Muhtar cover"
+                            className="size-full object-cover object-center"
+                          />
+                        </div>
+                      </div>
+                      
+                      {/* Content - 60% */}
+                      <div className="flex-1 flex flex-col justify-center gap-2 py-3 pr-3">
+                        {/* Source as title */}
+                        {citation.metadata?.source && (
+                          <div className="text-sm font-semibold text-card-foreground line-clamp-1">
+                            {citation.metadata.source}
+                          </div>
+                        )}
+                        
+                        {/* Text preview */}
+                        <div className="text-[10px] text-muted-foreground line-clamp-2 italic">
+                          {citation.text?.slice(0, 80)}...
+                        </div>
+                        
+                        {/* Metadata */}
+                        <div className="flex flex-col gap-0.5 text-[10px] text-muted-foreground mt-auto">
+                          <span className="truncate">Rad-ul-Muhtar</span>
+                          {citation.metadata?.volume && (
+                            <div>Volume: {citation.metadata.volume}</div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ) : type === 'RIS' ? (
+                    // RIS Source Layout with 40/60 split
+                    <div className="flex gap-0 h-full">
+                      {/* Cover Image - 40% */}
+                      <div className="w-2/5 shrink-0">
+                        <div className="relative size-full overflow-hidden bg-muted">
+                          <img 
+                            src={`/images/risaleinur/${citation.metadata?.book_name || 'placeholder'}.png`}
+                            alt={`${citation.metadata?.book_name?.replace(/_/g, ' ').replace(/-/g, ' ') || 'Risale-i Nur'} cover`}
+                            className="size-full object-cover"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.src = '/images/fatawa-qazi-khan.png';
+                            }}
+                          />
+                        </div>
+                      </div>
+                      
+                      {/* Content - 60% */}
+                      <div className="flex-1 flex flex-col justify-center gap-2 p-3">
+                        {/* Book name as title */}
+                        {citation.metadata?.book_name && (
+                          <div className="text-sm font-semibold text-card-foreground line-clamp-1">
+                            {citation.metadata.book_name.replace(/_/g, ' ').replace(/-/g, ' ').split(' ').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')}
+                          </div>
+                        )}
+                        
+                        {/* Text preview */}
+                        <div className="text-[10px] text-muted-foreground line-clamp-2 italic">
+                          {citation.text?.slice(0, 80)}...
+                        </div>
+                        
+                        {/* Metadata */}
+                        <div className="flex flex-col gap-0.5 text-[10px] text-muted-foreground mt-auto">
+                          <span className="truncate">Risale-i Nur</span>
+                          {citation.metadata?.page_number && (
+                            <div>Page: {citation.metadata.page_number}</div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    // Other types
+                    <div className="p-3">
+                      {/* Source text preview */}
+                      <div className="text-xs font-semibold text-card-foreground line-clamp-1">
+                        {type === 'CLS' && citation.metadata?.source 
+                          ? citation.metadata.source
+                          : citation.text?.slice(0, 60) || '[No text]'}...
+                      </div>
+                      
+                      {/* Preview */}
+                      <div className="text-[10px] text-muted-foreground line-clamp-2 mt-1">
+                        {citation.text?.slice(0, 100)}...
+                      </div>
+                      
+                      {/* Metadata */}
+                      <div className="flex flex-col gap-0.5 text-[10px] text-muted-foreground mt-auto">
+                        {type !== 'YT' && type !== 'RIS' && (
+                          <div className="flex items-center gap-1">
+                            <span className="px-1 py-0.5 rounded bg-secondary text-secondary-foreground text-[9px]">
+                              {type}
+                            </span>
+                            <span className="truncate">{citation.metadata?.source || 'Unknown'}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
-                  
-                  {/* Text preview */}
-                  <div className="text-[10px] text-muted-foreground line-clamp-2 italic">
-                    {citation.text?.slice(0, 80)}...
-                  </div>
-                  
-                  {/* Metadata */}
-                  <div className="flex flex-col gap-0.5 text-[10px] text-muted-foreground mt-auto">
-                    <span className="truncate">Fatawa Qazi Khan</span>
-                    {citation.metadata?.volume && (
-                      <div>Volume: {citation.metadata.volume}</div>
-                    )}
-                  </div>
                 </div>
-              </div>
-            ) : type === 'CLS' && isRaddulMuhtar ? (
-              <div className="flex gap-3">
-                {/* Cover Image - 40% */}
-                <div className="w-2/5 shrink-0">
-                  <div className="relative size-full rounded-l overflow-hidden bg-muted">
-                    <img 
-                      src="/images/raddul-muhtaar.png" 
-                      alt="Rad-ul-Muhtar cover"
-                      className="size-full object-cover object-center"
-                    />
-                  </div>
-                </div>
-                
-                {/* Content - 60% */}
-                <div className="flex-1 flex flex-col justify-center gap-2 py-3 pr-3">
-                  {/* Source as title */}
-                  {citation.metadata?.source && (
-                    <div className="text-sm font-semibold text-foreground line-clamp-1">
-                      {citation.metadata.source}
-                    </div>
-                  )}
-                  
-                  {/* Text preview */}
-                  <div className="text-[10px] text-muted-foreground line-clamp-2 italic">
-                    {citation.text?.slice(0, 80)}...
-                  </div>
-                  
-                  {/* Metadata */}
-                  <div className="flex flex-col gap-0.5 text-[10px] text-muted-foreground mt-auto">
-                    <span className="truncate">Rad-ul-Muhtar</span>
-                    {citation.metadata?.volume && (
-                      <div>Volume: {citation.metadata.volume}</div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ) : type === 'RIS' ? (
-              // RIS Source Layout with 40/60 split
-              <div className="flex gap-0 h-full">
-                {/* Cover Image - 40% */}
-                <div className="w-2/5 shrink-0">
-                  <div className="relative size-full overflow-hidden bg-muted">
-                    <img 
-                      src={`/images/risaleinur/${citation.metadata?.book_name || 'placeholder'}.png`}
-                      alt={`${citation.metadata?.book_name?.replace(/_/g, ' ').replace(/-/g, ' ') || 'Risale-i Nur'} cover`}
-                      className="size-full object-cover"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = '/images/fatawa-qazi-khan.png';
-                      }}
-                    />
-                  </div>
-                </div>
-                
-                {/* Content - 60% */}
-                <div className="flex-1 flex flex-col justify-center gap-2">
-                  {/* Book name as title */}
-                  {citation.metadata?.book_name && (
-                    <div className="text-sm font-semibold text-foreground line-clamp-1">
-                      {citation.metadata.book_name.replace(/_/g, ' ').replace(/-/g, ' ').split(' ').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')}
-                    </div>
-                  )}
-                  
-                  {/* Text preview */}
-                  <div className="text-[10px] text-muted-foreground line-clamp-2 italic">
-                    {citation.text?.slice(0, 80)}...
-                  </div>
-                  
-                  {/* Metadata */}
-                  <div className="flex flex-col gap-0.5 text-[10px] text-muted-foreground mt-auto">
-                    <span className="truncate">Risale-i Nur</span>
-                    {citation.metadata?.page_number && (
-                      <div>Page: {citation.metadata.page_number}</div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ) : (
-              // Other types
-              <div>
-                {!isYouTube && (
-                  <>
-                    {/* Source text preview */}
-                    <div className="text-xs font-semibold text-foreground line-clamp-1">
-                      {type === 'CLS' && citation.metadata?.source 
-                        ? citation.metadata.source
-                        : citation.text?.slice(0, 60) || '[No text]'}...
-                    </div>
-                    
-                    {/* Preview */}
-                    <div className="text-[10px] text-muted-foreground line-clamp-2 mt-1">
-                      {citation.text?.slice(0, 100)}...
-                    </div>
-                    
-                    {/* Metadata */}
-                    <div className="flex flex-col gap-0.5 text-[10px] text-muted-foreground mt-auto">
-                      {type !== 'YT' && type !== 'RIS' && (
-                        <div className="flex items-center gap-1">
-                          <span className="px-1 py-0.5 rounded bg-background text-[9px]">
-                            {type}
-                          </span>
-                          <span className="truncate">{citation.metadata?.source || 'Unknown'}</span>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* YouTube Cards - 2 per row on mobile, 3 per row on desktop - Always below other sources */}
+      {youTubeCitations.length > 0 && (
+        <div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3">
+            {youTubeCitations.map((item: {citation: any, i: number}) => {
+              const { citation, i } = item;
+              const thumbnailUrl = citation.metadata?.thumbnail_url;
+              
+              return (
+                <div 
+                  key={`source-${citation.id || i}`} 
+                  className="rounded-lg border border-border bg-card/50 flex flex-col transition-all duration-200 cursor-pointer hover:bg-card/70 hover:shadow-md overflow-hidden shadow-sm h-fit"
+                  onClick={() => {
+                    console.log('🎯 Preview card clicked - Citation Index:', i);
+                    console.log('🎯 Preview card clicked - Citation Data:', citation);
+                    console.log('🎯 Preview card clicked - Citation Metadata:', citation.metadata);
+                    console.log('🎯 Preview card clicked - Citation Namespace:', citation.namespace);
+                    setModalCitation({ 
+                      citation: citation, 
+                      number: i + 1
+                    });
+                  }}
+                >
+                  {/* YouTube Thumbnail */}
+                  {thumbnailUrl ? (
+                    <div className="relative w-full aspect-video rounded overflow-hidden bg-muted group">
+                      <img 
+                        src={thumbnailUrl} 
+                        alt="YouTube video thumbnail"
+                        className="w-full h-full object-cover"
+                      />
+                      {citation.namespace && (
+                        <div className="absolute top-1 left-1 md:top-1.5 md:left-1.5 bg-black/80 text-white text-[9px] md:text-[10px] px-1 md:px-1.5 py-0.5 rounded flex items-center gap-0.5 md:gap-1">
+                          <Youtube className="size-2 md:size-2.5" />
+                          <span className="hidden sm:inline">{citation.namespace.replace(/_/g, ' ')}</span>
+                        </div>
+                      )}
+                      {citation.metadata?.timestamp && typeof citation.metadata.timestamp === 'number' && !isNaN(citation.metadata.timestamp) && (
+                        <div className="absolute bottom-1 left-1 md:bottom-1.5 md:left-1.5 bg-black/80 text-white text-[8px] md:text-[9px] px-1 py-0.5 rounded">
+                          {Math.floor(citation.metadata.timestamp / 60)}:{(citation.metadata.timestamp % 60).toString().padStart(2, '0')}
                         </div>
                       )}
                     </div>
-                  </>
-                )}
-                
-                {/* For YouTube without thumbnail */}
-                {isYouTube && !thumbnailUrl && (
-                  <div className="space-y-1 flex-1 flex flex-col">
-                    <div className="text-xs font-semibold text-foreground flex items-center gap-1">
-                      <Youtube className="size-3" />
-                      {citation.namespace?.replace(/_/g, ' ')}
+                  ) : (
+                    /* YouTube without thumbnail */
+                    <div className="p-2 md:p-3 space-y-1 flex-1 flex flex-col">
+                      <div className="text-[10px] md:text-xs font-semibold text-card-foreground flex items-center gap-1">
+                        <Youtube className="size-2.5 md:size-3" />
+                        <span className="line-clamp-1">{citation.namespace?.replace(/_/g, ' ')}</span>
+                      </div>
+                      <div className="text-[9px] md:text-[10px] text-muted-foreground line-clamp-2">
+                        {citation.text?.slice(0, 60)}...
+                      </div>
                     </div>
-                    <div className="text-[10px] text-muted-foreground line-clamp-2">
-                      {citation.text?.slice(0, 100)}...
+                  )}
+                  
+                  {/* YouTube content below thumbnail */}
+                  {thumbnailUrl && (
+                    <div className="p-1.5 md:p-2">
+                      <div className="text-[9px] md:text-[10px] text-muted-foreground line-clamp-2">
+                        {citation.text?.slice(0, 50)}...
+                      </div>
                     </div>
-                  </div>
-                )}
-              </div>
-            )}
+                  )}
+                </div>
+              );
+            })}
           </div>
-        );
-      })}
+        </div>
+      )}
+
+      {/* Query to Citations Mapping - At the bottom of sources */}
+      {vectorSearchData.citations && vectorSearchData.improvedQueries && (
+        <div className="border-t border-border pt-6">
+          <div className="flex flex-row gap-2 items-center mb-2">
+            <div className="font-medium">Query to Citations Mapping</div>
+            <button
+              type="button"
+              className="cursor-pointer"
+              onClick={() => {
+                setIsQueryMappingExpanded(!isQueryMappingExpanded);
+              }}
+            >
+              <motion.div
+                animate={{ rotate: isQueryMappingExpanded ? 0 : -90 }}
+                transition={{ duration: 0.2 }}
+              >
+                <ChevronDownIcon />
+              </motion.div>
+            </button>
+          </div>
+          
+          <AnimatePresence initial={false}>
+            {isQueryMappingExpanded && (
+              <motion.div
+                key="query-mapping-content"
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2, ease: 'easeInOut' }}
+                style={{ overflow: 'hidden' }}
+              >
+                <div className="bg-muted/50 border border-border p-3 rounded space-y-3">
+                  <div className="text-sm text-muted-foreground mb-3 leading-relaxed">
+                    Explore how your question was broken down into specific search queries and see which sources were found for each query. This transparency shows the search process behind the response.
+                  </div>
+                  {(() => {
+                    const hasQueryField = vectorSearchData.citations.some((c: any) => c.query !== undefined);
+                    
+                    // If no citations have query field, show a single message
+                    if (!hasQueryField) {
+                      return (
+                        <div className="text-sm text-muted-foreground italic">
+                          Query tracking not available for this search (performed before query tracking was implemented)
+                        </div>
+                      );
+                    }
+                    
+                    // Otherwise show the mapping
+                    return vectorSearchData.improvedQueries.map((query: string, qIndex: number) => {
+                      const citationsForQuery = vectorSearchData.citations.filter((c: any) => c.query === query);
+                      
+                      return (
+                        <div key={qIndex} className="border-b border-border pb-2 last:border-0">
+                          <div className="font-semibold text-sm mb-1">Query {qIndex + 1}: &quot;{query}&quot;</div>
+                          <div className="pl-4 space-y-1">
+                            {citationsForQuery.length > 0 ? (
+                              citationsForQuery.map((c: any, cIndex: number) => {
+                                // Determine the type based on various indicators
+                                let type = 'unknown';
+                                if (c.metadata?.type) {
+                                  type = c.metadata.type;
+                                } else if (c.namespace) {
+                                  // Determine type from namespace
+                                  if (RIS_NAMESPACES.includes(c.namespace)) {
+                                    type = 'RIS';
+                                  } else if (YT_NAMESPACES.includes(c.namespace)) {
+                                    type = 'YT';
+                                  }
+                                } else if (!c.metadata?.type && !c.namespace) {
+                                  // If no type and no namespace, likely classic
+                                  type = 'CLS';
+                                }
+
+                                const originalIndex = vectorSearchData.citations.findIndex((vc: any) => vc.id === c.id);
+                                
+                                return (
+                                  <div 
+                                    key={`${qIndex}-${cIndex}-${c.id || 'no-id'}`}
+                                    className="text-xs text-muted-foreground p-1 rounded hover:bg-muted/50 cursor-pointer transition-colors"
+                                    onClick={() => {
+                                      if (originalIndex !== -1) {
+                                        setModalCitation({
+                                          citation: c,
+                                          number: originalIndex + 1
+                                        });
+                                      }
+                                    }}
+                                  >
+                                    • {type === 'YT' ? <Youtube className="size-3 inline mr-1" /> : type === 'RIS' ? <BookOpen className="size-3 inline mr-1" /> : type === 'CLS' ? <ScrollText className="size-3 inline mr-1" /> : type} | {c.text?.slice(0, 120)}...
+                                  </div>
+                                );
+                              })
+                            ) : (
+                              <div className="text-xs text-muted-foreground italic">No results for this query</div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      )}
     </div>
   );
 } 

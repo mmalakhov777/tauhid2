@@ -22,6 +22,7 @@ import { useRouter } from 'next/navigation';
 import { toast } from './toast';
 import { LoaderIcon } from './icons';
 import { guestRegex } from '@/lib/constants';
+import { SkeletonWave } from './ui/skeleton';
 
 export function SidebarUserNav({ user }: { user: User }) {
   const router = useRouter();
@@ -37,11 +38,9 @@ export function SidebarUserNav({ user }: { user: User }) {
           <DropdownMenuTrigger asChild>
             {status === 'loading' ? (
               <SidebarMenuButton className="data-[state=open]:bg-sidebar-accent bg-background data-[state=open]:text-sidebar-accent-foreground h-10 justify-between">
-                <div className="flex flex-row gap-2">
-                  <div className="size-6 bg-zinc-500/30 rounded-full animate-pulse" />
-                  <span className="bg-zinc-500/30 text-transparent rounded-md animate-pulse">
-                    Loading auth status
-                  </span>
+                <div className="flex flex-row gap-2 items-center">
+                  <SkeletonWave className="size-6 rounded-full" delay={0} />
+                  <SkeletonWave className="h-4 w-32 rounded-md" delay={0.1} />
                 </div>
                 <div className="animate-spin text-zinc-500">
                   <LoaderIcon />

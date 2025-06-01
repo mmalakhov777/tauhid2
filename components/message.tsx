@@ -24,6 +24,7 @@ import { ChevronDownIcon } from './icons';
 import { SourcesTab } from './sources-tab';
 import { SourcePreviewCards } from './source-preview-cards';
 import { determineCitationType, filterEligibleCitations, formatBookOrNamespace, RIS_NAMESPACES, YT_NAMESPACES } from './citation-utils';
+import { SkeletonCard, SkeletonDots, SkeletonText } from './ui/skeleton';
 
 // Global debug state
 let globalDebugEnabled = false;
@@ -269,17 +270,6 @@ const PurePreviewMessage = ({
                                   >
                                     Sources ({filterEligibleCitations(vectorSearchData.citations).length})
                                   </button>
-                                  <button
-                                    onClick={() => setActiveTab('tasks')}
-                                    className={cn(
-                                      "px-4 py-2 text-sm font-medium border-b-2 transition-colors",
-                                      activeTab === 'tasks' 
-                                        ? "border-foreground text-foreground" 
-                                        : "border-transparent text-muted-foreground hover:text-foreground"
-                                    )}
-                                  >
-                                    Tasks
-                                  </button>
                                 </div>
 
                                 {/* Tab Content */}
@@ -312,139 +302,6 @@ const PurePreviewMessage = ({
                                       setModalCitation={setModalCitation}
                                     />
                                   )}
-
-                                  {activeTab === 'tasks' && (
-                                    <div className="space-y-4">
-                                      {/* Reasoning Section - Show when answer is ready */}
-                                      {(() => {
-                                        const reasoningPart = message.parts?.find(p => p.type === 'reasoning');
-                                        const hasTextContent = part.text && part.text.trim().length > 0;
-                                        
-                                        if (reasoningPart && hasTextContent) {
-                                          return (
-                                            <div>
-                                              <div className="text-sm text-muted-foreground mb-3 leading-relaxed">
-                                                See the AI&apos;s step-by-step thought process and reasoning behind this response. This shows how the AI analyzed your question and planned its approach.
-                                              </div>
-                                              <MessageReasoning
-                                                isLoading={false}
-                                                reasoning={reasoningPart.reasoning}
-                                                initiallyExpanded={false}
-                                              />
-                                            </div>
-                                          );
-                                        }
-                                        return null;
-                                      })()}
-
-                                      {/* Query to Citations Mapping */}
-                                      {vectorSearchData.citations && vectorSearchData.improvedQueries && (
-                                        <div>
-                                          <div className="text-sm text-muted-foreground mb-3 leading-relaxed">
-                                            Explore how your question was broken down into specific search queries and see which sources were found for each query. This transparency shows the search process behind the response.
-                                          </div>
-                                          <div className="flex flex-row gap-2 items-center mb-2">
-                                            <div className="font-medium">Query to Citations Mapping</div>
-                                            <button
-                                              type="button"
-                                              className="cursor-pointer"
-                                              onClick={() => {
-                                                setIsQueryMappingExpanded(!isQueryMappingExpanded);
-                                              }}
-                                            >
-                                              <motion.div
-                                                animate={{ rotate: isQueryMappingExpanded ? 0 : -90 }}
-                                                transition={{ duration: 0.2 }}
-                                              >
-                                                <ChevronDownIcon />
-                                              </motion.div>
-                                            </button>
-                                          </div>
-                                          
-                                          <AnimatePresence initial={false}>
-                                            {isQueryMappingExpanded && (
-                                              <motion.div
-                                                key="query-mapping-content"
-                                                initial={{ height: 0, opacity: 0 }}
-                                                animate={{ height: 'auto', opacity: 1 }}
-                                                exit={{ height: 0, opacity: 0 }}
-                                                transition={{ duration: 0.2, ease: 'easeInOut' }}
-                                                style={{ overflow: 'hidden' }}
-                                              >
-                                                <div className="bg-muted/30 p-3 rounded space-y-3">
-                                                  {(() => {
-                                                    const hasQueryField = vectorSearchData.citations.some((c: any) => c.query !== undefined);
-                                                    
-                                                    // If no citations have query field, show a single message
-                                                    if (!hasQueryField) {
-                                                      return (
-                                                        <div className="text-sm text-muted-foreground italic">
-                                                          Query tracking not available for this search (performed before query tracking was implemented)
-                                                        </div>
-                                                      );
-                                                    }
-                                                    
-                                                    // Otherwise show the mapping
-                                                    return vectorSearchData.improvedQueries.map((query: string, qIndex: number) => {
-                                                      const citationsForQuery = vectorSearchData.citations.filter((c: any) => c.query === query);
-                                                      
-                                                      return (
-                                                        <div key={qIndex} className="border-b border-muted pb-2 last:border-0">
-                                                          <div className="font-semibold text-sm mb-1">Query {qIndex + 1}: &quot;{query}&quot;</div>
-                                                          <div className="pl-4 space-y-1">
-                                                            {citationsForQuery.length > 0 ? (
-                                                              citationsForQuery.map((c: any, cIndex: number) => {
-                                                                // Determine the type based on various indicators
-                                                                let type = 'unknown';
-                                                                if (c.metadata?.type) {
-                                                                  type = c.metadata.type;
-                                                                } else if (c.namespace) {
-                                                                  // Determine type from namespace
-                                                                  if (RIS_NAMESPACES.includes(c.namespace)) {
-                                                                    type = 'RIS';
-                                                                  } else if (YT_NAMESPACES.includes(c.namespace)) {
-                                                                    type = 'YT';
-                                                                  }
-                                                                } else if (!c.metadata?.type && !c.namespace) {
-                                                                  // If no type and no namespace, likely classic
-                                                                  type = 'CLS';
-                                                                }
-
-                                                                const originalIndex = vectorSearchData.citations.findIndex((vc: any) => vc.id === c.id);
-                                                                
-                                                                return (
-                                                                  <div 
-                                                                    key={`${qIndex}-${cIndex}-${c.id || 'no-id'}`}
-                                                                    className="text-xs text-muted-foreground p-1 rounded hover:bg-muted/50 cursor-pointer transition-colors"
-                                                                    onClick={() => {
-                                                                      if (originalIndex !== -1) {
-                                                                        setModalCitation({
-                                                                          citation: c,
-                                                                          number: originalIndex + 1
-                                                                        });
-                                                                      }
-                                                                    }}
-                                                                  >
-                                                                    • {type === 'YT' ? <Youtube className="size-3 inline mr-1" /> : type === 'RIS' ? <BookOpen className="size-3 inline mr-1" /> : type === 'CLS' ? <ScrollText className="size-3 inline mr-1" /> : type} | {c.text?.slice(0, 120)}...
-                                                                  </div>
-                                                                );
-                                                              })
-                                                            ) : (
-                                                              <div className="text-xs text-muted-foreground italic">No results for this query</div>
-                                                            )}
-                                                          </div>
-                                                        </div>
-                                                      );
-                                                    });
-                                                  })()}
-                                                </div>
-                                              </motion.div>
-                                            )}
-                                          </AnimatePresence>
-                                        </div>
-                                      )}
-                                    </div>
-                                  )}
                                 </div>
                               </>
                             ) : (
@@ -459,7 +316,7 @@ const PurePreviewMessage = ({
 
                       {/* Raw Debug Data - Always at the bottom */}
                       {message.role === 'assistant' && vectorSearchData && index === message.parts.length - 1 && debugEnabled && (
-                        <div className="mt-4 border rounded-lg p-3 bg-muted/30">
+                        <div className="mt-4 border border-border rounded-lg p-3 bg-muted/50">
                           <button
                             onClick={() => setShowRawData(!showRawData)}
                             className="text-sm font-semibold mb-2 flex items-center gap-2 hover:opacity-80"
@@ -623,32 +480,47 @@ export const ThinkingMessage = ({ vectorSearchProgress }: { vectorSearchProgress
               className="space-y-1 text-xs text-muted-foreground"
             >
               {vectorSearchProgress.improvedQueries.map((q: string, i: number) => (
-                <div key={i} className="opacity-70">→ {q}</div>
+                <motion.div 
+                  key={i} 
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 0.7, x: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  className="flex items-center gap-2"
+                >
+                  <span>→</span>
+                  <span>{q}</span>
+                </motion.div>
               ))}
             </motion.div>
           )}
 
-          {/* Skeleton citation cards */}
+          {/* Beautiful animated skeleton citation cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {[1, 2].map((i) => (
-              <div key={i} className="rounded border bg-muted/40 p-3 animate-pulse">
-                <div className="h-4 bg-muted rounded w-full mb-2"></div>
-                <div className="h-3 bg-muted rounded w-3/4 mb-2"></div>
-                <div className="flex gap-2">
-                  <div className="h-5 bg-muted rounded w-16"></div>
-                  <div className="h-5 bg-muted rounded w-20"></div>
-                  <div className="h-5 bg-muted rounded w-24"></div>
-                </div>
-              </div>
+              <SkeletonCard key={i} delay={i * 0.2} />
             ))}
           </div>
 
-          {/* Skeleton text area for response */}
-          <div className="animate-pulse space-y-2">
-            <div className="h-4 bg-muted rounded w-full"></div>
-            <div className="h-4 bg-muted rounded w-5/6"></div>
-            <div className="h-4 bg-muted rounded w-4/6"></div>
-          </div>
+          {/* Enhanced thinking indicator with dots and text */}
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.8 }}
+            className="flex items-center gap-3 text-muted-foreground"
+          >
+            <SkeletonDots />
+            <motion.span 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: [0.5, 1, 0.5] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="text-sm font-medium"
+            >
+              Thinking and searching...
+            </motion.span>
+          </motion.div>
+
+          {/* Beautiful animated text skeleton for response */}
+          <SkeletonText lines={3} delay={1} />
         </div>
       </div>
     </motion.div>

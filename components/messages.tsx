@@ -86,37 +86,75 @@ function PureMessages({
   return (
     <div
       ref={messagesContainerRef}
-      className="flex flex-col min-w-0 gap-6 flex-1 overflow-y-scroll pt-4 relative"
+      className="flex flex-col min-w-0 gap-6 flex-1 overflow-y-scroll pt-4 relative bg-background text-foreground"
+      style={{
+        scrollbarWidth: 'thin',
+        scrollbarColor: 'hsl(var(--muted-foreground)) transparent',
+      }}
     >
+      <style jsx>{`
+        div::-webkit-scrollbar {
+          width: 6px;
+        }
+        div::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        div::-webkit-scrollbar-thumb {
+          background-color: hsl(var(--muted-foreground));
+          border-radius: 3px;
+        }
+        div::-webkit-scrollbar-thumb:hover {
+          background-color: hsl(var(--foreground));
+        }
+      `}</style>
+      
       {messages.map((message, index) => (
-        <PreviewMessage
+        <motion.div
           key={message.id}
-          chatId={chatId}
-          message={message}
-          isLoading={status === 'streaming' && messages.length - 1 === index}
-          vote={
-            votes
-              ? votes.find((vote) => vote.messageId === message.id)
-              : undefined
-          }
-          setMessages={setMessages}
-          reload={reload}
-          isReadonly={isReadonly}
-          requiresScrollPadding={
-            hasSentMessage && index === messages.length - 1
-          }
-          vectorSearchData={
-            message.role === 'assistant' 
-              ? (messageVectorData[message.id] || (index === messages.length - 1 ? vectorSearchData : null))
-              : null
-          }
-          isFirstAssistantMessagePart={message.role === 'assistant' && index === messages.length - 1}
-        />
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ 
+            duration: 0.3, 
+            delay: index * 0.05,
+            ease: "easeOut" 
+          }}
+        >
+          <PreviewMessage
+            chatId={chatId}
+            message={message}
+            isLoading={status === 'streaming' && messages.length - 1 === index}
+            vote={
+              votes
+                ? votes.find((vote) => vote.messageId === message.id)
+                : undefined
+            }
+            setMessages={setMessages}
+            reload={reload}
+            isReadonly={isReadonly}
+            requiresScrollPadding={
+              hasSentMessage && index === messages.length - 1
+            }
+            vectorSearchData={
+              message.role === 'assistant' 
+                ? (messageVectorData[message.id] || (index === messages.length - 1 ? vectorSearchData : null))
+                : null
+            }
+            isFirstAssistantMessagePart={message.role === 'assistant' && index === messages.length - 1}
+          />
+        </motion.div>
       ))}
 
       {status === 'submitted' &&
         messages.length > 0 &&
-        messages[messages.length - 1].role === 'user' && <ThinkingMessage vectorSearchProgress={vectorSearchProgress} />}
+        messages[messages.length - 1].role === 'user' && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+          >
+            <ThinkingMessage vectorSearchProgress={vectorSearchProgress} />
+          </motion.div>
+        )}
 
       <motion.div
         ref={messagesEndRef}

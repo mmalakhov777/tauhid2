@@ -19,11 +19,11 @@ import { useSearchParams } from 'next/navigation';
 import { useChatVisibility } from '@/hooks/use-chat-visibility';
 import { useAutoResume } from '@/hooks/use-auto-resume';
 import { ChatSDKError } from '@/lib/errors';
+import { DEFAULT_CHAT_MODEL } from '@/lib/ai/models';
 
 export function Chat({
   id,
   initialMessages,
-  initialChatModel,
   initialVisibilityType,
   isReadonly,
   session,
@@ -31,7 +31,6 @@ export function Chat({
 }: {
   id: string;
   initialMessages: Array<UIMessage>;
-  initialChatModel: string;
   initialVisibilityType: VisibilityType;
   isReadonly: boolean;
   session: Session | null;
@@ -69,7 +68,7 @@ export function Chat({
     experimental_prepareRequestBody: (body) => ({
       id,
       message: body.messages.at(-1),
-      selectedChatModel: initialChatModel,
+      selectedChatModel: DEFAULT_CHAT_MODEL,
       selectedVisibilityType: visibilityType,
       selectedLanguage: (body as any).data?.selectedLanguage || 'en',
     }),
@@ -167,22 +166,23 @@ export function Chat({
         // Step 1: Improving queries
         setVectorSearchProgress({ step: 1 });
         
-        const simulatedQueries = [
-          'Loading query improvements...',
-          'Analyzing semantic variations...',
-          'Expanding search scope...'
-        ];
+        // Removed simulated loading messages
+        // const simulatedQueries = [
+        //   'Loading query improvements...',
+        //   'Analyzing semantic variations...',
+        //   'Expanding search scope...'
+        // ];
         
-        setVectorSearchProgress({ 
-          step: 1, 
-          improvedQueries: simulatedQueries
-        });
+        // setVectorSearchProgress({ 
+        //   step: 1, 
+        //   improvedQueries: simulatedQueries
+        // });
         
         // Step 2: Searching
-        setVectorSearchProgress({ 
-          step: 2,
-          improvedQueries: simulatedQueries
-        });
+        // setVectorSearchProgress({ 
+        //   step: 2,
+        //   improvedQueries: simulatedQueries
+        // });
         
         const simulatedResults = {
           classic: 3,
@@ -193,20 +193,18 @@ export function Chat({
         
         setVectorSearchProgress({ 
           step: 2,
-          improvedQueries: simulatedQueries,
           searchResults: simulatedResults
         });
         
         // Step 3: Generating
         setVectorSearchProgress({ 
           step: 3,
-          improvedQueries: simulatedQueries,
           searchResults: simulatedResults
         });
         
         // Store simulated data for display (without sample citations)
         setVectorSearchData({
-          improvedQueries: simulatedQueries,
+          improvedQueries: [], // Empty array instead of simulated queries
           searchResults: simulatedResults,
           citations: [] // Empty array - will be populated when real data arrives
         });
@@ -287,7 +285,6 @@ export function Chat({
                   setMessages={setMessages}
                   append={append}
                   selectedVisibilityType={visibilityType}
-                  selectedModelId={initialChatModel}
                   session={session}
                 />
               )}
@@ -335,7 +332,6 @@ export function Chat({
                   setMessages={setMessages}
                   append={append}
                   selectedVisibilityType={visibilityType}
-                  selectedModelId={initialChatModel}
                   session={session}
                 />
               )}
