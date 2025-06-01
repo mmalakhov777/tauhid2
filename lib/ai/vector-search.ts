@@ -265,29 +265,36 @@ export async function improveUserQueries(
   selectedChatModel: string
 ): Promise<string[]> {
   try {
-    const prompt = `Given the following conversation history, generate exactly 3 improved versions of the last user question. 
-Each improved query MUST be truly distinct in meaning, focus, or angle—not just rephrasings or minor variations. 
-For example, you can:
-- Ask for a definition in one, a practical example in another, and a historical background in a third.
-- Change the scope: one broad, one narrow, one comparative.
-- Change the perspective: one theological, one legal, one social.
+    const prompt = `You are analyzing a conversation to generate improved search queries. The conversation history shows the full context of what has been discussed.
 
-Do NOT simply reword the same question. Each query should explore a different aspect, subtopic, or interpretation of the user's question, or approach it from a different angle or intent. 
-Each should be fully self-contained, avoid ambiguous pronouns, and be as different as possible while still being relevant to the original question.
+IMPORTANT: Consider the ENTIRE conversation when generating queries, not just the last question. The user's current question may be a follow-up or refer to earlier topics.
 
-ALSO, make each query as compact and concise as possible, using the minimum words needed to be clear and specific.
+Generate exactly 3 improved search queries based on:
+1. The user's current question
+2. The entire conversation context (what was discussed before)
+3. Any references to previous topics or follow-up nature of the question
 
-Return ONLY the improved questions as a JSON array of exactly 3 strings. If you cannot generate 3, repeat or split the original question to reach 3.
+Each query should:
+- Be compact and specific (minimum words needed)
+- Target different aspects: one for the main topic, one for related context from earlier in conversation, one for deeper/broader implications
+- Be self-contained (no pronouns like "it", "this", "that")
+- Consider if this is a follow-up question that needs context from earlier messages
 
-Conversation history:
+Examples of good variety:
+- If asking "What about prayer times?" after discussing prayer, include queries about both general prayer times AND specific aspects discussed earlier
+- If asking "Can you explain more?" after a topic, create queries that capture both the specific aspect they want explained AND the broader topic context
+
+Return ONLY a JSON array of exactly 3 search query strings.
+
+Full conversation history:
 ${history}
 
-Last user question:
+Current user question to improve:
 ${query}`;
 
     // Use OpenAI for query improvement
     const response = await openai.chat.completions.create({
-      model: 'gpt-4.1',
+      model: 'gpt-4o-mini',
       messages: [{ role: 'user', content: prompt }],
       stream: false,
       response_format: { type: 'json_object' }
@@ -304,6 +311,8 @@ ${query}`;
       queries = result.queries;
     } else if (result.questions && Array.isArray(result.questions)) {
       queries = result.questions;
+    } else if (result.improved_queries && Array.isArray(result.improved_queries)) {
+      queries = result.improved_queries;
     } else if (typeof result === 'object') {
       // Handle numeric keys like {"1": "query1", "2": "query2", "3": "query3"}
       const numericKeys = Object.keys(result).filter(key => /^\d+$/.test(key)).sort();
@@ -330,10 +339,16 @@ ${query}`;
       const baseQuery = queries[0].trim();
       queries = [
         baseQuery,
-        `What are the benefits of ${baseQuery.toLowerCase().replace('?', '')}?`,
-        `Can you explain ${baseQuery.toLowerCase().replace('?', '')} in detail?`
+        `Islamic perspective on ${baseQuery.toLowerCase().replace('?', '')}`,
+        `Detailed explanation of ${baseQuery.toLowerCase().replace('?', '')}`
       ];
     }
+    
+    console.log('[vector-search] Improved queries from conversation:', {
+      originalQuery: query,
+      historyLength: history.length,
+      improvedQueries: queries
+    });
     
     return queries;
   } catch (error) {
@@ -344,11 +359,25 @@ ${query}`;
 
 export function buildConversationHistory(messages: any[]): string {
   let history = '';
-  for (const msg of messages.slice(0, -1)) {
-    if (msg.role === 'user') {
-      history += `User: ${msg.content}\n`;
-    } else if (msg.role === 'assistant') {
-      history += `Assistant: ${msg.content}\n`;
+  // Include ALL messages, including the current one
+  for (const msg of messages) {
+    if (msg.role === 'user' || msg.role === 'assistant') {
+      // Extract text from parts array (messages have parts, not direct content)
+      let text = '';
+      if (msg.parts && Array.isArray(msg.parts)) {
+        for (const part of msg.parts) {
+          if (part.type === 'text' && part.text) {
+            text += part.text;
+          }
+        }
+      } else if (msg.content) {
+        // Fallback for older message format
+        text = msg.content;
+      }
+      
+      if (text) {
+        history += `${msg.role === 'user' ? 'User' : 'Assistant'}: ${text}\n\n`;
+      }
     }
   }
   return history.trim();

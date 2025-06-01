@@ -45,6 +45,27 @@ function PureMessages({
 
   const [messageVectorData, setMessageVectorData] = useState<Record<string, any>>({});
 
+  // Store live vector search data when it becomes available for the current streaming message
+  useEffect(() => {
+    if (vectorSearchData && messages.length > 0) {
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage.role === 'assistant' && vectorSearchData.citations && vectorSearchData.citations.length > 0) {
+        console.log(`[messages.tsx] Storing vector data for message ${lastMessage.id}:`, {
+          citationsCount: vectorSearchData.citations.length,
+          searchResults: vectorSearchData.searchResults
+        });
+        setMessageVectorData(prev => ({
+          ...prev,
+          [lastMessage.id]: {
+            improvedQueries: vectorSearchData.improvedQueries || [],
+            citations: vectorSearchData.citations || [],
+            searchResults: vectorSearchData.searchResults || {},
+          }
+        }));
+      }
+    }
+  }, [vectorSearchData, messages]);
+
   // Load vector search data for existing messages - ONLY when not streaming AND DB operations are complete
   useEffect(() => {
     // Don't fetch data during streaming or while DB operations are still in progress
@@ -61,6 +82,10 @@ function PureMessages({
               const result = await response.json();
               // Only set data if result is not null and has the expected structure
               if (result && (result.improvedQueries || result.citations)) {
+                console.log(`[messages.tsx] Loaded vector data from DB for message ${message.id}:`, {
+                  citationsCount: result.citations?.length || 0,
+                  searchResults: result.searchResultCounts
+                });
                 setMessageVectorData(prev => ({
                   ...prev,
                   [message.id]: {
@@ -69,6 +94,8 @@ function PureMessages({
                     searchResults: result.searchResultCounts || {},
                   }
                 }));
+              } else {
+                console.log(`[messages.tsx] No vector data found in DB for message ${message.id}`);
               }
             } else {
               console.log('Failed to fetch vector data for message:', message.id, response.status);
@@ -108,7 +135,22 @@ function PureMessages({
         }
       `}</style>
       
-      {messages.map((message, index) => (
+      {messages.map((message, index) => {
+        // Log vector data assignment
+        const messageVectorDataAssigned = message.role === 'assistant' 
+          ? (messageVectorData[message.id] || (index === messages.length - 1 ? vectorSearchData : null))
+          : null;
+        
+        if (message.role === 'assistant') {
+          console.log(`[messages.tsx] Rendering message ${message.id} (index ${index}/${messages.length - 1}):`, {
+            hasStoredData: !!messageVectorData[message.id],
+            isLastMessage: index === messages.length - 1,
+            hasLiveData: !!vectorSearchData,
+            vectorDataAssigned: !!messageVectorDataAssigned
+          });
+        }
+        
+        return (
         <motion.div
           key={message.id}
           initial={{ opacity: 0, y: 10 }}
@@ -134,36 +176,33 @@ function PureMessages({
             requiresScrollPadding={
               hasSentMessage && index === messages.length - 1
             }
-            vectorSearchData={
-              message.role === 'assistant' 
-                ? (messageVectorData[message.id] || (index === messages.length - 1 ? vectorSearchData : null))
-                : null
-            }
+            vectorSearchData={messageVectorDataAssigned}
             isFirstAssistantMessagePart={message.role === 'assistant' && index === messages.length - 1}
           />
         </motion.div>
-      ))}
+      );
+    })}
 
-      {status === 'submitted' &&
-        messages.length > 0 &&
-        messages[messages.length - 1].role === 'user' && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.2, ease: "easeOut" }}
-          >
-            <ThinkingMessage vectorSearchProgress={vectorSearchProgress} />
-          </motion.div>
-        )}
+    {status === 'submitted' &&
+      messages.length > 0 &&
+      messages[messages.length - 1].role === 'user' && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.2, ease: "easeOut" }}
+        >
+          <ThinkingMessage vectorSearchProgress={vectorSearchProgress} />
+        </motion.div>
+      )}
 
-      <motion.div
-        ref={messagesEndRef}
-        className="shrink-0 min-w-[24px] min-h-[24px]"
-        onViewportLeave={onViewportLeave}
-        onViewportEnter={onViewportEnter}
-      />
-    </div>
-  );
+    <motion.div
+      ref={messagesEndRef}
+      className="shrink-0 min-w-[24px] min-h-[24px]"
+      onViewportLeave={onViewportLeave}
+      onViewportEnter={onViewportEnter}
+    />
+  </div>
+);
 }
 
 export const Messages = memo(PureMessages, (prevProps, nextProps) => {

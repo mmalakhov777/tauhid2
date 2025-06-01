@@ -140,7 +140,24 @@ export async function POST(request: Request) {
     if (isVectorSearchRequest && !isStreamRequest) {
       // Step 1: Return citations and messageId only
       const conversationHistory = buildConversationHistory(messages);
-      const userMessageContent = message.content || '';
+      // Extract text content from message parts
+      let userMessageContent = '';
+      if (message.parts && Array.isArray(message.parts)) {
+        for (const part of message.parts) {
+          if (part.type === 'text' && part.text) {
+            userMessageContent += part.text;
+          }
+        }
+      } else if (message.content) {
+        userMessageContent = message.content;
+      }
+      
+      console.log('[chat route] Vector search context:', {
+        messagesCount: messages.length,
+        historyLength: conversationHistory.length,
+        userMessageLength: userMessageContent.length,
+        historyPreview: conversationHistory.substring(0, 200) + '...'
+      });
       
       const searchResults = await performVectorSearch(
         userMessageContent,
@@ -234,7 +251,24 @@ export async function POST(request: Request) {
     // Automatically perform vector search if enabled and no messageId provided
     if (isVectorSearchEnabled && !messageId) {
       const conversationHistory = buildConversationHistory(messages);
-      const userMessageContent = message.content || '';
+      // Extract text content from message parts
+      let userMessageContent = '';
+      if (message.parts && Array.isArray(message.parts)) {
+        for (const part of message.parts) {
+          if (part.type === 'text' && part.text) {
+            userMessageContent += part.text;
+          }
+        }
+      } else if (message.content) {
+        userMessageContent = message.content;
+      }
+      
+      console.log('[chat route] Vector search context:', {
+        messagesCount: messages.length,
+        historyLength: conversationHistory.length,
+        userMessageLength: userMessageContent.length,
+        historyPreview: conversationHistory.substring(0, 200) + '...'
+      });
       
       const searchStartTime = Date.now();
       
@@ -326,6 +360,12 @@ CRITICAL CITATION REQUIREMENTS:
 - Simply place [CIT1], [CIT2] immediately after the relevant information
 - Example: "Prayer is fundamental [CIT1], [CIT2]. It purifies the soul [CIT3]."
 - Do NOT write: "Prayer is fundamental as detailed in [CIT1]" or "according to [CIT2]"
+
+CONTEXT-AWARE RESPONSES:
+- If this is a follow-up question, consider the ENTIRE conversation history
+- Citations may relate to both the current question AND previous topics discussed
+- Use citations that connect the current question to earlier parts of the conversation
+- When answering "Can you explain more?" or similar follow-ups, refer back to what was discussed and expand using ALL available citations
 
 REMEMBER: More citations = Better answer. Use them ALL! Add [CIT] directly without connecting phrases.`;
 

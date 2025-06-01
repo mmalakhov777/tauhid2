@@ -38,7 +38,7 @@ export function SourcePreviewCards({
           <div 
             key={`preview-${citation.id || i}`}
             className={cn(
-              "rounded-md border border-border bg-card/50 cursor-pointer hover:bg-card/70 transition-all duration-200 shadow-sm hover:shadow-md overflow-hidden h-20",
+              "rounded-md border border-border bg-card/50 cursor-pointer hover:bg-card/70 transition-all duration-200 shadow-sm hover:shadow-md overflow-hidden h-20 w-full",
               isYouTube ? "flex flex-col" : "flex"
             )}
             onClick={() => {
@@ -143,7 +143,7 @@ export function SourcePreviewCards({
       {eligibleCitations.length > 3 && (
         <div 
           key="more-sources-card"
-          className="rounded-md border border-border bg-secondary/50 p-2 text-xs cursor-pointer hover:bg-secondary/70 transition-all duration-200 flex items-center justify-center shadow-sm hover:shadow-md h-20"
+          className="rounded-md border border-border bg-secondary/50 p-2 text-xs cursor-pointer hover:bg-secondary/70 transition-all duration-200 flex items-center justify-center shadow-sm hover:shadow-md h-20 w-full"
           onClick={() => setActiveTab('sources')}
         >
           <div className="text-center">
