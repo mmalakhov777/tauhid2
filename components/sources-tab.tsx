@@ -46,15 +46,15 @@ export function SourcesTab({ vectorSearchData, setModalCitation }: SourcesTabPro
           >
             {/* YouTube Thumbnail */}
             {isYouTube && thumbnailUrl && (
-              <div className="relative w-full aspect-video rounded overflow-hidden bg-muted group h-full">
+              <div className="relative size-full aspect-video rounded overflow-hidden bg-muted group">
                 <img 
                   src={thumbnailUrl} 
                   alt="YouTube video thumbnail"
-                  className="w-full h-full object-cover"
+                  className="size-full object-cover"
                 />
                 {citation.namespace && (
                   <div className="absolute top-2 left-2 bg-black/80 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
-                    <Youtube className="w-3 h-3" />
+                    <Youtube className="size-3" />
                     <span>{citation.namespace.replace(/_/g, ' ')}</span>
                   </div>
                 )}
@@ -70,12 +70,12 @@ export function SourcesTab({ vectorSearchData, setModalCitation }: SourcesTabPro
             {type === 'CLS' && isFatawaQaziKhan ? (
               <div className="flex gap-3">
                 {/* Cover Image - 40% */}
-                <div className="w-[40%] flex-shrink-0">
-                  <div className="relative w-full h-full rounded-l overflow-hidden bg-muted">
+                <div className="w-2/5 shrink-0">
+                  <div className="relative size-full rounded-l overflow-hidden bg-muted">
                     <img 
                       src="/images/fatawa-qazi-khan.png" 
                       alt="Fatawa Qazi Khan cover"
-                      className="w-full h-full object-cover object-center"
+                      className="size-full object-cover object-center"
                     />
                   </div>
                 </div>
@@ -106,12 +106,12 @@ export function SourcesTab({ vectorSearchData, setModalCitation }: SourcesTabPro
             ) : type === 'CLS' && isRaddulMuhtar ? (
               <div className="flex gap-3">
                 {/* Cover Image - 40% */}
-                <div className="w-[40%] flex-shrink-0">
-                  <div className="relative w-full h-full rounded-l overflow-hidden bg-muted">
+                <div className="w-2/5 shrink-0">
+                  <div className="relative size-full rounded-l overflow-hidden bg-muted">
                     <img 
                       src="/images/raddul-muhtaar.png" 
                       alt="Rad-ul-Muhtar cover"
-                      className="w-full h-full object-cover object-center"
+                      className="size-full object-cover object-center"
                     />
                   </div>
                 </div>
@@ -143,12 +143,12 @@ export function SourcesTab({ vectorSearchData, setModalCitation }: SourcesTabPro
               // RIS Source Layout with 40/60 split
               <div className="flex gap-0 h-full">
                 {/* Cover Image - 40% */}
-                <div className="w-[40%] flex-shrink-0">
-                  <div className="relative w-full h-full overflow-hidden bg-muted">
+                <div className="w-2/5 shrink-0">
+                  <div className="relative size-full overflow-hidden bg-muted">
                     <img 
                       src={`/images/risaleinur/${citation.metadata?.book_name || 'placeholder'}.png`}
                       alt={`${citation.metadata?.book_name?.replace(/_/g, ' ').replace(/-/g, ' ') || 'Risale-i Nur'} cover`}
-                      className="w-full h-full object-cover"
+                      className="size-full object-cover"
                       onError={(e) => {
                         const target = e.target as HTMLImageElement;
                         target.src = '/images/fatawa-qazi-khan.png';
@@ -215,7 +215,7 @@ export function SourcesTab({ vectorSearchData, setModalCitation }: SourcesTabPro
                 {isYouTube && !thumbnailUrl && (
                   <div className="space-y-1 flex-1 flex flex-col">
                     <div className="text-xs font-semibold text-foreground flex items-center gap-1">
-                      <Youtube className="w-3 h-3" />
+                      <Youtube className="size-3" />
                       {citation.namespace?.replace(/_/g, ' ')}
                     </div>
                     <div className="text-[10px] text-muted-foreground line-clamp-2">

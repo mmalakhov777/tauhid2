@@ -79,17 +79,6 @@ async function getTopKContext(
     // Extract and filter results
     return (searchResponse.matches || [])
       .map((m: any, i: number) => {
-        // Log metadata keys for classical sources
-        if (indexName === CLASSIC_INDEX_NAME && m.metadata) {
-          console.log(`[vector-search.ts] Classic source metadata keys (before any processing):`, Object.keys(m.metadata));
-          // Log the actual structure to see if some fields are outside metadata
-          // console.log(`[vector-search.ts] Classic source full match structure keys:`, Object.keys(m));
-          if (i === 0 && indexName === CLASSIC_INDEX_NAME) { // Ensure logging only for classic for this detailed log
-            // console.log(`[vector-search.ts] First classic source full data (raw match):`, JSON.stringify(m, null, 2));
-            // console.log(`[vector-search.ts] First classic metadata.text (raw match):`, m.metadata.text ? m.metadata.text.substring(0, 100) + '...' : 'NO RAW METADATA.TEXT');
-          }
-        }
-        
         let fullMetadata = { ...(m.metadata || {}) };
         let textContent = fullMetadata.text || "";
 
@@ -117,11 +106,6 @@ async function getTopKContext(
           textContent = fullMetadata.text;
         }
 
-        if (indexName === CLASSIC_INDEX_NAME && i === 0) {
-            // console.log(`[vector-search.ts] First classic source fullMetadata (after merge):`, JSON.stringify(fullMetadata, null, 2));
-            // console.log(`[vector-search.ts] First classic final textContent:`, textContent ? textContent.substring(0,100) + '...' : 'NO FINAL TEXT');
-        }
-
         return {
           text: textContent,
           metadata: fullMetadata,
@@ -130,7 +114,7 @@ async function getTopKContext(
           query: query
         };
       })
-      .filter((mappedMatch) => { // New filter for specific classic sources
+      .filter((mappedMatch) => { // Filter for specific classic sources
         if (indexName === CLASSIC_INDEX_NAME && mappedMatch.metadata) {
           const metadataKeys = Object.keys(mappedMatch.metadata);
           const specificKeys = ['answer', 'question', 'text'];
@@ -140,9 +124,6 @@ async function getTopKContext(
               specificKeys.every(key => metadataKeys.includes(key));
 
           if (hasExactlySpecificKeys) {
-            // This means metadata ONLY contains 'answer', 'question', 'text'
-            // and importantly, it implies it's missing 'source_file' or other distinguishing fields for a valid CLS.
-            console.log(`[vector-search.ts] 🗑️ Filtering out classic citation due to minimal metadata (only answer, question, text):`, {id: mappedMatch.id, metadataKeys});
             return false; // Filter out
           }
         }
@@ -151,18 +132,7 @@ async function getTopKContext(
       .filter((m) => {
         // Use a lower threshold for classical sources since they tend to have lower scores
         const scoreThreshold = indexName === CLASSIC_INDEX_NAME ? 0.25 : 0.4;
-        const passesFilter = m.text && m.score && m.score >= scoreThreshold;
-        
-        if (indexName === CLASSIC_INDEX_NAME && !passesFilter) {
-          console.log(`[vector-search.ts] Classic source filtered out:`, {
-            id: m.id,
-            hasText: !!m.text,
-            textLength: m.text ? m.text.length : 0,
-            score: m.score,
-            passesScoreThreshold: m.score >= scoreThreshold
-          });
-        }
-        return passesFilter;
+        return m.text && m.score && m.score >= scoreThreshold;
       })
       .slice(0, k);
   } catch (error) {
@@ -233,71 +203,56 @@ export function buildContextBlock(
           specificKeys.every(key => metadataKeys.includes(key));
       
       if (hasExactlySpecificKeys) {
-        console.log(`[buildContextBlock] 🚫 Blocking classic citation with minimal metadata from context:`, {
-          id: ctx.id,
-          metadataKeys
-        });
         return false;
       }
     }
     return true;
   });
   
-  console.log(`[buildContextBlock] Citation counts - Classic: ${filteredClassic.length} (was ${classic.length}), Modern: ${modern.length}, Risale: ${risale.length}, YouTube: ${youtube.length}`);
+  // Limit citations to reduce token usage - max 3 per category
+  const limitedClassic = filteredClassic.slice(0, 3);
+  const limitedRisale = risale.slice(0, 3);
+  const limitedModern = modern.slice(0, 2);
+  const limitedYoutube = youtube.slice(0, 2);
   
-  let contextBlock = 'IMPORTANT: You MUST cite at least one context passage in every answer, using [CITn] (for example, [CIT1], [CIT2], etc). If you do not cite, your answer is incomplete and invalid. Do not answer without using [CITn] citations. If a paragraph or statement can be supported by several context passages, add multiple citations separated by commas, like [CIT3], [CIT4], etc.';
-  contextBlock += ' When you use several [CITn] in a row, always separate them with commas (e.g., [CIT1], [CIT2], [CIT3], etc.). Place a comma after each [CITn] except the last in the sequence.';
-  contextBlock += ' Mention as many citations as possible wherever relevant. If information is supported by several sources, explicitly emphasize this in your answer. Do your best to base your answer on as many different sources as possible—the more sources, the better.\n\n';
-  contextBlock += 'You are an expert assistant. Use ONLY the provided context to answer the question. When you use information from a context chunk, cite it in your answer using [CITn]. Only use information you can cite. Your entire answer MUST be valid HTML (not markdown). Do NOT use markdown syntax. Output only HTML.\n\n';
-  contextBlock += 'CONTEXT TYPES:\n';
-  contextBlock += '- [CLS]: Classical sources (primary, most authoritative)\n';
-  contextBlock += '- [RIS]: Risale-i Nur and related works (secondary)\n';
-  contextBlock += '- [MOD]: Modern sources (tertiary)\n';
-  contextBlock += '- [YT]: Popular YouTube scholars (complementary)\n\n';
-  contextBlock += 'HIERARCHY: Always prioritize [CLS] context first, then [RIS], then [MOD], then [YT].\n\n';
-  contextBlock += 'Write your answer as several paragraphs, not as a single block of text.\n\n';
-  contextBlock += 'Relevant context from knowledge base:\n\n';
+  let contextBlock = 'IMPORTANT: Cite sources using [CITn] format. Use HTML output only.\n\n';
+  contextBlock += 'Context types: [CLS]=Classical, [RIS]=Risale-i Nur, [MOD]=Modern, [YT]=YouTube\n';
+  contextBlock += 'Priority: [CLS] > [RIS] > [MOD] > [YT]\n\n';
+  contextBlock += 'Context:\n\n';
   
   let i = 0;
-  filteredClassic.forEach((ctx) => {
-    contextBlock += `[CIT${++i}][CLS] ${ctx.text}\n\n`;
+  limitedClassic.forEach((ctx) => {
+    // Truncate very long texts to reduce tokens
+    const text = ctx.text.length > 800 ? ctx.text.substring(0, 800) + '...' : ctx.text;
+    contextBlock += `[CIT${++i}][CLS] ${text}\n\n`;
   });
-  risale.forEach((ctx) => {
-    contextBlock += `[CIT${++i}][RIS] ${ctx.text}\n\n`;
+  limitedRisale.forEach((ctx) => {
+    const text = ctx.text.length > 800 ? ctx.text.substring(0, 800) + '...' : ctx.text;
+    contextBlock += `[CIT${++i}][RIS] ${text}\n\n`;
   });
-  modern.forEach((ctx) => {
-    contextBlock += `[CIT${++i}][MOD] ${ctx.text}\n\n`;
+  limitedModern.forEach((ctx) => {
+    const text = ctx.text.length > 600 ? ctx.text.substring(0, 600) + '...' : ctx.text;
+    contextBlock += `[CIT${++i}][MOD] ${text}\n\n`;
   });
-  youtube.forEach((ctx) => {
-    contextBlock += `[CIT${++i}][YT] ${ctx.text}\n\n`;
+  limitedYoutube.forEach((ctx) => {
+    const text = ctx.text.length > 600 ? ctx.text.substring(0, 600) + '...' : ctx.text;
+    contextBlock += `[CIT${++i}][YT] ${text}\n\n`;
   });
   
-  contextBlock += 'Citations:\n';
+  // Simplified citation metadata
+  contextBlock += 'Sources:\n';
   i = 0;
-  filteredClassic.forEach((ctx) => {
-    contextBlock += `[CIT${++i}][CLS] ID: ${ctx.id}`;
-    if (ctx.metadata?.block_id) contextBlock += `, block_id: ${ctx.metadata.block_id}`;
-    if (ctx.metadata?.end_page) contextBlock += `, end_page: ${ctx.metadata.end_page}`;
-    contextBlock += '\n';
+  limitedClassic.forEach((ctx) => {
+    contextBlock += `[CIT${++i}] ${ctx.id}\n`;
   });
-  risale.forEach((ctx) => {
-    contextBlock += `[CIT${++i}][RIS] ID: ${ctx.id}`;
-    if (ctx.metadata?.block_id) contextBlock += `, block_id: ${ctx.metadata.block_id}`;
-    if (ctx.metadata?.end_page) contextBlock += `, end_page: ${ctx.metadata.end_page}`;
-    contextBlock += '\n';
+  limitedRisale.forEach((ctx) => {
+    contextBlock += `[CIT${++i}] ${ctx.id}\n`;
   });
-  modern.forEach((ctx) => {
-    contextBlock += `[CIT${++i}][MOD] ID: ${ctx.id}`;
-    if (ctx.metadata?.block_id) contextBlock += `, block_id: ${ctx.metadata.block_id}`;
-    if (ctx.metadata?.end_page) contextBlock += `, end_page: ${ctx.metadata.end_page}`;
-    contextBlock += '\n';
+  limitedModern.forEach((ctx) => {
+    contextBlock += `[CIT${++i}] ${ctx.id}\n`;
   });
-  youtube.forEach((ctx) => {
-    contextBlock += `[CIT${++i}][YT] ID: ${ctx.id}`;
-    if (ctx.metadata?.source) contextBlock += `, source: ${ctx.metadata.source}`;
-    if (ctx.metadata?.title) contextBlock += `, title: ${ctx.metadata.title}`;
-    if (ctx.namespace) contextBlock += `, channel: ${ctx.namespace}`;
-    contextBlock += '\n';
+  limitedYoutube.forEach((ctx) => {
+    contextBlock += `[CIT${++i}] ${ctx.id}\n`;
   });
   contextBlock += '\n';
   
@@ -339,10 +294,9 @@ ${query}`;
     });
 
     const content = response.choices[0].message.content || '{}';
-    console.log('OpenAI response content:', content);
     const result = JSON.parse(content);
-    console.log('Parsed result:', result);
     let queries: string[] = [];
+    
     // Handle various response formats
     if (Array.isArray(result)) {
       queries = result;
@@ -357,26 +311,21 @@ ${query}`;
         queries = numericKeys.map(key => result[key]);
       }
     }
-    console.log('Extracted queries:', queries);
+    
     // Ensure exactly 3 queries
     if (!queries || queries.length === 0) {
-      console.log('No queries found, using fallback');
       queries = [query, query, query];
     } else if (queries.length === 1) {
-      console.log('Only 1 query found, duplicating');
       queries = [queries[0], queries[0], queries[0]];
     } else if (queries.length === 2) {
-      console.log('Only 2 queries found, adding original');
       queries = [queries[0], queries[1], query];
     } else if (queries.length > 3) {
-      console.log('More than 3 queries found, trimming');
       queries = queries.slice(0, 3);
     }
     
     // Additional validation: check if all queries are identical
     const uniqueQueries = [...new Set(queries)];
     if (uniqueQueries.length === 1) {
-      console.warn('All queries are identical, attempting to create variations');
       // Create simple variations if all queries are the same
       const baseQuery = queries[0].trim();
       queries = [
@@ -388,11 +337,7 @@ ${query}`;
     
     return queries;
   } catch (error) {
-    console.error('Error improving queries - Full error:', error);
-    console.error('Error details:', {
-      message: error instanceof Error ? error.message : 'Unknown error',
-      stack: error instanceof Error ? error.stack : undefined
-    });
+    console.error('Error improving queries:', error);
     return [query, query, query]; // fallback to 3x original
   }
 }
@@ -409,6 +354,73 @@ export function buildConversationHistory(messages: any[]): string {
   return history.trim();
 }
 
+// Optimized function with parallel processing
+async function performAllVectorSearches(improvedQueries: string[]): Promise<{
+  classicContexts: VectorSearchResult[];
+  modernContexts: VectorSearchResult[];
+  risaleContexts: VectorSearchResult[];
+  youtubeContexts: VectorSearchResult[];
+}> {
+  // Create all search promises in parallel
+  const allSearchPromises = [
+    // Classic searches for all queries
+    ...improvedQueries.map(q => getTopKContext(CLASSIC_INDEX_NAME, q, 2)),
+    // Modern searches for all queries
+    ...improvedQueries.map(q => getTopKContext(MODERN_INDEX_NAME, q, 2)),
+    // Risale searches for all queries
+    ...improvedQueries.map(q => getTopKContextAllNamespaces(RISALENUR_INDEX_NAME, RISALENUR_NAMESPACES, q, 2)),
+    // YouTube searches for all queries
+    ...improvedQueries.map(q => getTopKContextAllNamespaces(YOUTUBE_INDEX_NAME, YOUTUBE_NAMESPACES, q, 2))
+  ];
+
+  // Execute all searches in parallel
+  const allResults = await Promise.all(allSearchPromises);
+  
+  // Split results back into categories
+  const numQueries = improvedQueries.length;
+  const classicResults = allResults.slice(0, numQueries);
+  const modernResults = allResults.slice(numQueries, numQueries * 2);
+  const risaleResults = allResults.slice(numQueries * 2, numQueries * 3);
+  const youtubeResults = allResults.slice(numQueries * 3, numQueries * 4);
+
+  // Deduplicate by id
+  const dedup = (arr: VectorSearchResult[][], type: string): VectorSearchResult[] => {
+    const flattened = arr.flat();
+    const deduplicated = Object.values(
+      Object.fromEntries(
+        flattened.map((x: VectorSearchResult) => [x.id, x])
+      )
+    );
+    
+    // Apply the same filter for classic sources
+    if (type === 'Classic') {
+      return deduplicated.filter((citation) => {
+        if (citation.metadata) {
+          const metadataKeys = Object.keys(citation.metadata);
+          const specificKeys = ['answer', 'question', 'text'];
+          const hasExactlySpecificKeys =
+              metadataKeys.length === specificKeys.length &&
+              specificKeys.every(key => metadataKeys.includes(key));
+          
+          if (hasExactlySpecificKeys) {
+            return false;
+          }
+        }
+        return true;
+      });
+    }
+    
+    return deduplicated;
+  };
+
+  return {
+    classicContexts: dedup(classicResults, 'Classic'),
+    modernContexts: dedup(modernResults, 'Modern'),
+    risaleContexts: dedup(risaleResults, 'Risale'),
+    youtubeContexts: dedup(youtubeResults, 'YouTube')
+  };
+}
+
 export async function performVectorSearchWithProgress(
   userMessage: string,
   conversationHistory: string,
@@ -420,116 +432,42 @@ export async function performVectorSearchWithProgress(
   improvedQueries: string[];
   contextBlock: string;
 }> {
-  // Step 1: Query improvement
+  // Step 1: Query improvement and vector searches in parallel
   if (onProgress) {
     onProgress({ step: 1 });
   }
   
-  const improvedQueries = await improveUserQueries(userMessage, conversationHistory, selectedChatModel);
+  // Run query improvement and vector searches in parallel
+  const [improvedQueries, searchResults] = await Promise.all([
+    improveUserQueries(userMessage, conversationHistory, selectedChatModel),
+    // We'll run the searches after we get the improved queries, but we can prepare the embedding
+    Promise.resolve(null)
+  ]);
   
   if (onProgress) {
     onProgress({ step: 1, improvedQueries });
   }
   
-  // Step 2: Vector searches
+  // Step 2: Vector searches with improved queries
   if (onProgress) {
     onProgress({ step: 2, improvedQueries });
   }
   
-  let classicContexts: VectorSearchResult[] = [];
-  let modernContexts: VectorSearchResult[] = [];
-  let risaleContexts: VectorSearchResult[] = [];
-  let youtubeContexts: VectorSearchResult[] = [];
-
-  try {
-    const classicResults = await Promise.all(
-      improvedQueries.map(q => getTopKContext(CLASSIC_INDEX_NAME, q, 2))
-    );
-    console.log('[vector-search.ts] Raw classicResults from Promise.all:', classicResults.map(arr => 
-      arr.map(r => ({
-        id: r.id,
-        metadataKeys: r.metadata ? Object.keys(r.metadata) : [],
-        hasAllFields: r.metadata ? Object.keys(r.metadata).length === 13 : false
-      }))
-    ));
-    
-    const modernResults = await Promise.all(
-      improvedQueries.map(q => getTopKContext(MODERN_INDEX_NAME, q, 2))
-    );
-    console.log('[vector-search.ts] Raw modernResults from Promise.all:', modernResults.map(arr => 
-      arr.map(r => ({
-        id: r.id,
-        metadataKeys: r.metadata ? Object.keys(r.metadata) : [],
-        firstFewCharsOfText: r.text ? r.text.substring(0, 50) + '...' : 'NO TEXT'
-      }))
-    ));
-    const risaleResults = await Promise.all(
-      improvedQueries.map(q => getTopKContextAllNamespaces(RISALENUR_INDEX_NAME, RISALENUR_NAMESPACES, q, 2))
-    );
-    const youtubeResults = await Promise.all(
-      improvedQueries.map(q => getTopKContextAllNamespaces(YOUTUBE_INDEX_NAME, YOUTUBE_NAMESPACES, q, 2))
-    );
-
-    // Deduplicate by id
-    const dedup = (arr: VectorSearchResult[][], type: string): VectorSearchResult[] => {
-      console.log(`[vector-search.ts] Before dedup - ${type} results count:`, arr.flat().length);
-      
-      const flattened = arr.flat();
-      const deduplicated = Object.values(
-        Object.fromEntries(
-          flattened.map((x: VectorSearchResult) => [x.id, x])
-        )
-      );
-      
-      console.log(`[vector-search.ts] After dedup - ${type} results count:`, deduplicated.length);
-      
-      // Apply the same filter here to ensure consistency
-      if (type === 'Classic') {
-        const filtered = deduplicated.filter((citation) => {
-          if (citation.metadata) {
-            const metadataKeys = Object.keys(citation.metadata);
-            const specificKeys = ['answer', 'question', 'text'];
-            const hasExactlySpecificKeys =
-                metadataKeys.length === specificKeys.length &&
-                specificKeys.every(key => metadataKeys.includes(key));
-            
-            if (hasExactlySpecificKeys) {
-              console.log(`[vector-search.ts] 🗑️ Filtering out classic citation in dedup (only answer/question/text):`, {
-                id: citation.id,
-                metadataKeys
-              });
-              return false;
-            }
-          }
-          return true;
-        });
-        console.log(`[vector-search.ts] After filtering in dedup - Classic results count:`, filtered.length);
-        return filtered;
+  const { classicContexts, modernContexts, risaleContexts, youtubeContexts } = 
+    await performAllVectorSearches(improvedQueries);
+  
+  // Send search results count
+  if (onProgress) {
+    onProgress({
+      step: 2,
+      improvedQueries,
+      searchResults: {
+        classic: classicContexts.length,
+        modern: modernContexts.length,
+        risale: risaleContexts.length,
+        youtube: youtubeContexts.length
       }
-      
-      return deduplicated;
-    };
-
-    classicContexts = dedup(classicResults, 'Classic');
-    modernContexts = dedup(modernResults, 'Modern');
-    risaleContexts = dedup(risaleResults, 'Risale');
-    youtubeContexts = dedup(youtubeResults, 'YouTube');
-    
-    // Send search results count
-    if (onProgress) {
-      onProgress({
-        step: 2,
-        improvedQueries,
-        searchResults: {
-          classic: classicContexts.length,
-          modern: modernContexts.length,
-          risale: risaleContexts.length,
-          youtube: youtubeContexts.length
-        }
-      });
-    }
-  } catch (err) {
-    console.error('Error during Pinecone/OpenAI vector search:', err);
+    });
   }
 
   // Generate messageId and store context

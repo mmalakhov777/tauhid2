@@ -40,6 +40,7 @@ export function Chat({
   const { mutate } = useSWRConfig();
   const [vectorSearchProgress, setVectorSearchProgress] = useState<any>(null);
   const [vectorSearchData, setVectorSearchData] = useState<any>(null);
+  const [dbOperationsComplete, setDbOperationsComplete] = useState(true); // Track when DB operations are done
 
   const { visibilityType } = useChatVisibility({
     chatId: id,
@@ -75,6 +76,10 @@ export function Chat({
     onFinish: () => {
       mutate(unstable_serialize(getChatHistoryPaginationKey));
       setVectorSearchProgress(null); // Reset progress when finished
+      // Add a delay to ensure database operations are complete
+      setTimeout(() => {
+        setDbOperationsComplete(true);
+      }, 1000); // Increased to 1000ms delay to ensure DB operations are done
     },
     onError: (error) => {
       if (error instanceof ChatSDKError) {
@@ -85,8 +90,16 @@ export function Chat({
       }
       setVectorSearchProgress(null); // Reset progress on error
       setVectorSearchData(null); // Reset data on error
+      setDbOperationsComplete(true); // Reset on error
     },
   });
+
+  // Track when streaming starts to mark DB operations as incomplete
+  useEffect(() => {
+    if (status === 'streaming' || status === 'submitted') {
+      setDbOperationsComplete(false);
+    }
+  }, [status]);
 
   // Listen for vector search progress updates from the data stream
   useEffect(() => {
@@ -149,7 +162,7 @@ export function Chat({
   // Reset vector search progress when status changes to submitted
   useEffect(() => {
     if (status === 'submitted') {
-      // Simulate progress updates to show what's happening
+      // Simulate progress updates to show what is happening
       const simulateProgress = async () => {
         // Step 1: Improving queries
         setVectorSearchProgress({ step: 1 });
@@ -304,6 +317,7 @@ export function Chat({
               isReadonly={isReadonly}
               vectorSearchProgress={vectorSearchProgress}
               vectorSearchData={vectorSearchData}
+              dbOperationsComplete={dbOperationsComplete}
             />
 
             <form className="flex mx-auto px-4 pb-4 md:pb-6 gap-2 w-full md:max-w-3xl">

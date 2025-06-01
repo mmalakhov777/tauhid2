@@ -324,7 +324,7 @@ const PurePreviewMessage = ({
                                           return (
                                             <div>
                                               <div className="text-sm text-muted-foreground mb-3 leading-relaxed">
-                                                See the AI's step-by-step thought process and reasoning behind this response. This shows how the AI analyzed your question and planned its approach.
+                                                See the AI&apos;s step-by-step thought process and reasoning behind this response. This shows how the AI analyzed your question and planned its approach.
                                               </div>
                                               <MessageReasoning
                                                 isLoading={false}
@@ -425,7 +425,7 @@ const PurePreviewMessage = ({
                                                                       }
                                                                     }}
                                                                   >
-                                                                    • {type === 'YT' ? <Youtube className="w-3 h-3 inline mr-1" /> : type === 'RIS' ? <BookOpen className="w-3 h-3 inline mr-1" /> : type === 'CLS' ? <ScrollText className="w-3 h-3 inline mr-1" /> : type} | {c.text?.slice(0, 120)}...
+                                                                    • {type === 'YT' ? <Youtube className="size-3 inline mr-1" /> : type === 'RIS' ? <BookOpen className="size-3 inline mr-1" /> : type === 'CLS' ? <ScrollText className="size-3 inline mr-1" /> : type} | {c.text?.slice(0, 120)}...
                                                                   </div>
                                                                 );
                                                               })

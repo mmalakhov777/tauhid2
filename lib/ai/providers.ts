@@ -3,7 +3,7 @@ import {
   extractReasoningMiddleware,
   wrapLanguageModel,
 } from 'ai';
-import { xai } from '@ai-sdk/xai';
+import { groq } from '@ai-sdk/groq';
 import { isTestEnvironment } from '../constants';
 import {
   chatModel,
@@ -21,14 +21,11 @@ export const myProvider = isTestEnvironment
     })
   : customProvider({
       languageModels: {
-        'chat-model': xai('grok-2-vision-1212'),
+        'chat-model': groq('mistral-saba-24b'),
         'chat-model-reasoning': wrapLanguageModel({
-          model: xai('grok-3-mini-beta'),
+          model: groq('mistral-saba-24b'),
           middleware: extractReasoningMiddleware({ tagName: 'think' }),
         }),
-        'title-model': xai('grok-2-1212'),
-      },
-      imageModels: {
-        'small-model': xai.image('grok-2-image'),
+        'title-model': groq('mistral-saba-24b'),
       },
     });

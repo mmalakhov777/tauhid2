@@ -17,6 +17,7 @@ interface MessagesProps {
   isReadonly: boolean;
   vectorSearchProgress?: any;
   vectorSearchData?: any;
+  dbOperationsComplete: boolean;
 }
 
 function PureMessages({
@@ -29,6 +30,7 @@ function PureMessages({
   isReadonly,
   vectorSearchProgress,
   vectorSearchData,
+  dbOperationsComplete,
 }: MessagesProps) {
   const {
     containerRef: messagesContainerRef,
@@ -43,8 +45,13 @@ function PureMessages({
 
   const [messageVectorData, setMessageVectorData] = useState<Record<string, any>>({});
 
-  // Load vector search data for existing messages
+  // Load vector search data for existing messages - ONLY when not streaming AND DB operations are complete
   useEffect(() => {
+    // Don't fetch data during streaming or while DB operations are still in progress
+    if (status === 'streaming' || status === 'submitted' || !dbOperationsComplete) {
+      return;
+    }
+
     const loadVectorData = async () => {
       for (const message of messages) {
         if (message.role === 'assistant' && !messageVectorData[message.id]) {
@@ -74,7 +81,7 @@ function PureMessages({
     };
 
     loadVectorData();
-  }, [messages, messageVectorData]);
+  }, [messages, messageVectorData, status, dbOperationsComplete]); // Added dbOperationsComplete as dependency
 
   return (
     <div
@@ -129,6 +136,7 @@ export const Messages = memo(PureMessages, (prevProps, nextProps) => {
   if (!equal(prevProps.votes, nextProps.votes)) return false;
   if (!equal(prevProps.vectorSearchProgress, nextProps.vectorSearchProgress)) return false;
   if (!equal(prevProps.vectorSearchData, nextProps.vectorSearchData)) return false;
+  if (prevProps.dbOperationsComplete !== nextProps.dbOperationsComplete) return false;
 
   return true;
 });

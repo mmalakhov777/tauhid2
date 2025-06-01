@@ -77,7 +77,7 @@ function PureSuggestedActions({
               className="w-full justify-between text-left px-0 py-2 h-auto hover:bg-transparent border-b border-border/30 rounded-none last:border-b-0 group"
             >
               <span className="text-base font-normal pr-4 text-muted-foreground group-hover:text-foreground transition-colors duration-200">{suggestedAction.title}</span>
-              <Plus className="h-4 w-4 text-muted-foreground shrink-0 group-hover:text-foreground transition-colors duration-200" />
+              <Plus className="size-4 text-muted-foreground shrink-0 group-hover:text-foreground transition-colors duration-200" />
             </Button>
           </motion.div>
         ))}
