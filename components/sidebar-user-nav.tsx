@@ -37,7 +37,7 @@ export function SidebarUserNav({ user }: { user: User }) {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             {status === 'loading' ? (
-              <SidebarMenuButton className="data-[state=open]:bg-sidebar-accent bg-background data-[state=open]:text-sidebar-accent-foreground h-10 justify-between">
+              <SidebarMenuButton className="data-[state=open]:bg-sidebar-accent bg-card border border-border hover:bg-card/80 data-[state=open]:text-sidebar-accent-foreground h-10 justify-between transition-colors duration-200">
                 <div className="flex flex-row gap-2 items-center">
                   <SkeletonWave className="size-6 rounded-full" delay={0} />
                   <SkeletonWave className="h-4 w-32 rounded-md" delay={0.1} />
@@ -49,7 +49,7 @@ export function SidebarUserNav({ user }: { user: User }) {
             ) : (
               <SidebarMenuButton
                 data-testid="user-nav-button"
-                className="data-[state=open]:bg-sidebar-accent bg-background data-[state=open]:text-sidebar-accent-foreground h-10"
+                className="data-[state=open]:bg-sidebar-accent bg-card border border-border hover:bg-card/80 data-[state=open]:text-sidebar-accent-foreground h-10 transition-colors duration-200"
               >
                 <Image
                   src={`https://avatar.vercel.sh/${user.email}`}

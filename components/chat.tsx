@@ -248,7 +248,7 @@ export function Chat({
 
   return (
     <>
-      <div className="flex flex-col min-w-0 h-dvh bg-background">
+      <div className="flex flex-col min-w-0 h-dvh bg-background overflow-hidden">
         <ChatHeader
           chatId={id}
           isReadonly={isReadonly}
@@ -258,19 +258,19 @@ export function Chat({
         {/* Conditional layout based on whether there are messages */}
         {messages.length === 0 ? (
           // Centered layout for empty state with greeting and input together
-          <div className="flex-1 flex flex-col items-center justify-center px-4 w-full max-w-3xl mx-auto">
+          <div className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 md:px-8 w-full max-w-3xl mx-auto overflow-hidden">
             {/* Greeting section */}
-            <div className="mb-8 w-full">
-              <div className="text-2xl font-semibold mb-2 text-left">
+            <div className="mb-6 sm:mb-8 w-full max-w-full">
+              <div className="text-xl sm:text-2xl md:text-3xl font-semibold mb-2 text-left break-words">
                 Hello there!
               </div>
-              <div className="text-2xl text-zinc-500 text-left">
+              <div className="text-lg sm:text-xl md:text-2xl text-zinc-500 text-left break-words">
                 How can I help you today?
               </div>
             </div>
             
             {/* Input section right below greeting */}
-            <div className="w-full mb-6">
+            <div className="w-full max-w-full mb-4 sm:mb-6">
               {!isReadonly && (
                 <MultimodalInput
                   chatId={id}
@@ -292,7 +292,7 @@ export function Chat({
             
             {/* Show suggested actions below the input when no messages */}
             {!isReadonly && attachments.length === 0 && (
-              <div className="w-full">
+              <div className="w-full max-w-full">
                 <SuggestedActions
                   append={append}
                   chatId={id}
