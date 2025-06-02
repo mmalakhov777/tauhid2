@@ -63,6 +63,7 @@ function PureMultimodalInput({
 }) {
   const { width } = useWindowSize();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isInputActive, setIsInputActive] = useState(false);
 
   const [localStorageInput, setLocalStorageInput] = useLocalStorage(
     'input',
@@ -206,20 +207,36 @@ function PureMultimodalInput({
     }
   }, [status, scrollToBottom]);
 
+  // Handle click outside to deactivate input
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      const inputContainer = document.querySelector('[data-input-container]');
+      if (inputContainer && !inputContainer.contains(target)) {
+        setIsInputActive(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   return (
-    <div className="relative w-full flex flex-col gap-4">
+    <div className="relative w-full flex flex-col gap-1">
       <AnimatePresence>
-        {!isAtBottom && messages.length > 0 && (
+        {!isAtBottom && messages.length > 0 && !isInputActive && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
             transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-            className="absolute left-1/2 bottom-28 -translate-x-1/2 z-50"
+            className="absolute bottom-36 left-[45%] -translate-x-1/2 z-50 flex justify-center items-center"
           >
             <Button
               data-testid="scroll-to-bottom-button"
-              className="rounded-full"
+              className="rounded-full shadow-lg"
               size="icon"
               variant="outline"
               onClick={(event) => {
@@ -242,7 +259,13 @@ function PureMultimodalInput({
         tabIndex={-1}
       />
 
-      <div className="relative">
+      <div 
+        className="relative"
+        data-input-container
+        onFocus={() => setIsInputActive(true)}
+        onBlur={() => setIsInputActive(false)}
+        onMouseDown={() => setIsInputActive(true)}
+      >
         <PromptInputBox
           onSend={handleSend}
           isLoading={status === 'submitted' || status === 'streaming'}
@@ -268,6 +291,19 @@ function PureMultimodalInput({
             className="!h-8 !text-xs !px-2 !border-border !bg-background hover:!bg-accent !text-muted-foreground hover:!text-accent-foreground !rounded-full"
           />
         </div>
+      </div>
+
+      {/* Consent Text */}
+      <div className="text-xs text-muted-foreground text-center px-1 py-1.5">
+        It's always better to ask an Imam. 
+        <a 
+          href="https://www.google.com/maps/search/mosque+near+me" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          className="ml-2 text-primary hover:text-primary/80"
+        >
+          Find near mosque
+        </a>
       </div>
 
       {/* Show attachments preview below the input */}

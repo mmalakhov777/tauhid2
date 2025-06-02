@@ -258,7 +258,7 @@ export function Chat({
         {/* Conditional layout based on whether there are messages */}
         {messages.length === 0 ? (
           // Centered layout for empty state with greeting and input together
-          <div className="flex-1 flex flex-col items-center justify-center px-4 sm:px-6 md:px-8 w-full max-w-3xl mx-auto overflow-hidden">
+          <div className="flex-1 flex flex-col items-center justify-center px-2 sm:px-3 md:px-4 w-full max-w-3xl mx-auto overflow-hidden">
             {/* Greeting section */}
             <div className="mb-6 sm:mb-8 w-full max-w-full">
               <div className="text-xl sm:text-2xl md:text-3xl font-semibold mb-2 text-left break-words">
@@ -317,7 +317,7 @@ export function Chat({
               dbOperationsComplete={dbOperationsComplete}
             />
 
-            <form className="flex mx-auto px-4 pb-4 md:pb-6 gap-2 w-full md:max-w-3xl">
+            <form className="flex mx-auto px-2 gap-2 w-full md:max-w-3xl">
               {!isReadonly && (
                 <MultimodalInput
                   chatId={id}

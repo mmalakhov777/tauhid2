@@ -357,6 +357,153 @@ const PromptInputAction: React.FC<PromptInputActionProps> = ({
   );
 };
 
+// VoiceRecorder Component
+interface VoiceRecorderProps {
+  isRecording: boolean;
+  onStartRecording: () => void;
+  onStopRecording: (duration: number) => void;
+  visualizerBars?: number;
+  audioStream?: MediaStream | null;
+}
+const VoiceRecorder: React.FC<VoiceRecorderProps> = ({
+  isRecording,
+  onStartRecording,
+  onStopRecording,
+  visualizerBars = 32,
+  audioStream,
+}) => {
+  const [time, setTime] = React.useState(0);
+  const [audioLevels, setAudioLevels] = React.useState<number[]>(new Array(visualizerBars).fill(0));
+  const timerRef = React.useRef<NodeJS.Timeout | null>(null);
+  const timeRef = React.useRef<number>(0); // Track time without causing re-renders
+  const animationFrameRef = React.useRef<number>();
+  const audioContextRef = React.useRef<AudioContext>();
+  const analyserRef = React.useRef<AnalyserNode>();
+
+  React.useEffect(() => {
+    if (isRecording && audioStream) {
+      // Reset timer when starting
+      timeRef.current = 0;
+      setTime(0);
+      
+      // Start timer
+      timerRef.current = setInterval(() => {
+        timeRef.current += 1;
+        setTime(timeRef.current);
+      }, 1000);
+      
+      // Set up audio analysis
+      audioContextRef.current = new AudioContext();
+      analyserRef.current = audioContextRef.current.createAnalyser();
+      analyserRef.current.fftSize = 64; // Small FFT for responsive visualization
+      analyserRef.current.smoothingTimeConstant = 0.3; // Smooth transitions
+      
+      const source = audioContextRef.current.createMediaStreamSource(audioStream);
+      source.connect(analyserRef.current);
+      
+      const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
+      
+      const updateVisualization = () => {
+        if (!analyserRef.current || !isRecording) return;
+        
+        analyserRef.current.getByteFrequencyData(dataArray);
+        
+        // Create smooth bar heights based on frequency data
+        const levels = [];
+        const barCount = visualizerBars;
+        const samplesPerBar = Math.floor(dataArray.length / barCount);
+        
+        for (let i = 0; i < barCount; i++) {
+          let sum = 0;
+          for (let j = 0; j < samplesPerBar; j++) {
+            sum += dataArray[i * samplesPerBar + j];
+          }
+          const average = sum / samplesPerBar;
+          // Normalize to 0-100 range with minimum height
+          const normalized = Math.max(10, (average / 255) * 100);
+          levels.push(normalized);
+        }
+        
+        setAudioLevels(levels);
+        animationFrameRef.current = requestAnimationFrame(updateVisualization);
+      };
+      
+      updateVisualization();
+    } else if (!isRecording) {
+      // Clean up when recording stops
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+      
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+        audioContextRef.current.close().catch(() => {
+          // Ignore errors when closing AudioContext
+        });
+      }
+      
+      // Call onStopRecording with the final time value
+      if (timeRef.current > 0) {
+        onStopRecording(timeRef.current);
+      }
+      
+      // Reset audio levels with smooth transition
+      setAudioLevels(new Array(visualizerBars).fill(0));
+    }
+    
+    return () => {
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+        audioContextRef.current.close().catch(() => {
+          // Ignore errors when closing AudioContext
+        });
+      }
+    };
+  }, [isRecording, audioStream, visualizerBars, onStopRecording]);
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+  };
+
+  return (
+    <div
+      className={cn(
+        "flex flex-col items-center justify-center w-full transition-all duration-300",
+        isRecording ? "opacity-100 py-3" : "opacity-0 h-0 overflow-hidden"
+      )}
+    >
+      <div className="flex items-center gap-2 mb-3">
+        <div className="h-2 w-2 rounded-full bg-destructive animate-pulse" />
+        <span className="font-mono text-sm text-foreground/80">{formatTime(time)}</span>
+      </div>
+      <div className="w-full h-10 flex items-center justify-center gap-0.5 px-4">
+        {audioLevels.map((level, i) => (
+          <div
+            key={i}
+            className="w-0.5 rounded-full bg-foreground/50 transition-all duration-75 ease-out"
+            style={{
+              height: `${level}%`,
+              opacity: 0.5 + (level / 100) * 0.5, // Dynamic opacity based on level
+            }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+};
+
 // Main PromptInputBox Component
 interface PromptInputBoxProps {
   onSend?: (message: string, files?: File[]) => void;
@@ -380,6 +527,11 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
     onStopClick
   } = props;
   const [input, setInput] = React.useState("");
+  const [isRecording, setIsRecording] = React.useState(false);
+  const [isTranscribing, setIsTranscribing] = React.useState(false);
+  const [audioStream, setAudioStream] = React.useState<MediaStream | null>(null);
+  const mediaRecorderRef = React.useRef<MediaRecorder | null>(null);
+  const audioChunksRef = React.useRef<Blob[]>([]);
   const promptBoxRef = React.useRef<HTMLDivElement>(null);
 
   const handleSubmit = () => {
@@ -387,6 +539,108 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
       onSend(input, []);
       setInput("");
     }
+  };
+
+  const startRecording = async () => {
+    try {
+      // Request microphone permission
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      setAudioStream(stream); // Store the stream for visualizer
+      
+      // Create MediaRecorder instance
+      const mediaRecorder = new MediaRecorder(stream, {
+        mimeType: 'audio/webm'
+      });
+      
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+      
+      // Collect audio data chunks
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+        }
+      };
+      
+      // Handle recording stop
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        
+        // Stop all audio tracks
+        stream.getTracks().forEach(track => track.stop());
+        setAudioStream(null); // Clear the stream
+        
+        // Send to transcription API
+        await transcribeAudio(audioBlob);
+      };
+      
+      // Start recording
+      mediaRecorder.start();
+      setIsRecording(true);
+      
+    } catch (error) {
+      console.error('Error accessing microphone:', error);
+      alert('Unable to access microphone. Please check your permissions.');
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+
+  const transcribeAudio = async (audioBlob: Blob) => {
+    setIsTranscribing(true);
+    
+    try {
+      const formData = new FormData();
+      formData.append('audio', audioBlob);
+      
+      const response = await fetch('/api/voice-transcribe', {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (!response.ok) {
+        throw new Error('Transcription failed');
+      }
+      
+      const data = await response.json();
+      
+      if (data.text) {
+        // Append transcribed text to existing input
+        setInput(prevInput => {
+          const newText = prevInput ? `${prevInput} ${data.text}` : data.text;
+          return newText;
+        });
+      }
+      
+    } catch (error) {
+      console.error('Transcription error:', error);
+      alert('Failed to transcribe audio. Please try again.');
+    } finally {
+      setIsTranscribing(false);
+    }
+  };
+
+  const handleVoiceClick = () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
+  };
+
+  const handleStartRecording = () => {
+    // This is called by VoiceRecorder when recording starts
+    console.log("Recording started");
+  };
+
+  const handleStopRecording = (duration: number) => {
+    // This is called by VoiceRecorder when recording stops with duration
+    console.log(`Recording stopped after ${duration} seconds`);
   };
 
   const hasContent = input.trim() !== "";
@@ -399,14 +653,29 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
       onSubmit={handleSubmit}
       className={cn(
         "w-full shadow-lg transition-all duration-300 ease-in-out",
+        isRecording && "ring-2 ring-destructive ring-offset-2",
         className
       )}
-      disabled={isLoading}
+      disabled={isLoading || isTranscribing}
       ref={ref || promptBoxRef}
     >
-      <PromptInputTextarea
-        placeholder={placeholder}
-        className="text-base"
+      {/* Show textarea when not recording, hide when recording */}
+      <div className={cn(
+        "transition-all duration-300",
+        isRecording ? "h-0 overflow-hidden opacity-0" : "opacity-100"
+      )}>
+        <PromptInputTextarea
+          placeholder={isTranscribing ? "Transcribing..." : placeholder}
+          className="text-base"
+        />
+      </div>
+
+      {/* Voice Recorder Animation */}
+      <VoiceRecorder
+        isRecording={isRecording}
+        onStartRecording={handleStartRecording}
+        onStopRecording={handleStopRecording}
+        audioStream={audioStream}
       />
 
       <PromptInputActions className="flex items-center justify-end gap-2 p-0 pt-2">
@@ -425,8 +694,12 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
               variant="ghost"
               size="icon"
               className="h-8 w-8 rounded-full bg-transparent hover:bg-accent text-muted-foreground hover:text-accent-foreground"
-              onClick={onAttachmentClick}
-              disabled={isLoading}
+              onClick={(e) => {
+                e.preventDefault();
+                onAttachmentClick();
+              }}
+              disabled={isLoading || isRecording || isTranscribing}
+              type="button"
             >
               <Paperclip className="h-4 w-4" />
             </Button>
@@ -440,22 +713,30 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
               variant="ghost"
               size="icon"
               className="h-8 w-8 rounded-full bg-transparent hover:bg-accent text-destructive hover:text-destructive"
-              onClick={onStopClick}
+              onClick={(e) => {
+                e.preventDefault();
+                onStopClick();
+              }}
+              type="button"
             >
               <Square className="h-4 w-4" />
             </Button>
           </PromptInputAction>
         )}
 
-        {/* Submit Button */}
+        {/* Submit/Voice Button */}
         {!showStopButton && (
           <PromptInputAction
             tooltip={
               isLoading
                 ? "Generating..."
+                : isTranscribing
+                ? "Transcribing audio..."
+                : isRecording
+                ? "Stop recording"
                 : hasContent
                 ? "Send message"
-                : "Type a message to send"
+                : "Start voice input"
             }
           >
             <Button
@@ -463,19 +744,33 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
               size="icon"
               className={cn(
                 "h-8 w-8 rounded-full transition-all duration-200",
-                hasContent
+                hasContent && !isRecording && !isTranscribing
                   ? "bg-primary hover:bg-primary/90 text-primary-foreground"
-                  : "bg-transparent hover:bg-accent text-muted-foreground hover:text-accent-foreground cursor-not-allowed"
+                  : isRecording
+                  ? "bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+                  : isTranscribing
+                  ? "bg-muted text-muted-foreground"
+                  : "bg-muted hover:bg-accent text-muted-foreground hover:text-accent-foreground"
               )}
-              onClick={() => {
-                if (hasContent) handleSubmit();
+              onClick={(e) => {
+                e.preventDefault();
+                if (hasContent && !isRecording && !isTranscribing) {
+                  handleSubmit();
+                } else if (!hasContent || isRecording) {
+                  handleVoiceClick();
+                }
               }}
-              disabled={isLoading || !hasContent}
+              disabled={isLoading || isTranscribing}
+              type="button"
             >
-              {isLoading ? (
+              {isLoading || isTranscribing ? (
                 <Square className="h-4 w-4 animate-pulse" />
-              ) : (
+              ) : isRecording ? (
+                <StopCircle className="h-4 w-4" />
+              ) : hasContent && !isRecording ? (
                 <ArrowUp className="h-4 w-4" />
+              ) : (
+                <Mic className="h-4 w-4" />
               )}
             </Button>
           </PromptInputAction>

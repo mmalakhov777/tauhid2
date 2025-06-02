@@ -71,7 +71,7 @@ export function VisibilitySelector({
         <Button
           data-testid="visibility-selector"
           variant="outline"
-          className="hidden md:flex md:px-2 md:h-[34px]"
+          className="flex px-2 h-[34px] text-xs md:text-sm"
         >
           {selectedVisibility?.icon}
           {selectedVisibility?.label}

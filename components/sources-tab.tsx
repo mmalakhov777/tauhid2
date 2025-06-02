@@ -43,6 +43,7 @@ export function SourcesTab({ vectorSearchData, setModalCitation }: SourcesTabPro
                 citation.metadata?.source_file?.includes('FATAWA-QAZI-KHAN-')
               );
               const isRaddulMuhtar = type === 'CLS' && citation.metadata?.source_file?.startsWith('Rad-ul-Muhtar-Vol');
+              const isBadaiAlSanai = type === 'CLS' && citation.metadata?.source_file?.match(/Badai-al-Sanai-Urdu-Vol-\d+_hocr_searchtext\.txt\.gz/);
               
               return (
                 <div 
@@ -126,6 +127,42 @@ export function SourcesTab({ vectorSearchData, setModalCitation }: SourcesTabPro
                         {/* Metadata */}
                         <div className="flex flex-col gap-0.5 text-[10px] text-muted-foreground mt-auto">
                           <span className="truncate">Rad-ul-Muhtar</span>
+                          {citation.metadata?.volume && (
+                            <div>Volume: {citation.metadata.volume}</div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ) : type === 'CLS' && isBadaiAlSanai ? (
+                    <div className="flex gap-3">
+                      {/* Cover Image - 40% */}
+                      <div className="w-2/5 shrink-0">
+                        <div className="relative size-full rounded-l overflow-hidden bg-muted">
+                          <img 
+                            src="/images/badai-as-sanai-urdu.png" 
+                            alt="Badai-al-Sanai cover"
+                            className="size-full object-cover object-center"
+                          />
+                        </div>
+                      </div>
+                      
+                      {/* Content - 60% */}
+                      <div className="flex-1 flex flex-col justify-center gap-2 py-3 pr-3">
+                        {/* Source as title */}
+                        {citation.metadata?.source && (
+                          <div className="text-sm font-semibold text-card-foreground line-clamp-1">
+                            {citation.metadata.source}
+                          </div>
+                        )}
+                        
+                        {/* Text preview */}
+                        <div className="text-[10px] text-muted-foreground line-clamp-2 italic">
+                          {citation.text?.slice(0, 80)}...
+                        </div>
+                        
+                        {/* Metadata */}
+                        <div className="flex flex-col gap-0.5 text-[10px] text-muted-foreground mt-auto">
+                          <span className="truncate">Badai-al-Sanai</span>
                           {citation.metadata?.volume && (
                             <div>Volume: {citation.metadata.volume}</div>
                           )}
@@ -387,4 +424,4 @@ export function SourcesTab({ vectorSearchData, setModalCitation }: SourcesTabPro
       )}
     </div>
   );
-} 
+}

@@ -239,12 +239,14 @@ const PurePreviewMessage = ({
                             {vectorSearchData && vectorSearchData.citations && vectorSearchData.citations.length > 0 ? (
                               <>
                                 {/* Source Preview Cards - Above tabs */}
-                                <SourcePreviewCards
-                                  vectorSearchData={vectorSearchData}
-                                  setModalCitation={setModalCitation}
-                                  setActiveTab={setActiveTab}
-                                  setHighlightedCitation={setHighlightedCitation}
-                                />
+                                <div className="hidden md:block">
+                                  <SourcePreviewCards
+                                    vectorSearchData={vectorSearchData}
+                                    setModalCitation={setModalCitation}
+                                    setActiveTab={setActiveTab}
+                                    setHighlightedCitation={setHighlightedCitation}
+                                  />
+                                </div>
 
                                 {/* Tabs */}
                                 <div className="flex border-b">

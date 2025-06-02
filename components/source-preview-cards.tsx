@@ -32,6 +32,7 @@ export function SourcePreviewCards({
           citation.metadata?.source_file?.includes('FATAWA-QAZI-KHAN-')
         );
         const isRaddulMuhtar = type === 'CLS' && citation.metadata?.source_file?.startsWith('Rad-ul-Muhtar-Vol');
+        const isBadaiAlSanai = type === 'CLS' && citation.metadata?.source_file?.match(/Badai-al-Sanai-Urdu-Vol-\d+_hocr_searchtext\.txt\.gz/);
         const thumbnailUrl = citation.metadata?.thumbnail_url;
         
         return (
@@ -101,6 +102,12 @@ export function SourcePreviewCards({
                         alt="Rad-ul-Muhtar cover"
                         className="w-full h-full object-cover"
                       />
+                    ) : isBadaiAlSanai ? (
+                      <img 
+                        src="/images/badai-as-sanai-urdu.png" 
+                        alt="Badai-al-Sanai cover"
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
                       <div className="w-full h-full bg-muted flex items-center justify-center">
                         <div className="text-xs text-muted-foreground">📚</div>
@@ -122,13 +129,16 @@ export function SourcePreviewCards({
                     {type === 'RIS' && citation.metadata?.page_number && (
                       <span className="truncate">Pg: {citation.metadata.page_number}</span>
                     )}
-                    {type === 'CLS' && !isFatawaQaziKhan && citation.metadata?.source && citation.metadata?.page_number && (
+                    {type === 'CLS' && !isFatawaQaziKhan && !isBadaiAlSanai && citation.metadata?.source && citation.metadata?.page_number && (
                       <span className="truncate">Pg: {citation.metadata.page_number}</span>
                     )}
                     {type === 'CLS' && isFatawaQaziKhan && citation.metadata?.volume && (
                       <span className="truncate">Vol: {citation.metadata.volume}</span>
                     )}
                     {type === 'CLS' && isRaddulMuhtar && citation.metadata?.volume && (
+                      <span className="truncate">Vol: {citation.metadata.volume}</span>
+                    )}
+                    {type === 'CLS' && isBadaiAlSanai && citation.metadata?.volume && (
                       <span className="truncate">Vol: {citation.metadata.volume}</span>
                     )}
                   </div>
