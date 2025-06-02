@@ -295,7 +295,7 @@ function PureMultimodalInput({
 
       {/* Consent Text */}
       <div className="text-xs text-muted-foreground text-center px-1 py-1.5">
-        It's always better to ask an Imam. 
+        It&apos;s always better to ask an Imam. 
         <a 
           href="https://www.google.com/maps/search/mosque+near+me" 
           target="_blank" 
