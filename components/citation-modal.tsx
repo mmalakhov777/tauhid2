@@ -4,6 +4,7 @@ import { X, Youtube } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { CitationMarker } from './citation-marker';
+import { useState } from 'react';
 
 interface CitationModalProps {
   isOpen: boolean;
@@ -13,6 +14,8 @@ interface CitationModalProps {
 }
 
 export function CitationModal({ isOpen, onClose, citation, citationNumber }: CitationModalProps) {
+  const [activeTab, setActiveTab] = useState<'details' | 'original'>('details');
+  
   // Log what data is received by the modal
   console.log('🔧 CitationModal received - isOpen:', isOpen);
   console.log('🔧 CitationModal received - citationNumber:', citationNumber);
@@ -61,6 +64,9 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber }: Cit
 
   // Check if this is Rad-ul-Muhtar
   const isRaddulMuhtar = isClassical && citation.metadata?.source_file?.startsWith('Rad-ul-Muhtar-Vol');
+
+  // Check if this is Badai-al-Sanai
+  const isBadaiAlSanai = isClassical && citation.metadata?.source_file?.match(/Badai-al-Sanai-Urdu-Vol-\d+_hocr_searchtext\.txt\.gz/);
 
   // Build YouTube embed URL with timestamp if available
   let embedUrl = '';
@@ -116,7 +122,37 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber }: Cit
               <div className="flex items-center justify-between p-6 border-b">
                 <div className="flex items-center gap-3">
                   <CitationMarker number={citationNumber} className="cursor-default" />
-                  <h2 className="text-lg font-semibold">Citation Details</h2>
+                  {isClassical ? (
+                    <div className="flex items-center gap-4">
+                      {/* Tabs for classical sources */}
+                      <div className="flex bg-muted rounded-lg p-1">
+                        <button
+                          onClick={() => setActiveTab('details')}
+                          className={cn(
+                            "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
+                            activeTab === 'details' 
+                              ? "bg-background text-foreground shadow-sm" 
+                              : "text-muted-foreground hover:text-foreground"
+                          )}
+                        >
+                          Citation Details
+                        </button>
+                        <button
+                          onClick={() => setActiveTab('original')}
+                          className={cn(
+                            "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
+                            activeTab === 'original' 
+                              ? "bg-background text-foreground shadow-sm" 
+                              : "text-muted-foreground hover:text-foreground"
+                          )}
+                        >
+                          Original Text
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <h2 className="text-lg font-semibold">Citation Details</h2>
+                  )}
                 </div>
                 <button
                   onClick={onClose}
@@ -128,332 +164,406 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber }: Cit
 
               {/* Content */}
               <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                {/* YouTube Video/Thumbnail */}
-                {isYouTube && (videoId || thumbnailUrl) && (
-                  <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-muted">
-                    {videoId ? (
-                      <iframe
-                        key={`youtube-${timestamp}`}
-                        src={embedUrl}
-                        title="YouTube video player"
-                        frameBorder="0"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                        allowFullScreen
-                        className="w-full h-full"
-                      />
-                    ) : thumbnailUrl ? (
-                      <img 
-                        src={thumbnailUrl} 
-                        alt="YouTube video thumbnail"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : null}
-                  </div>
-                )}
-                
-                {/* Risale-i Nur PDF Viewer */}
-                {isRisale && pdfUrl && (
-                  <div className="relative w-full h-[600px] rounded-lg overflow-hidden bg-muted border">
-                    <iframe
-                      key={`pdf-${citation.metadata?.page_number}`}
-                      src={pdfUrl}
-                      title="Risale-i Nur PDF"
-                      className="w-full h-full"
-                      style={{ border: 'none' }}
-                    />
-                  </div>
-                )}
-                
-                {/* Classical Source with 40/60 split layout for Fatawa Qazi Khan */}
-                {isFatawaQaziKhan && (
-                  <div className="rounded-lg border border-border bg-card/50 overflow-hidden shadow-lg">
-                    <div className="flex gap-0">
-                      {/* Cover Image - 40% */}
-                      <div className="w-[40%] flex-shrink-0">
-                        <div className="relative w-full h-full bg-muted">
-                          <img 
-                            src="/images/fatawa-qazi-khan.png" 
-                            alt="Fatawa Qazi Khan cover"
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                      </div>
-                      
-                      {/* Content - 60% */}
-                      <div className="flex-1 flex flex-col justify-center gap-3 p-4">
-                        {/* Source as title */}
-                        {citation.metadata?.source && (
-                          <div className="text-base font-semibold text-card-foreground">
-                            {citation.metadata.source}
-                          </div>
-                        )}
-                        
-                        {/* Interpretation as description */}
-                        {citation.metadata?.interpretation && (
-                          <div className="text-sm text-muted-foreground italic">
-                            {citation.metadata.interpretation}
-                          </div>
-                        )}
-                        
-                        {/* Metadata */}
-                        <div className="flex flex-col gap-1 text-sm text-muted-foreground mt-auto">
-                          {/* Source info */}
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs">Fatawa Qazi Khan</span>
-                          </div>
-                          
-                          {/* Volume info */}
-                          {citation.metadata?.volume && (
-                            <div className="text-xs">
-                              Volume: {citation.metadata.volume}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Classical Source with 40/60 split layout for Rad-ul-Muhtar */}
-                {isRaddulMuhtar && (
-                  <div className="rounded-lg border border-border bg-card/50 overflow-hidden shadow-lg">
-                    <div className="flex gap-0">
-                      {/* Cover Image - 40% */}
-                      <div className="w-[40%] flex-shrink-0">
-                        <div className="relative w-full h-full bg-muted">
-                          <img 
-                            src="/images/raddul-muhtaar.png" 
-                            alt="Rad-ul-Muhtar cover"
-                            className="w-full h-full object-cover object-center"
-                          />
-                        </div>
-                      </div>
-                      
-                      {/* Content - 60% */}
-                      <div className="flex-1 flex flex-col justify-center gap-3 p-4">
-                        {/* Source as title */}
-                        {citation.metadata?.source && (
-                          <div className="text-base font-semibold text-card-foreground">
-                            {citation.metadata.source}
-                          </div>
-                        )}
-                        
-                        {/* Interpretation as description */}
-                        {citation.metadata?.interpretation && (
-                          <div className="text-sm text-muted-foreground italic">
-                            {citation.metadata.interpretation}
-                          </div>
-                        )}
-                        
-                        {/* Metadata */}
-                        <div className="flex flex-col gap-1 text-sm text-muted-foreground mt-auto">
-                          {/* Source info */}
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs">Rad-ul-Muhtar</span>
-                          </div>
-                          
-                          {/* Volume info */}
-                          {citation.metadata?.volume && (
-                            <div className="text-xs">
-                              Volume: {citation.metadata.volume}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Source Type */}
-                {!isYouTube && !isFatawaQaziKhan && !isRaddulMuhtar && !isRisale && (
-                  <div>
-                    <h3 className="text-sm font-semibold text-muted-foreground mb-2">Source Type</h3>
-                    <div className="flex items-center gap-2">
-                      <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium">
-                        {typeLabels[type] || type}
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Full Text */}
-                {!isYouTube && !isFatawaQaziKhan && !isRaddulMuhtar && !isRisale && (
-                  <div>
-                    <h3 className="text-sm font-semibold text-muted-foreground mb-2">Full Text</h3>
-                    <div className="bg-muted/50 rounded-lg p-4 text-sm leading-relaxed border border-border">
-                      {citation.text || '[No text available]'}
-                    </div>
-                  </div>
-                )}
-
-                {/* Metadata */}
-                <div>
-                  {!isYouTube && !isFatawaQaziKhan && !isRaddulMuhtar && !isRisale && (
-                    <h3 className="text-sm font-semibold text-muted-foreground mb-2">Metadata</h3>
-                  )}
-                  <div className="space-y-2">
-                    {isYouTube ? (
-                      // YouTube-specific fields only
+                {/* Classical sources with tabs */}
+                {isClassical ? (
+                  <>
+                    {/* Citation Details Tab */}
+                    {activeTab === 'details' && (
                       <>
-                        {citation.metadata?.author && (
-                          <div className="flex items-center gap-2 py-2">
-                            <Youtube className="w-5 h-5 text-red-600" />
-                            <span className="text-base font-medium">{citation.metadata.author}</span>
-                          </div>
-                        )}
-                        
-                        {citation.metadata?.timestamp && typeof citation.metadata.timestamp === 'number' && !isNaN(citation.metadata.timestamp) && (
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <span>Starting at</span>
-                            <span className="font-mono font-medium">
-                              {Math.floor(citation.metadata.timestamp / 60)}:{(citation.metadata.timestamp % 60).toString().padStart(2, '0')}
-                            </span>
-                          </div>
-                        )}
-                        
-                        {citation.metadata?.question && (
-                          <div className="mt-4">
-                            <div className="text-sm font-semibold text-muted-foreground mb-1">Question</div>
-                            <div className="text-sm bg-muted/50 rounded-lg p-3 border border-border">{citation.metadata.question}</div>
-                          </div>
-                        )}
-                        
-                        {citation.metadata?.answer && (
-                          <div className="mt-4">
-                            <div className="text-sm font-semibold text-muted-foreground mb-1">Answer</div>
-                            <div className="text-sm bg-muted/50 rounded-lg p-3 border border-border">{citation.metadata.answer}</div>
-                          </div>
-                        )}
-                        
-                        {citation.metadata?.context && (
-                          <div className="mt-4">
-                            <div className="text-sm font-semibold text-muted-foreground mb-1">Context</div>
-                            <div className="text-sm bg-muted/50 rounded-lg p-3 border border-border">{citation.metadata.context}</div>
-                          </div>
-                        )}
-                      </>
-                    ) : isClassical ? (
-                      // Classical source - show only specific fields in user-friendly format
-                      <>
-                        {citation.metadata?.question && (
-                          <div className="mt-4">
-                            <div className="text-sm font-semibold text-muted-foreground mb-1">Question</div>
-                            <div className="text-sm bg-muted/50 rounded-lg p-3 border border-border">{citation.metadata.question}</div>
-                          </div>
-                        )}
-                        
-                        {citation.metadata?.answer && (
-                          <div className="mt-4">
-                            <div className="text-sm font-semibold text-muted-foreground mb-1">Answer</div>
-                            <div className="text-sm bg-muted/50 rounded-lg p-3 border border-border">{citation.metadata.answer}</div>
-                          </div>
-                        )}
-                        
-                        {citation.metadata?.interpretation && (
-                          <div className="mt-4">
-                            <div className="text-sm font-semibold text-muted-foreground mb-1">Interpretation</div>
-                            <div className="text-sm bg-muted/50 rounded-lg p-3 border border-border">{citation.metadata.interpretation}</div>
-                          </div>
-                        )}
-                        
-                        {citation.metadata?.modern_usage && (
-                          <div className="mt-4">
-                            <div className="text-sm font-semibold text-muted-foreground mb-1">Modern Usage</div>
-                            <div className="text-sm bg-muted/50 rounded-lg p-3 border border-border">{citation.metadata.modern_usage}</div>
-                          </div>
-                        )}
-                      </>
-                    ) : isRisale ? (
-                      // Risale-i Nur - show only book_name, page_number, and Search Query
-                      <>
-                        {/* Metadata - Only specific fields */}
-                        <h3 className="text-sm font-semibold text-muted-foreground mb-2">Metadata</h3>
-                        
-                        {citation.metadata?.book_name && (
-                          <div className="flex justify-between py-2 border-b border-border">
-                            <span className="text-sm text-muted-foreground">Book Name</span>
-                            <span className="text-sm font-mono text-foreground">{citation.metadata.book_name}</span>
-                          </div>
-                        )}
-                        
-                        {citation.metadata?.page_number && (
-                          <div className="flex justify-between py-2 border-b border-border">
-                            <span className="text-sm text-muted-foreground">Page Number</span>
-                            <span className="text-sm font-mono text-foreground">{citation.metadata.page_number}</span>
-                          </div>
-                        )}
-
-                        {citation.query && (
-                          <div className="py-2 border-b border-border">
-                            <span className="text-sm text-muted-foreground">Search Query</span>
-                            <div className="mt-1 text-sm font-mono bg-muted/50 rounded p-2 border border-border">
-                              {citation.query}
+                        {/* Fatawa Qazi Khan */}
+                        {isFatawaQaziKhan && (
+                          <div className="rounded-lg border border-border bg-card/50 overflow-hidden shadow-lg">
+                            <div className="flex gap-0">
+                              {/* Cover Image - 40% */}
+                              <div className="w-[40%] flex-shrink-0">
+                                <div className="relative w-full h-full bg-muted">
+                                  <img 
+                                    src="/images/fatawa-qazi-khan.png" 
+                                    alt="Fatawa Qazi Khan cover"
+                                    className="w-full h-full object-cover"
+                                  />
+                                </div>
+                              </div>
+                              
+                              {/* Content - 60% */}
+                              <div className="flex-1 flex flex-col justify-center gap-3 p-4">
+                                {/* Source as title */}
+                                {citation.metadata?.source && (
+                                  <div className="text-base font-semibold text-card-foreground">
+                                    {citation.metadata.source}
+                                  </div>
+                                )}
+                                
+                                {/* Interpretation as description */}
+                                {citation.metadata?.interpretation && (
+                                  <div className="text-sm text-muted-foreground italic">
+                                    {citation.metadata.interpretation}
+                                  </div>
+                                )}
+                                
+                                {/* Metadata */}
+                                <div className="flex flex-col gap-1 text-sm text-muted-foreground mt-auto">
+                                  {/* Source info */}
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs">Fatawa Qazi Khan</span>
+                                  </div>
+                                  
+                                  {/* Volume info */}
+                                  {citation.metadata?.volume && (
+                                    <div className="text-xs">
+                                      Volume: {citation.metadata.volume}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
                             </div>
                           </div>
                         )}
-                      </>
-                    ) : (
-                      // Non-YouTube, non-Classical citations show all fields as before
-                      <>
-                        {citation.score !== undefined && (
-                          <div className="flex justify-between py-2 border-b border-border">
-                            <span className="text-sm text-muted-foreground">Relevance Score</span>
-                            <span className="text-sm font-mono text-foreground">{citation.score.toFixed(4)}</span>
-                          </div>
-                        )}
-                        
-                        {citation.metadata?.source && (
-                          <div className="flex justify-between py-2 border-b border-border">
-                            <span className="text-sm text-muted-foreground">Source</span>
-                            <span className="text-sm font-mono text-foreground">{citation.metadata.source}</span>
-                          </div>
-                        )}
-                        
-                        {citation.namespace && (
-                          <div className="flex justify-between py-2 border-b border-border">
-                            <span className="text-sm text-muted-foreground">Namespace</span>
-                            <span className="text-sm font-mono text-foreground">{citation.namespace}</span>
-                          </div>
-                        )}
-                        
-                        {citation.id && (
-                          <div className="flex justify-between py-2 border-b border-border">
-                            <span className="text-sm text-muted-foreground">ID</span>
-                            <span className="text-xs font-mono text-foreground">{citation.id}</span>
-                          </div>
-                        )}
 
-                        {citation.query && (
-                          <div className="py-2 border-b border-border">
-                            <span className="text-sm text-muted-foreground">Search Query</span>
-                            <div className="mt-1 text-sm font-mono bg-muted/50 rounded p-2 border border-border">
-                              {citation.query}
+                        {/* Rad-ul-Muhtar */}
+                        {isRaddulMuhtar && (
+                          <div className="rounded-lg border border-border bg-card/50 overflow-hidden shadow-lg">
+                            <div className="flex gap-0">
+                              {/* Cover Image - 40% */}
+                              <div className="w-[40%] flex-shrink-0">
+                                <div className="relative w-full h-full bg-muted">
+                                  <img 
+                                    src="/images/raddul-muhtaar.png" 
+                                    alt="Rad-ul-Muhtar cover"
+                                    className="w-full h-full object-cover object-center"
+                                  />
+                                </div>
+                              </div>
+                              
+                              {/* Content - 60% */}
+                              <div className="flex-1 flex flex-col justify-center gap-3 p-4">
+                                {/* Source as title */}
+                                {citation.metadata?.source && (
+                                  <div className="text-base font-semibold text-card-foreground">
+                                    {citation.metadata.source}
+                                  </div>
+                                )}
+                                
+                                {/* Interpretation as description */}
+                                {citation.metadata?.interpretation && (
+                                  <div className="text-sm text-muted-foreground italic">
+                                    {citation.metadata.interpretation}
+                                  </div>
+                                )}
+                                
+                                {/* Metadata */}
+                                <div className="flex flex-col gap-1 text-sm text-muted-foreground mt-auto">
+                                  {/* Source info */}
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs">Rad-ul-Muhtar</span>
+                                  </div>
+                                  
+                                  {/* Volume info */}
+                                  {citation.metadata?.volume && (
+                                    <div className="text-xs">
+                                      Volume: {citation.metadata.volume}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
                             </div>
                           </div>
                         )}
+
+                        {/* Badai-al-Sanai */}
+                        {isBadaiAlSanai && (
+                          <div className="rounded-lg border border-border bg-card/50 overflow-hidden shadow-lg">
+                            <div className="flex gap-0">
+                              {/* Cover Image - 40% */}
+                              <div className="w-[40%] flex-shrink-0">
+                                <div className="relative w-full h-full bg-muted">
+                                  <img 
+                                    src="/images/badai-as-sanai-urdu.png" 
+                                    alt="Badai-al-Sanai cover"
+                                    className="w-full h-full object-cover object-center"
+                                  />
+                                </div>
+                              </div>
+                              
+                              {/* Content - 60% */}
+                              <div className="flex-1 flex flex-col justify-center gap-3 p-4">
+                                {/* Source as title */}
+                                {citation.metadata?.source && (
+                                  <div className="text-base font-semibold text-card-foreground">
+                                    {citation.metadata.source}
+                                  </div>
+                                )}
+                                
+                                {/* Interpretation as description */}
+                                {citation.metadata?.interpretation && (
+                                  <div className="text-sm text-muted-foreground italic">
+                                    {citation.metadata.interpretation}
+                                  </div>
+                                )}
+                                
+                                {/* Metadata */}
+                                <div className="flex flex-col gap-1 text-sm text-muted-foreground mt-auto">
+                                  {/* Source info */}
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs">Badai-al-Sanai</span>
+                                  </div>
+                                  
+                                  {/* Volume info */}
+                                  {citation.metadata?.volume && (
+                                    <div className="text-xs">
+                                      Volume: {citation.metadata.volume}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Classical source metadata */}
+                        <div>
+                          <div className="space-y-2">
+                            {citation.metadata?.question && (
+                              <div className="mt-4">
+                                <div className="text-sm font-semibold text-muted-foreground mb-1">Question</div>
+                                <div className="text-sm bg-muted/50 rounded-lg p-3 border border-border">{citation.metadata.question}</div>
+                              </div>
+                            )}
+                            
+                            {citation.metadata?.answer && (
+                              <div className="mt-4">
+                                <div className="text-sm font-semibold text-muted-foreground mb-1">Answer</div>
+                                <div className="text-sm bg-muted/50 rounded-lg p-3 border border-border">{citation.metadata.answer}</div>
+                              </div>
+                            )}
+                            
+                            {citation.metadata?.interpretation && (
+                              <div className="mt-4">
+                                <div className="text-sm font-semibold text-muted-foreground mb-1">Interpretation</div>
+                                <div className="text-sm bg-muted/50 rounded-lg p-3 border border-border">{citation.metadata.interpretation}</div>
+                              </div>
+                            )}
+                            
+                            {citation.metadata?.modern_usage && (
+                              <div className="mt-4">
+                                <div className="text-sm font-semibold text-muted-foreground mb-1">Modern Usage</div>
+                                <div className="text-sm bg-muted/50 rounded-lg p-3 border border-border">{citation.metadata.modern_usage}</div>
+                              </div>
+                            )}
+                          </div>
+                        </div>
                       </>
                     )}
-                  </div>
-                </div>
 
-                {/* Additional metadata fields */}
-                {!isYouTube && !isFatawaQaziKhan && !isRaddulMuhtar && !isRisale && citation.metadata && Object.keys(citation.metadata).length > 1 && (
-                  <div>
-                    <h3 className="text-sm font-semibold text-muted-foreground mb-2">Additional Information</h3>
-                    <div className="space-y-2">
-                      {Object.entries(citation.metadata).map(([key, value]) => {
-                        // Always exclude these fields
-                        if (key === 'source' || key === 'type' || key === 'thumbnail_url' || key === 'video_id' || key === 'timestamp') return null;
-                        
-                        return (
-                          <div key={key} className="flex justify-between py-2 border-b border-border">
-                            <span className="text-sm text-muted-foreground">{key}</span>
-                            <span className="text-sm text-foreground">{String(value)}</span>
-                          </div>
-                        );
-                      })}
+                    {/* Original Text Tab */}
+                    {activeTab === 'original' && (
+                      <div>
+                        <div className="bg-muted/50 rounded-lg p-4 text-sm leading-relaxed border border-border">
+                          {citation.metadata?.original_text || '[No original text available]'}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <>
+                    {/* Non-classical sources - existing content */}
+                    {/* YouTube Video/Thumbnail */}
+                    {isYouTube && (videoId || thumbnailUrl) && (
+                      <div className="relative w-full aspect-video rounded-lg overflow-hidden bg-muted">
+                        {videoId ? (
+                          <iframe
+                            key={`youtube-${timestamp}`}
+                            src={embedUrl}
+                            title="YouTube video player"
+                            frameBorder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                            allowFullScreen
+                            className="w-full h-full"
+                          />
+                        ) : thumbnailUrl ? (
+                          <img 
+                            src={thumbnailUrl} 
+                            alt="YouTube video thumbnail"
+                            className="w-full h-full object-cover"
+                          />
+                        ) : null}
+                      </div>
+                    )}
+                    
+                    {/* Risale-i Nur PDF Viewer */}
+                    {isRisale && pdfUrl && (
+                      <div className="relative w-full h-[600px] rounded-lg overflow-hidden bg-muted border">
+                        <iframe
+                          key={`pdf-${citation.metadata?.page_number}`}
+                          src={pdfUrl}
+                          title="Risale-i Nur PDF"
+                          className="w-full h-full"
+                          style={{ border: 'none' }}
+                        />
+                      </div>
+                    )}
+
+                    {/* Source Type */}
+                    {!isYouTube && !isRisale && (
+                      <div>
+                        <h3 className="text-sm font-semibold text-muted-foreground mb-2">Source Type</h3>
+                        <div className="flex items-center gap-2">
+                          <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium">
+                            {typeLabels[type] || type}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Full Text */}
+                    {!isYouTube && !isRisale && (
+                      <div>
+                        <h3 className="text-sm font-semibold text-muted-foreground mb-2">Full Text</h3>
+                        <div className="bg-muted/50 rounded-lg p-4 text-sm leading-relaxed border border-border">
+                          {citation.text || '[No text available]'}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Metadata */}
+                    <div>
+                      {!isYouTube && !isRisale && (
+                        <h3 className="text-sm font-semibold text-muted-foreground mb-2">Metadata</h3>
+                      )}
+                      <div className="space-y-2">
+                        {isYouTube ? (
+                          // YouTube-specific fields only
+                          <>
+                            {citation.metadata?.author && (
+                              <div className="flex items-center gap-2 py-2">
+                                <Youtube className="w-5 h-5 text-red-600" />
+                                <span className="text-base font-medium">{citation.metadata.author}</span>
+                              </div>
+                            )}
+                            
+                            {citation.metadata?.timestamp && typeof citation.metadata.timestamp === 'number' && !isNaN(citation.metadata.timestamp) && (
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                <span>Starting at</span>
+                                <span className="font-mono font-medium">
+                                  {Math.floor(citation.metadata.timestamp / 60)}:{(citation.metadata.timestamp % 60).toString().padStart(2, '0')}
+                                </span>
+                              </div>
+                            )}
+                            
+                            {citation.metadata?.question && (
+                              <div className="mt-4">
+                                <div className="text-sm font-semibold text-muted-foreground mb-1">Question</div>
+                                <div className="text-sm bg-muted/50 rounded-lg p-3 border border-border">{citation.metadata.question}</div>
+                              </div>
+                            )}
+                            
+                            {citation.metadata?.answer && (
+                              <div className="mt-4">
+                                <div className="text-sm font-semibold text-muted-foreground mb-1">Answer</div>
+                                <div className="text-sm bg-muted/50 rounded-lg p-3 border border-border">{citation.metadata.answer}</div>
+                              </div>
+                            )}
+                            
+                            {citation.metadata?.context && (
+                              <div className="mt-4">
+                                <div className="text-sm font-semibold text-muted-foreground mb-1">Context</div>
+                                <div className="text-sm bg-muted/50 rounded-lg p-3 border border-border">{citation.metadata.context}</div>
+                              </div>
+                            )}
+                          </>
+                        ) : isRisale ? (
+                          // Risale-i Nur - show only book_name, page_number, and Search Query
+                          <>
+                            {/* Metadata - Only specific fields */}
+                            <h3 className="text-sm font-semibold text-muted-foreground mb-2">Metadata</h3>
+                            
+                            {citation.metadata?.book_name && (
+                              <div className="flex justify-between py-2 border-b border-border">
+                                <span className="text-sm text-muted-foreground">Book Name</span>
+                                <span className="text-sm font-mono text-foreground">{citation.metadata.book_name}</span>
+                              </div>
+                            )}
+                            
+                            {citation.metadata?.page_number && (
+                              <div className="flex justify-between py-2 border-b border-border">
+                                <span className="text-sm text-muted-foreground">Page Number</span>
+                                <span className="text-sm font-mono text-foreground">{citation.metadata.page_number}</span>
+                              </div>
+                            )}
+
+                            {citation.query && (
+                              <div className="py-2 border-b border-border">
+                                <span className="text-sm text-muted-foreground">Search Query</span>
+                                <div className="mt-1 text-sm font-mono bg-muted/50 rounded p-2 border border-border">
+                                  {citation.query}
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          // Non-YouTube, non-Risale citations show all fields as before
+                          <>
+                            {citation.score !== undefined && (
+                              <div className="flex justify-between py-2 border-b border-border">
+                                <span className="text-sm text-muted-foreground">Relevance Score</span>
+                                <span className="text-sm font-mono text-foreground">{citation.score.toFixed(4)}</span>
+                              </div>
+                            )}
+                            
+                            {citation.metadata?.source && (
+                              <div className="flex justify-between py-2 border-b border-border">
+                                <span className="text-sm text-muted-foreground">Source</span>
+                                <span className="text-sm font-mono text-foreground">{citation.metadata.source}</span>
+                              </div>
+                            )}
+                            
+                            {citation.namespace && (
+                              <div className="flex justify-between py-2 border-b border-border">
+                                <span className="text-sm text-muted-foreground">Namespace</span>
+                                <span className="text-sm font-mono text-foreground">{citation.namespace}</span>
+                              </div>
+                            )}
+                            
+                            {citation.id && (
+                              <div className="flex justify-between py-2 border-b border-border">
+                                <span className="text-sm text-muted-foreground">ID</span>
+                                <span className="text-xs font-mono text-foreground">{citation.id}</span>
+                              </div>
+                            )}
+
+                            {citation.query && (
+                              <div className="py-2 border-b border-border">
+                                <span className="text-sm text-muted-foreground">Search Query</span>
+                                <div className="mt-1 text-sm font-mono bg-muted/50 rounded p-2 border border-border">
+                                  {citation.query}
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
                     </div>
-                  </div>
+
+                    {/* Additional metadata fields */}
+                    {!isYouTube && !isRisale && citation.metadata && Object.keys(citation.metadata).length > 1 && (
+                      <div>
+                        <h3 className="text-sm font-semibold text-muted-foreground mb-2">Additional Information</h3>
+                        <div className="space-y-2">
+                          {Object.entries(citation.metadata).map(([key, value]) => {
+                            // Always exclude these fields
+                            if (key === 'source' || key === 'type' || key === 'thumbnail_url' || key === 'video_id' || key === 'timestamp') return null;
+                            
+                            return (
+                              <div key={key} className="flex justify-between py-2 border-b border-border">
+                                <span className="text-sm text-muted-foreground">{key}</span>
+                                <span className="text-sm text-foreground">{String(value)}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>
