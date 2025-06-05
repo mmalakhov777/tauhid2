@@ -6,6 +6,7 @@ import equal from 'fast-deep-equal';
 import type { UseChatHelpers } from '@ai-sdk/react';
 import { motion } from 'framer-motion';
 import { useMessages } from '@/hooks/use-messages';
+import { useTelegramHaptics } from '@/hooks/use-telegram-haptics';
 
 interface MessagesProps {
   chatId: string;
@@ -43,7 +44,31 @@ function PureMessages({
     status,
   });
 
+  const { impactOccurred, notificationOccurred } = useTelegramHaptics();
+
   const [messageVectorData, setMessageVectorData] = useState<Record<string, any>>({});
+  const [previousStatus, setPreviousStatus] = useState(status);
+
+  // Haptic feedback for status changes
+  useEffect(() => {
+    if (previousStatus !== status) {
+      if (status === 'submitted') {
+        // Light haptic when message is submitted
+        impactOccurred('light');
+      } else if (status === 'streaming' && previousStatus === 'submitted') {
+        // Medium haptic when streaming starts
+        impactOccurred('medium');
+      } else if (previousStatus === 'streaming' && (status === 'ready' || status === 'error')) {
+        // Success haptic when streaming completes successfully, warning for errors
+        if (status === 'ready') {
+          notificationOccurred('success');
+        } else {
+          notificationOccurred('error');
+        }
+      }
+      setPreviousStatus(status);
+    }
+  }, [status, previousStatus, impactOccurred, notificationOccurred]);
 
   // Store live vector search data when it becomes available for the current streaming message
   useEffect(() => {

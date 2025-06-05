@@ -25,6 +25,7 @@ import { SourcesTab } from './sources-tab';
 import { SourcePreviewCards } from './source-preview-cards';
 import { determineCitationType, filterEligibleCitations, formatBookOrNamespace, RIS_NAMESPACES, YT_NAMESPACES } from './citation-utils';
 import { SkeletonCard, SkeletonDots, SkeletonText } from './ui/skeleton';
+import { useTelegramHaptics } from '@/hooks/use-telegram-haptics';
 
 // Global debug state
 let globalDebugEnabled = false;
@@ -71,6 +72,7 @@ const PurePreviewMessage = ({
   const [modalCitation, setModalCitation] = useState<{ citation: any; number: number } | null>(null);
   const [debugEnabled, setDebugEnabled] = useState(globalDebugEnabled);
   const [isQueryMappingExpanded, setIsQueryMappingExpanded] = useState(false);
+  const { impactOccurred, selectionChanged } = useTelegramHaptics();
 
   // Listen for debug toggle events
   useEffect(() => {
@@ -81,6 +83,22 @@ const PurePreviewMessage = ({
     window.addEventListener('debugToggled', handleDebugToggle);
     return () => window.removeEventListener('debugToggled', handleDebugToggle);
   }, []);
+
+  // Haptic feedback when new message appears
+  useEffect(() => {
+    if (message.role === 'assistant' && isLoading) {
+      // Light haptic when assistant message starts appearing
+      impactOccurred('light');
+    }
+  }, [message.id, message.role, isLoading, impactOccurred]);
+
+  // Haptic feedback for tab changes
+  const handleTabChange = (newTab: string) => {
+    if (newTab !== activeTab) {
+      selectionChanged();
+      setActiveTab(newTab);
+    }
+  };
 
   return (
     <AnimatePresence>
@@ -251,7 +269,7 @@ const PurePreviewMessage = ({
                                 {/* Tabs */}
                                 <div className="flex border-b">
                                   <button
-                                    onClick={() => setActiveTab('response')}
+                                    onClick={() => handleTabChange('response')}
                                     className={cn(
                                       "px-4 py-2 text-sm font-medium border-b-2 transition-colors",
                                       activeTab === 'response' 
@@ -262,7 +280,7 @@ const PurePreviewMessage = ({
                                     Response
                                   </button>
                                   <button
-                                    onClick={() => setActiveTab('sources')}
+                                    onClick={() => handleTabChange('sources')}
                                     className={cn(
                                       "px-4 py-2 text-sm font-medium border-b-2 transition-colors",
                                       activeTab === 'sources' 
@@ -456,6 +474,12 @@ export const PreviewMessage = memo(
 
 export const ThinkingMessage = ({ vectorSearchProgress }: { vectorSearchProgress?: any }) => {
   const role = 'assistant';
+  const { impactOccurred } = useTelegramHaptics();
+
+  // Haptic feedback when thinking message appears
+  useEffect(() => {
+    impactOccurred('soft');
+  }, [impactOccurred]);
 
   return (
     <motion.div
