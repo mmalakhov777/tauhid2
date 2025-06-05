@@ -3,6 +3,7 @@ import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { ThemeProvider } from '@/components/theme-provider';
 import TelegramDebug from '@/components/TelegramDebug';
+import Script from 'next/script';
 
 import './globals.css';
 import { SessionProvider } from 'next-auth/react';
@@ -65,7 +66,6 @@ export default async function RootLayout({
       className={`${geist.variable} ${geistMono.variable}`}
     >
       <head>
-        <script src="https://telegram.org/js/telegram-web-app.js?57"></script>
         <script
           dangerouslySetInnerHTML={{
             __html: THEME_COLOR_SCRIPT,
@@ -73,6 +73,10 @@ export default async function RootLayout({
         />
       </head>
       <body className="antialiased">
+        <Script 
+          src="https://telegram.org/js/telegram-web-app.js?57" 
+          strategy="beforeInteractive"
+        />
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
