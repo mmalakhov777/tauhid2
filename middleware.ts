@@ -28,7 +28,11 @@ export async function middleware(request: NextRequest) {
     secureCookie: !isDevelopmentEnvironment,
   });
 
-  if (!token) {
+  // Check if this is a Telegram Mini App request
+  const isTelegramApp = request.headers.get('user-agent')?.includes('TelegramBot') || 
+                       request.headers.get('x-telegram-bot-api-secret-token') !== null;
+
+  if (!token && !isTelegramApp) {
     const redirectUrl = encodeURIComponent(request.url);
 
     return NextResponse.redirect(
@@ -37,8 +41,9 @@ export async function middleware(request: NextRequest) {
   }
 
   const isGuest = guestRegex.test(token?.email ?? '');
+  const isTelegramUser = token?.type === 'telegram';
 
-  if (token && !isGuest && ['/login', '/register'].includes(pathname)) {
+  if (token && !isGuest && !isTelegramUser && ['/login', '/register'].includes(pathname)) {
     return NextResponse.redirect(new URL('/', request.url));
   }
 

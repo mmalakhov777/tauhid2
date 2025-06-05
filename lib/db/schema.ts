@@ -17,6 +17,15 @@ export const user = pgTable('User', {
   id: uuid('id').primaryKey().notNull().defaultRandom(),
   email: varchar('email', { length: 64 }).notNull(),
   password: varchar('password', { length: 64 }),
+  // Telegram-specific fields
+  telegramId: integer('telegramId').unique(),
+  telegramUsername: varchar('telegramUsername', { length: 32 }),
+  telegramFirstName: varchar('telegramFirstName', { length: 64 }),
+  telegramLastName: varchar('telegramLastName', { length: 64 }),
+  telegramPhotoUrl: text('telegramPhotoUrl'),
+  telegramLanguageCode: varchar('telegramLanguageCode', { length: 10 }),
+  telegramIsPremium: boolean('telegramIsPremium').default(false),
+  telegramAllowsWriteToPm: boolean('telegramAllowsWriteToPm').default(false),
 });
 
 export type User = InferSelectModel<typeof user>;

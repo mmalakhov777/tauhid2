@@ -30,6 +30,26 @@ export function SidebarUserNav({ user }: { user: User }) {
   const { setTheme, theme } = useTheme();
 
   const isGuest = guestRegex.test(data?.user?.email ?? '');
+  const isTelegramUser = data?.user?.type === 'telegram';
+  
+  // Get display name and avatar for different user types
+  const getDisplayName = () => {
+    if (isGuest) return 'Guest';
+    if (isTelegramUser) {
+      // Extract Telegram user info from email format: telegram-123456@telegram.user
+      const telegramId = data?.user?.email?.match(/telegram-(\d+)@/)?.[1];
+      return `Telegram User ${telegramId ? `#${telegramId}` : ''}`;
+    }
+    return user?.email;
+  };
+
+  const getAvatarUrl = () => {
+    if (isTelegramUser && data?.user?.telegramId) {
+      // Use Telegram's user ID for a consistent avatar
+      return `https://avatar.vercel.sh/telegram-${data.user.telegramId}`;
+    }
+    return `https://avatar.vercel.sh/${user.email}`;
+  };
 
   return (
     <SidebarMenu>
@@ -52,14 +72,14 @@ export function SidebarUserNav({ user }: { user: User }) {
                 className="data-[state=open]:bg-sidebar-accent bg-card border border-border hover:bg-card/80 data-[state=open]:text-sidebar-accent-foreground h-10 transition-colors duration-200"
               >
                 <Image
-                  src={`https://avatar.vercel.sh/${user.email}`}
-                  alt={user.email ?? 'User Avatar'}
+                  src={getAvatarUrl()}
+                  alt={getDisplayName() ?? 'User Avatar'}
                   width={24}
                   height={24}
                   className="rounded-full"
                 />
                 <span data-testid="user-email" className="truncate">
-                  {isGuest ? 'Guest' : user?.email}
+                  {getDisplayName()}
                 </span>
                 <ChevronUp className="ml-auto" />
               </SidebarMenuButton>
@@ -93,8 +113,17 @@ export function SidebarUserNav({ user }: { user: User }) {
                     return;
                   }
 
-                  if (isGuest) {
-                    router.push('/login');
+                  if (isGuest || isTelegramUser) {
+                    // For Telegram users, we can't really "login" to a different account
+                    // They should use the regular web version for that
+                    if (isTelegramUser) {
+                      toast({
+                        type: 'success',
+                        description: 'You are authenticated via Telegram',
+                      });
+                    } else {
+                      router.push('/login');
+                    }
                   } else {
                     signOut({
                       redirectTo: '/',
@@ -102,7 +131,7 @@ export function SidebarUserNav({ user }: { user: User }) {
                   }
                 }}
               >
-                {isGuest ? 'Login to your account' : 'Sign out'}
+                {isGuest ? 'Login to your account' : isTelegramUser ? 'Telegram User' : 'Sign out'}
               </button>
             </DropdownMenuItem>
           </DropdownMenuContent>

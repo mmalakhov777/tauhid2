@@ -81,6 +81,90 @@ export async function createGuestUser() {
   }
 }
 
+export async function getUserByTelegramId(telegramId: number): Promise<User | null> {
+  try {
+    const [foundUser] = await db
+      .select()
+      .from(user)
+      .where(eq(user.telegramId, telegramId));
+    return foundUser || null;
+  } catch (error) {
+    throw new ChatSDKError(
+      'bad_request:database',
+      'Failed to get user by Telegram ID',
+    );
+  }
+}
+
+export async function createOrUpdateTelegramUser({
+  telegramId,
+  username,
+  firstName,
+  lastName,
+  photoUrl,
+  languageCode,
+  isPremium,
+  allowsWriteToPm,
+}: {
+  telegramId: number;
+  username?: string;
+  firstName: string;
+  lastName?: string;
+  photoUrl?: string;
+  languageCode?: string;
+  isPremium?: boolean;
+  allowsWriteToPm?: boolean;
+}) {
+  try {
+    // Check if user already exists
+    const existingUser = await getUserByTelegramId(telegramId);
+    
+    if (existingUser) {
+      // Update existing user
+      const [updatedUser] = await db
+        .update(user)
+        .set({
+          telegramUsername: username,
+          telegramFirstName: firstName,
+          telegramLastName: lastName,
+          telegramPhotoUrl: photoUrl,
+          telegramLanguageCode: languageCode,
+          telegramIsPremium: isPremium,
+          telegramAllowsWriteToPm: allowsWriteToPm,
+        })
+        .where(eq(user.telegramId, telegramId))
+        .returning();
+      return updatedUser;
+    } else {
+      // Create new user
+      const email = `telegram-${telegramId}@telegram.user`;
+      const password = generateHashedPassword(generateUUID());
+      
+      const [newUser] = await db
+        .insert(user)
+        .values({
+          email,
+          password,
+          telegramId,
+          telegramUsername: username,
+          telegramFirstName: firstName,
+          telegramLastName: lastName,
+          telegramPhotoUrl: photoUrl,
+          telegramLanguageCode: languageCode,
+          telegramIsPremium: isPremium,
+          telegramAllowsWriteToPm: allowsWriteToPm,
+        })
+        .returning();
+      return newUser;
+    }
+  } catch (error) {
+    throw new ChatSDKError(
+      'bad_request:database',
+      'Failed to create or update Telegram user',
+    );
+  }
+}
+
 export async function saveChat({
   id,
   userId,
