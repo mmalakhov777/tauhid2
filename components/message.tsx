@@ -3,7 +3,7 @@
 import type { UIMessage } from 'ai';
 import cx from 'classnames';
 import { AnimatePresence, motion } from 'framer-motion';
-import { memo, useState, useEffect } from 'react';
+import { memo, useState, useEffect, useRef } from 'react';
 import type { Vote } from '@/lib/db/schema';
 import { PencilEditIcon, SparklesIcon } from './icons';
 import { Markdown } from './markdown';
@@ -73,6 +73,7 @@ const PurePreviewMessage = ({
   const [debugEnabled, setDebugEnabled] = useState(globalDebugEnabled);
   const [isQueryMappingExpanded, setIsQueryMappingExpanded] = useState(false);
   const { impactOccurred, selectionChanged } = useTelegramHaptics();
+  const previousContentLengthRef = useRef(0);
 
   // Listen for debug toggle events
   useEffect(() => {
@@ -91,6 +92,26 @@ const PurePreviewMessage = ({
       impactOccurred('light');
     }
   }, [message.id, message.role, isLoading, impactOccurred]);
+
+  // Haptic feedback for streaming chunks
+  useEffect(() => {
+    if (message.role === 'assistant' && isLoading && message.parts) {
+      // Track the content length to detect new chunks
+      const currentContent = message.parts
+        .filter(part => part.type === 'text')
+        .map(part => part.text)
+        .join('');
+      
+      const currentLength = currentContent.length;
+      
+      // Soft haptic for each new chunk when content grows
+      if (currentLength > previousContentLengthRef.current && previousContentLengthRef.current > 0) {
+        impactOccurred('soft');
+      }
+      
+      previousContentLengthRef.current = currentLength;
+    }
+  }, [message.parts, message.role, isLoading, impactOccurred]);
 
   // Haptic feedback for tab changes
   const handleTabChange = (newTab: string) => {
