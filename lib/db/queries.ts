@@ -64,6 +64,39 @@ export async function createUser(email: string, password: string) {
   }
 }
 
+export async function createUserWithTelegram(
+  email: string, 
+  telegramData: {
+    telegramId: number;
+    telegramUsername?: string;
+    telegramFirstName: string;
+    telegramLastName?: string;
+    telegramPhotoUrl?: string;
+    telegramLanguageCode?: string;
+    telegramIsPremium?: boolean;
+    telegramAllowsWriteToPm?: boolean;
+  }
+) {
+  const hashedPassword = generateHashedPassword('telegram_auth');
+
+  try {
+    return await db.insert(user).values({ 
+      email, 
+      password: hashedPassword,
+      telegramId: telegramData.telegramId,
+      telegramUsername: telegramData.telegramUsername,
+      telegramFirstName: telegramData.telegramFirstName,
+      telegramLastName: telegramData.telegramLastName,
+      telegramPhotoUrl: telegramData.telegramPhotoUrl,
+      telegramLanguageCode: telegramData.telegramLanguageCode,
+      telegramIsPremium: telegramData.telegramIsPremium || false,
+      telegramAllowsWriteToPm: telegramData.telegramAllowsWriteToPm || false,
+    });
+  } catch (error) {
+    throw new ChatSDKError('bad_request:database', 'Failed to create user with Telegram data');
+  }
+}
+
 export async function createGuestUser() {
   const email = `guest-${Date.now()}`;
   const password = generateHashedPassword(generateUUID());
@@ -77,90 +110,6 @@ export async function createGuestUser() {
     throw new ChatSDKError(
       'bad_request:database',
       'Failed to create guest user',
-    );
-  }
-}
-
-export async function getUserByTelegramId(telegramId: number): Promise<User | null> {
-  try {
-    const [foundUser] = await db
-      .select()
-      .from(user)
-      .where(eq(user.telegramId, telegramId));
-    return foundUser || null;
-  } catch (error) {
-    throw new ChatSDKError(
-      'bad_request:database',
-      'Failed to get user by Telegram ID',
-    );
-  }
-}
-
-export async function createOrUpdateTelegramUser({
-  telegramId,
-  username,
-  firstName,
-  lastName,
-  photoUrl,
-  languageCode,
-  isPremium,
-  allowsWriteToPm,
-}: {
-  telegramId: number;
-  username?: string;
-  firstName: string;
-  lastName?: string;
-  photoUrl?: string;
-  languageCode?: string;
-  isPremium?: boolean;
-  allowsWriteToPm?: boolean;
-}) {
-  try {
-    // Check if user already exists
-    const existingUser = await getUserByTelegramId(telegramId);
-    
-    if (existingUser) {
-      // Update existing user
-      const [updatedUser] = await db
-        .update(user)
-        .set({
-          telegramUsername: username,
-          telegramFirstName: firstName,
-          telegramLastName: lastName,
-          telegramPhotoUrl: photoUrl,
-          telegramLanguageCode: languageCode,
-          telegramIsPremium: isPremium,
-          telegramAllowsWriteToPm: allowsWriteToPm,
-        })
-        .where(eq(user.telegramId, telegramId))
-        .returning();
-      return updatedUser;
-    } else {
-      // Create new user
-      const email = `telegram-${telegramId}@telegram.user`;
-      const password = generateHashedPassword(generateUUID());
-      
-      const [newUser] = await db
-        .insert(user)
-        .values({
-          email,
-          password,
-          telegramId,
-          telegramUsername: username,
-          telegramFirstName: firstName,
-          telegramLastName: lastName,
-          telegramPhotoUrl: photoUrl,
-          telegramLanguageCode: languageCode,
-          telegramIsPremium: isPremium,
-          telegramAllowsWriteToPm: allowsWriteToPm,
-        })
-        .returning();
-      return newUser;
-    }
-  } catch (error) {
-    throw new ChatSDKError(
-      'bad_request:database',
-      'Failed to create or update Telegram user',
     );
   }
 }

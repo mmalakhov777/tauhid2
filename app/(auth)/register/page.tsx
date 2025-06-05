@@ -7,6 +7,7 @@ import Image from 'next/image';
 
 import { AuthForm } from '@/components/auth-form';
 import { SubmitButton } from '@/components/submit-button';
+import { TelegramAuthButton } from '@/components/TelegramAuthButton';
 
 import { register, type RegisterActionState } from '../actions';
 import { toast } from '@/components/toast';
@@ -51,6 +52,10 @@ export default function Page() {
     formAction(formData);
   };
 
+  const handleTelegramSuccess = () => {
+    setIsSuccessful(true);
+  };
+
   return (
     <div className="flex h-dvh w-screen bg-background">
       {/* Left side - Form */}
@@ -59,9 +64,28 @@ export default function Page() {
           <div className="flex flex-col items-center justify-center gap-2 px-4 text-center sm:px-16">
             <h3 className="text-xl font-semibold dark:text-zinc-50">Sign Up</h3>
             <p className="text-sm text-gray-500 dark:text-zinc-400">
-              Create an account with your email and password
+              Create an account with your email and password or use Telegram
             </p>
           </div>
+          
+          {/* Telegram Authentication */}
+          <div className="px-4 sm:px-16">
+            <TelegramAuthButton onSuccess={handleTelegramSuccess} />
+          </div>
+
+          {/* Divider */}
+          <div className="relative px-4 sm:px-16">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-gray-300 dark:border-zinc-600" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-gray-500 dark:text-zinc-400">
+                Or continue with email
+              </span>
+            </div>
+          </div>
+
+          {/* Email/Password Form */}
           <AuthForm action={handleSubmit} defaultEmail={email}>
             <SubmitButton isSuccessful={isSuccessful}>Sign Up</SubmitButton>
             <p className="text-center text-sm text-gray-600 mt-4 dark:text-zinc-400">

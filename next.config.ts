@@ -9,13 +9,6 @@ const nextConfig: NextConfig = {
       {
         hostname: 'avatar.vercel.sh',
       },
-      {
-        hostname: 't.me',
-      },
-      {
-        protocol: 'https',
-        hostname: '*.telegram-cdn.org',
-      },
     ],
   },
 };

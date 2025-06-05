@@ -17,7 +17,6 @@ export const user = pgTable('User', {
   id: uuid('id').primaryKey().notNull().defaultRandom(),
   email: varchar('email', { length: 64 }).notNull(),
   password: varchar('password', { length: 64 }),
-  // Telegram-specific fields
   telegramId: integer('telegramId').unique(),
   telegramUsername: varchar('telegramUsername', { length: 32 }),
   telegramFirstName: varchar('telegramFirstName', { length: 64 }),

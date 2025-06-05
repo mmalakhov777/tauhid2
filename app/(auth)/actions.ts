@@ -2,7 +2,7 @@
 
 import { z } from 'zod';
 
-import { createUser, getUser } from '@/lib/db/queries';
+import { createUser, getUser, createUserWithTelegram } from '@/lib/db/queries';
 
 import { signIn } from './auth';
 
@@ -11,8 +11,23 @@ const authFormSchema = z.object({
   password: z.string().min(6),
 });
 
+const telegramAuthSchema = z.object({
+  telegramId: z.number(),
+  telegramUsername: z.string().optional(),
+  telegramFirstName: z.string(),
+  telegramLastName: z.string().optional(),
+  telegramPhotoUrl: z.string().optional(),
+  telegramLanguageCode: z.string().optional(),
+  telegramIsPremium: z.boolean().optional(),
+  telegramAllowsWriteToPm: z.boolean().optional(),
+});
+
 export interface LoginActionState {
   status: 'idle' | 'in_progress' | 'success' | 'failed' | 'invalid_data';
+}
+
+export interface TelegramAuthState {
+  status: 'idle' | 'in_progress' | 'success' | 'failed' | 'invalid_data' | 'telegram_unavailable';
 }
 
 export const login = async (
@@ -70,6 +85,40 @@ export const register = async (
     await signIn('credentials', {
       email: validatedData.email,
       password: validatedData.password,
+      redirect: false,
+    });
+
+    return { status: 'success' };
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return { status: 'invalid_data' };
+    }
+
+    return { status: 'failed' };
+  }
+};
+
+export const telegramAuth = async (
+  telegramData: any
+): Promise<TelegramAuthState> => {
+  try {
+    const validatedData = telegramAuthSchema.parse(telegramData);
+
+    // Create a dummy email for Telegram users
+    const email = `telegram_${validatedData.telegramId}@telegram.local`;
+    
+    // Check if user already exists
+    const [existingUser] = await getUser(email);
+    
+    if (!existingUser) {
+      // Create new user with Telegram data
+      await createUserWithTelegram(email, validatedData);
+    }
+
+    // Sign in the user
+    await signIn('credentials', {
+      email: email,
+      password: 'telegram_auth', // We'll need to handle this in auth
       redirect: false,
     });
 

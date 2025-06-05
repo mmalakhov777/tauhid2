@@ -3,7 +3,6 @@ import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { ThemeProvider } from '@/components/theme-provider';
 import TelegramDebug from '@/components/TelegramDebug';
-import TelegramAuth from '@/components/TelegramAuth';
 import Script from 'next/script';
 
 import './globals.css';
@@ -56,8 +55,6 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const isDevelopment = process.env.NODE_ENV === 'development';
-  
   return (
     <html
       lang="en"
@@ -88,10 +85,8 @@ export default async function RootLayout({
         >
           <Toaster position="top-center" />
           <SessionProvider>
-            <TelegramAuth>
-              {isDevelopment && <TelegramDebug />}
-              {children}
-            </TelegramAuth>
+            <TelegramDebug />
+            {children}
           </SessionProvider>
         </ThemeProvider>
       </body>
