@@ -4,7 +4,7 @@ import type { Attachment, UIMessage } from 'ai';
 import { useChat } from '@ai-sdk/react';
 import { useEffect, useState } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
-import { ChatHeader } from '@/components/chat-header';
+// import { ChatHeader } from '@/components/chat-header';
 import type { Vote } from '@/lib/db/schema';
 import { fetcher, fetchWithErrorHandlers, generateUUID } from '@/lib/utils';
 import { MultimodalInput } from './multimodal-input';
@@ -249,11 +249,13 @@ export function Chat({
   return (
     <>
       <div className="flex flex-col min-w-0 h-dvh bg-background overflow-hidden">
+        {/* ChatHeader commented out - replaced by floating New Chat button
         <ChatHeader
           chatId={id}
           isReadonly={isReadonly}
           session={session}
         />
+        */}
 
         {/* Conditional layout based on whether there are messages */}
         {messages.length === 0 ? (
