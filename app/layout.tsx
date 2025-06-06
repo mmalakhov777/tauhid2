@@ -73,6 +73,9 @@ export default async function RootLayout({
         />
       </head>
       <body className="antialiased">
+        {/* Mobile top spacing - 20px always visible */}
+        <div className="block md:hidden h-5 w-full bg-background"></div>
+        
         <Script 
           src="https://telegram.org/js/telegram-web-app.js?57" 
           strategy="beforeInteractive"
