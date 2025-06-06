@@ -39,6 +39,7 @@ interface TelegramWebApp {
   ready: () => void;
   // Bot API 8.0+ methods
   lockOrientation?: () => void;
+  shareMessage?: (msgId: string, callback?: (success: boolean) => void) => void;
   // Bot API 7.7+ methods  
   disableVerticalSwipes?: () => void;
   // Bot API 6.1+ methods

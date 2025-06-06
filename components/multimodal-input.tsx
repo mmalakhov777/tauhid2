@@ -25,11 +25,12 @@ import { SuggestedActions } from './suggested-actions';
 import equal from 'fast-deep-equal';
 import type { UseChatHelpers } from '@ai-sdk/react';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowDown } from 'lucide-react';
+import { ArrowDown, Share, MessageCircle } from 'lucide-react';
 import { useScrollToBottom } from '@/hooks/use-scroll-to-bottom';
 import type { VisibilityType } from './visibility-selector';
 import { VisibilitySelector } from './visibility-selector';
 import type { Session } from 'next-auth';
+import { useTelegram } from '@/hooks/useTelegram';
 
 function PureMultimodalInput({
   chatId,
@@ -64,8 +65,10 @@ function PureMultimodalInput({
 }) {
   const { width } = useWindowSize();
   const router = useRouter();
+  const { webApp, isTelegramAvailable } = useTelegram();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isInputActive, setIsInputActive] = useState(false);
+  const [showShareFollowUp, setShowShareFollowUp] = useState(false);
 
   const [localStorageInput, setLocalStorageInput] = useLocalStorage(
     'input',
@@ -225,6 +228,51 @@ function PureMultimodalInput({
     };
   }, []);
 
+  // Show share/follow-up buttons when response is ready
+  useEffect(() => {
+    if (status === 'ready' && messages.length > 0 && messages[messages.length - 1].role === 'assistant') {
+      setShowShareFollowUp(true);
+    } else {
+      setShowShareFollowUp(false);
+    }
+  }, [status, messages]);
+
+  const handleShare = async () => {
+    const currentUrl = window.location.href;
+    
+    if (isTelegramAvailable && webApp) {
+      // Use Telegram's shareMessage if available (Bot API 8.0+)
+      try {
+        if ((webApp as any).shareMessage) {
+          // Note: This requires a prepared inline message from Bot API
+          // For now, we'll fall back to copying the link
+          await navigator.clipboard.writeText(currentUrl);
+          toast.success('Chat link copied to clipboard!');
+        } else {
+          // Fallback to copying link
+          await navigator.clipboard.writeText(currentUrl);
+          toast.success('Chat link copied to clipboard!');
+        }
+      } catch (error) {
+        toast.error('Failed to share chat');
+      }
+    } else {
+      // Non-Telegram: copy link to clipboard
+      try {
+        await navigator.clipboard.writeText(currentUrl);
+        toast.success('Chat link copied to clipboard!');
+      } catch (error) {
+        toast.error('Failed to copy link');
+      }
+    }
+  };
+
+  const handleFollowUp = () => {
+    setShowShareFollowUp(false);
+    setIsInputActive(true);
+    // Focus will be handled by the PromptInputBox component
+  };
+
   return (
     <div className="relative w-full flex flex-col gap-1">
       <AnimatePresence>
@@ -294,37 +342,62 @@ function PureMultimodalInput({
         onBlur={() => setIsInputActive(false)}
         onMouseDown={() => setIsInputActive(true)}
       >
-        <PromptInputBox
-          onSend={handleSend}
-          isLoading={status === 'submitted' || status === 'streaming'}
-          placeholder={
-            status === 'submitted' 
-              ? "Processing your message..." 
-              : status === 'streaming' 
-                ? "Generating response..." 
-                : "Send a message..."
-          }
-          className={cx(
-            'w-full',
-            className,
-          )}
-          onAttachmentClick={() => fileInputRef.current?.click()}
-          attachmentCount={attachments.length}
-          showStopButton={status === 'submitted' || status === 'streaming'}
-          onStopClick={() => {
-            stop();
-            setMessages((messages) => messages);
-          }}
-        />
+        {showShareFollowUp && !isInputActive ? (
+          // Share and Follow-up buttons when response is ready
+          <div className="flex gap-2 w-full">
+            <Button
+              onClick={handleShare}
+              variant="outline"
+              className="flex-1 flex items-center gap-2"
+            >
+              <Share size={16} />
+              Share
+            </Button>
+            <Button
+              onClick={handleFollowUp}
+              variant="outline"
+              className="flex-1 flex items-center gap-2"
+            >
+              <MessageCircle size={16} />
+              Follow up
+            </Button>
+          </div>
+        ) : (
+          // Regular input when not showing share/follow-up
+          <>
+            <PromptInputBox
+              onSend={handleSend}
+              isLoading={status === 'submitted' || status === 'streaming'}
+              placeholder={
+                status === 'submitted' 
+                  ? "Processing your message..." 
+                  : status === 'streaming' 
+                    ? "Generating response..." 
+                    : "Send a message..."
+              }
+              className={cx(
+                'w-full',
+                className,
+              )}
+              onAttachmentClick={() => fileInputRef.current?.click()}
+              attachmentCount={attachments.length}
+              showStopButton={status === 'submitted' || status === 'streaming'}
+              onStopClick={() => {
+                stop();
+                setMessages((messages) => messages);
+              }}
+            />
 
-        {/* Visibility Selector - Bottom Left Inside */}
-        <div className="absolute bottom-3 left-3 flex flex-row gap-1 items-center">
-          <VisibilitySelector
-            chatId={chatId}
-            selectedVisibilityType={selectedVisibilityType}
-            className="!h-8 !text-xs !px-2 !border-border !bg-background hover:!bg-accent !text-muted-foreground hover:!text-accent-foreground !rounded-full"
-          />
-        </div>
+            {/* Visibility Selector - Bottom Left Inside */}
+            <div className="absolute bottom-3 left-3 flex flex-row gap-1 items-center">
+              <VisibilitySelector
+                chatId={chatId}
+                selectedVisibilityType={selectedVisibilityType}
+                className="!h-8 !text-xs !px-2 !border-border !bg-background hover:!bg-accent !text-muted-foreground hover:!text-accent-foreground !rounded-full"
+              />
+            </div>
+          </>
+        )}
       </div>
 
       {/* Consent Text */}
