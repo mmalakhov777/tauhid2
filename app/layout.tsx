@@ -71,27 +71,29 @@ export default async function RootLayout({
             __html: THEME_COLOR_SCRIPT,
           }}
         />
-        <style jsx global>{`
-          /* Telegram Mini App viewport support */
-          :root {
-            --tg-spacing-top: 20px;
-            --tg-viewport-height: var(--tg-viewport-height, 100vh);
-            --tg-viewport-stable-height: var(--tg-viewport-stable-height, 100vh);
-          }
-          
-          /* Mobile-specific Telegram spacing */
-          @media (max-width: 768px) {
-            body {
-              padding-top: var(--tg-spacing-top);
-              min-height: var(--tg-viewport-stable-height);
+        <style dangerouslySetInnerHTML={{
+          __html: `
+            /* Telegram Mini App viewport support */
+            :root {
+              --tg-spacing-top: 20px;
+              --tg-viewport-height: var(--tg-viewport-height, 100vh);
+              --tg-viewport-stable-height: var(--tg-viewport-stable-height, 100vh);
             }
-          }
-          
-          /* Ensure proper spacing in Telegram context */
-          .telegram-app-container {
-            min-height: calc(var(--tg-viewport-stable-height, 100vh) - var(--tg-spacing-top, 20px));
-          }
-        `}</style>
+            
+            /* Mobile-specific Telegram spacing */
+            @media (max-width: 768px) {
+              body {
+                padding-top: var(--tg-spacing-top);
+                min-height: var(--tg-viewport-stable-height);
+              }
+            }
+            
+            /* Ensure proper spacing in Telegram context */
+            .telegram-app-container {
+              min-height: calc(var(--tg-viewport-stable-height, 100vh) - var(--tg-spacing-top, 20px));
+            }
+          `
+        }} />
       </head>
       <body className="antialiased">
         <Script 
