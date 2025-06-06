@@ -230,38 +230,102 @@ function PureMultimodalInput({
 
   // Show share/follow-up buttons when response is ready
   useEffect(() => {
-    if (status === 'ready' && messages.length > 0 && messages[messages.length - 1].role === 'assistant') {
+    const shouldShow = status === 'ready' && messages.length > 0 && messages[messages.length - 1].role === 'assistant';
+    console.log('🔍 Share/Follow-up visibility check:', {
+      status,
+      messagesLength: messages.length,
+      lastMessageRole: messages.length > 0 ? messages[messages.length - 1].role : 'none',
+      shouldShow,
+      currentShowState: showShareFollowUp
+    });
+    
+    if (shouldShow) {
+      console.log('🎯 Setting showShareFollowUp to true - buttons should render!');
       setShowShareFollowUp(true);
     } else {
       setShowShareFollowUp(false);
     }
-  }, [status, messages]);
+  }, [status, messages, showShareFollowUp]);
 
   const handleShare = async () => {
     const currentUrl = window.location.href;
+    console.log('🔗 Attempting to share URL:', currentUrl);
+    
+    // Try multiple methods to copy to clipboard
+    const copyToClipboard = async (text: string) => {
+      // Method 1: Modern Clipboard API
+      if (navigator.clipboard && window.isSecureContext) {
+        try {
+          await navigator.clipboard.writeText(text);
+          return true;
+        } catch (err) {
+          console.warn('Clipboard API failed:', err);
+        }
+      }
+      
+      // Method 2: Fallback using document.execCommand (deprecated but widely supported)
+      try {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        textArea.style.top = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        const successful = document.execCommand('copy');
+        document.body.removeChild(textArea);
+        if (successful) {
+          return true;
+        }
+      } catch (err) {
+        console.warn('execCommand failed:', err);
+      }
+      
+      return false;
+    };
     
     if (isTelegramAvailable && webApp) {
+      console.log('📱 Telegram environment detected');
       // Use Telegram's shareMessage if available (Bot API 8.0+)
       try {
         if ((webApp as any).shareMessage) {
+          console.log('🚀 Using Telegram shareMessage API');
           // Note: This requires a prepared inline message from Bot API
           // For now, we'll fall back to copying the link
-          await navigator.clipboard.writeText(currentUrl);
-          toast.success('Chat link copied to clipboard!');
+          const success = await copyToClipboard(currentUrl);
+          if (success) {
+            toast.success('Chat link copied to clipboard!');
+          } else {
+            toast.error('Failed to copy link to clipboard');
+          }
         } else {
+          console.log('📋 Telegram shareMessage not available, using clipboard');
           // Fallback to copying link
-          await navigator.clipboard.writeText(currentUrl);
-          toast.success('Chat link copied to clipboard!');
+          const success = await copyToClipboard(currentUrl);
+          if (success) {
+            toast.success('Chat link copied to clipboard!');
+          } else {
+            toast.error('Failed to copy link to clipboard');
+          }
         }
       } catch (error) {
+        console.error('Share error:', error);
         toast.error('Failed to share chat');
       }
     } else {
+      console.log('🌐 Non-Telegram environment');
       // Non-Telegram: copy link to clipboard
       try {
-        await navigator.clipboard.writeText(currentUrl);
-        toast.success('Chat link copied to clipboard!');
+        const success = await copyToClipboard(currentUrl);
+        if (success) {
+          toast.success('Chat link copied to clipboard!');
+        } else {
+          // Last resort: show the URL to user
+          toast.error('Unable to copy automatically. URL: ' + currentUrl);
+        }
       } catch (error) {
+        console.error('Copy error:', error);
         toast.error('Failed to copy link');
       }
     }
@@ -346,7 +410,10 @@ function PureMultimodalInput({
           // Share and Follow-up buttons when response is ready
           <div className="flex gap-2 w-full">
             <Button
-              onClick={handleShare}
+              onClick={() => {
+                console.log('🔗 Share button clicked!');
+                handleShare();
+              }}
               variant="outline"
               className="flex-1 flex items-center gap-2"
             >
@@ -354,7 +421,10 @@ function PureMultimodalInput({
               Share
             </Button>
             <Button
-              onClick={handleFollowUp}
+              onClick={() => {
+                console.log('💬 Follow-up button clicked!');
+                handleFollowUp();
+              }}
               variant="outline"
               className="flex-1 flex items-center gap-2"
             >
