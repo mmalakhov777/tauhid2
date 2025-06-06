@@ -17,9 +17,10 @@ interface TelegramEmailFormProps {
     allows_write_to_pm?: boolean;
   };
   onComplete: () => void;
+  onSkip?: () => void;
 }
 
-export const TelegramEmailForm = ({ telegramUser, onComplete }: TelegramEmailFormProps) => {
+export const TelegramEmailForm = ({ telegramUser, onComplete, onSkip }: TelegramEmailFormProps) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -80,6 +81,10 @@ export const TelegramEmailForm = ({ telegramUser, onComplete }: TelegramEmailFor
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleSkip = () => {
+    onSkip?.();
   };
 
   return (
@@ -160,6 +165,13 @@ export const TelegramEmailForm = ({ telegramUser, onComplete }: TelegramEmailFor
 
           <div className="flex gap-3 pt-4">
             <button
+              type="button"
+              onClick={handleSkip}
+              className="flex-1 bg-gray-200 hover:bg-gray-300 dark:bg-zinc-700 dark:hover:bg-zinc-600 text-gray-700 dark:text-zinc-300 py-2 px-4 rounded-lg transition-colors"
+            >
+              Skip for now
+            </button>
+            <button
               type="submit"
               disabled={isSubmitting}
               className="flex-1 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
@@ -177,7 +189,7 @@ export const TelegramEmailForm = ({ telegramUser, onComplete }: TelegramEmailFor
         </form>
 
         <p className="text-xs text-gray-500 dark:text-zinc-400 mt-4 text-center">
-          Your Telegram account will be linked to this email for web access
+          You can complete this setup later to access the web app
         </p>
       </div>
     </div>

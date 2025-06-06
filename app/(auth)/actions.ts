@@ -20,6 +20,7 @@ const telegramAuthSchema = z.object({
   telegramLanguageCode: z.string().optional(),
   telegramIsPremium: z.boolean().optional(),
   telegramAllowsWriteToPm: z.boolean().optional(),
+  skipEmail: z.boolean().optional(),
 });
 
 export interface LoginActionState {
@@ -112,12 +113,32 @@ export const telegramAuth = async (
       const dummyEmail = `telegram_${validatedData.telegramId}@telegram.local`;
       await createUserWithTelegram(dummyEmail, validatedData);
       
+      // If skipEmail is true, sign them in immediately
+      if (validatedData.skipEmail) {
+        await signIn('credentials', {
+          email: dummyEmail,
+          password: 'telegram_auth',
+          redirect: false,
+        });
+        return { status: 'success' };
+      }
+      
       // Return needs_email status for new users
       return { status: 'needs_email' };
     }
 
     // Check if user has a real email (not the dummy one)
     if (existingUser.email.startsWith('telegram_') && existingUser.email.endsWith('@telegram.local')) {
+      // If skipEmail is true, sign them in with dummy email
+      if (validatedData.skipEmail) {
+        await signIn('credentials', {
+          email: existingUser.email,
+          password: 'telegram_auth',
+          redirect: false,
+        });
+        return { status: 'success' };
+      }
+      
       // User exists but doesn't have a real email yet
       return { status: 'needs_email' };
     }

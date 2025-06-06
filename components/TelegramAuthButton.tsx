@@ -63,6 +63,36 @@ export const TelegramAuthButton = ({ onSuccess }: TelegramAuthButtonProps) => {
     onSuccess?.();
   };
 
+  const handleEmailFormSkip = async () => {
+    if (!user) return;
+
+    try {
+      // Create user with dummy email and sign them in
+      const result = await telegramAuth({
+        telegramId: user.id,
+        telegramUsername: user.username,
+        telegramFirstName: user.first_name,
+        telegramLastName: user.last_name,
+        telegramPhotoUrl: user.photo_url,
+        telegramLanguageCode: user.language_code,
+        telegramIsPremium: user.is_premium,
+        telegramAllowsWriteToPm: user.allows_write_to_pm,
+        skipEmail: true,
+      });
+
+      if (result.status === 'success') {
+        toast({ type: 'success', description: 'Signed in with Telegram! You can complete email setup later.' });
+        updateSession();
+        router.refresh();
+        setShowEmailForm(false);
+        onSuccess?.();
+      }
+    } catch (error) {
+      console.error('Skip auth error:', error);
+      toast({ type: 'error', description: 'An error occurred during authentication' });
+    }
+  };
+
   if (isLoading) {
     return (
       <button 
@@ -110,6 +140,7 @@ export const TelegramAuthButton = ({ onSuccess }: TelegramAuthButtonProps) => {
         <TelegramEmailForm 
           telegramUser={user} 
           onComplete={handleEmailFormComplete}
+          onSkip={handleEmailFormSkip}
         />
       )}
     </>
