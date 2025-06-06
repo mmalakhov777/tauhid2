@@ -230,102 +230,44 @@ function PureMultimodalInput({
 
   // Show share/follow-up buttons when response is ready
   useEffect(() => {
-    const shouldShow = status === 'ready' && messages.length > 0 && messages[messages.length - 1].role === 'assistant';
-    console.log('🔍 Share/Follow-up visibility check:', {
-      status,
-      messagesLength: messages.length,
-      lastMessageRole: messages.length > 0 ? messages[messages.length - 1].role : 'none',
-      shouldShow,
-      currentShowState: showShareFollowUp
-    });
-    
-    if (shouldShow) {
-      console.log('🎯 Setting showShareFollowUp to true - buttons should render!');
+    if (status === 'ready' && messages.length > 0 && messages[messages.length - 1].role === 'assistant') {
       setShowShareFollowUp(true);
     } else {
       setShowShareFollowUp(false);
     }
-  }, [status, messages, showShareFollowUp]);
+  }, [status, messages]);
 
   const handleShare = async () => {
     const currentUrl = window.location.href;
-    console.log('🔗 Attempting to share URL:', currentUrl);
-    
-    // Try multiple methods to copy to clipboard
-    const copyToClipboard = async (text: string) => {
-      // Method 1: Modern Clipboard API
-      if (navigator.clipboard && window.isSecureContext) {
-        try {
-          await navigator.clipboard.writeText(text);
-          return true;
-        } catch (err) {
-          console.warn('Clipboard API failed:', err);
-        }
-      }
-      
-      // Method 2: Fallback using document.execCommand (deprecated but widely supported)
-      try {
-        const textArea = document.createElement('textarea');
-        textArea.value = text;
-        textArea.style.position = 'fixed';
-        textArea.style.left = '-999999px';
-        textArea.style.top = '-999999px';
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        const successful = document.execCommand('copy');
-        document.body.removeChild(textArea);
-        if (successful) {
-          return true;
-        }
-      } catch (err) {
-        console.warn('execCommand failed:', err);
-      }
-      
-      return false;
-    };
     
     if (isTelegramAvailable && webApp) {
-      console.log('📱 Telegram environment detected');
-      // Use Telegram's shareMessage if available (Bot API 8.0+)
+      // For Telegram Mini Apps, we need to use shareMessage with prepared inline messages
+      // Since we don't have a prepared message ID from the bot, we'll fall back to copying the link
+      // In a real implementation, the bot would need to call savePreparedInlineMessage first
       try {
-        if ((webApp as any).shareMessage) {
-          console.log('🚀 Using Telegram shareMessage API');
-          // Note: This requires a prepared inline message from Bot API
+        // Check if shareMessage is available (Bot API 8.0+)
+        if (webApp.shareMessage && typeof webApp.shareMessage === 'function') {
+          // This would require a prepared message ID from the bot
           // For now, we'll fall back to copying the link
-          const success = await copyToClipboard(currentUrl);
-          if (success) {
-            toast.success('Chat link copied to clipboard!');
-          } else {
-            toast.error('Failed to copy link to clipboard');
-          }
+          console.log('shareMessage is available but requires prepared message ID from bot');
+          await navigator.clipboard.writeText(currentUrl);
+          toast.success('Chat link copied to clipboard!');
         } else {
-          console.log('📋 Telegram shareMessage not available, using clipboard');
-          // Fallback to copying link
-          const success = await copyToClipboard(currentUrl);
-          if (success) {
-            toast.success('Chat link copied to clipboard!');
-          } else {
-            toast.error('Failed to copy link to clipboard');
-          }
+          // Fallback to copying link for older Telegram versions
+          await navigator.clipboard.writeText(currentUrl);
+          toast.success('Chat link copied to clipboard!');
         }
       } catch (error) {
-        console.error('Share error:', error);
+        console.error('Share failed:', error);
         toast.error('Failed to share chat');
       }
     } else {
-      console.log('🌐 Non-Telegram environment');
       // Non-Telegram: copy link to clipboard
       try {
-        const success = await copyToClipboard(currentUrl);
-        if (success) {
-          toast.success('Chat link copied to clipboard!');
-        } else {
-          // Last resort: show the URL to user
-          toast.error('Unable to copy automatically. URL: ' + currentUrl);
-        }
+        await navigator.clipboard.writeText(currentUrl);
+        toast.success('Chat link copied to clipboard!');
       } catch (error) {
-        console.error('Copy error:', error);
+        console.error('Copy failed:', error);
         toast.error('Failed to copy link');
       }
     }
@@ -410,10 +352,7 @@ function PureMultimodalInput({
           // Share and Follow-up buttons when response is ready
           <div className="flex gap-2 w-full">
             <Button
-              onClick={() => {
-                console.log('🔗 Share button clicked!');
-                handleShare();
-              }}
+              onClick={handleShare}
               variant="outline"
               className="flex-1 flex items-center gap-2"
             >
@@ -421,10 +360,7 @@ function PureMultimodalInput({
               Share
             </Button>
             <Button
-              onClick={() => {
-                console.log('💬 Follow-up button clicked!');
-                handleFollowUp();
-              }}
+              onClick={handleFollowUp}
               variant="outline"
               className="flex-1 flex items-center gap-2"
             >
