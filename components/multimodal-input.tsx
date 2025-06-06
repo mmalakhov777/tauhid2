@@ -15,8 +15,9 @@ import {
 } from 'react';
 import { toast } from 'sonner';
 import { useLocalStorage, useWindowSize } from 'usehooks-ts';
+import { useRouter } from 'next/navigation';
 
-import { ArrowUpIcon, PaperclipIcon, StopIcon } from './icons';
+import { ArrowUpIcon, PaperclipIcon, StopIcon, PlusIcon } from './icons';
 import { PreviewAttachment } from './preview-attachment';
 import { Button } from './ui/button';
 import { PromptInputBox } from './ui/ai-prompt-box';
@@ -62,6 +63,7 @@ function PureMultimodalInput({
   session: Session | null;
 }) {
   const { width } = useWindowSize();
+  const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isInputActive, setIsInputActive] = useState(false);
 
@@ -245,6 +247,32 @@ function PureMultimodalInput({
               }}
             >
               <ArrowDown />
+            </Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isAtBottom && messages.length > 0 && !isInputActive && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+            className="absolute bottom-36 left-[45%] -translate-x-1/2 z-50 flex justify-center items-center"
+          >
+            <Button
+              data-testid="new-chat-button"
+              className="rounded-full shadow-lg"
+              size="icon"
+              variant="outline"
+              onClick={(event) => {
+                event.preventDefault();
+                router.push('/');
+                router.refresh();
+              }}
+            >
+              <PlusIcon />
             </Button>
           </motion.div>
         )}

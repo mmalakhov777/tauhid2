@@ -88,7 +88,7 @@ export const TelegramEmailForm = ({ telegramUser, onComplete, onSkip }: Telegram
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[9999999]">
       <div className="bg-white dark:bg-zinc-900 rounded-lg p-6 w-full max-w-md">
         <div className="flex items-center gap-3 mb-6">
           {telegramUser.photo_url && (
@@ -163,18 +163,11 @@ export const TelegramEmailForm = ({ telegramUser, onComplete, onSkip }: Telegram
             />
           </div>
 
-          <div className="flex gap-3 pt-4">
-            <button
-              type="button"
-              onClick={handleSkip}
-              className="flex-1 bg-gray-200 hover:bg-gray-300 dark:bg-zinc-700 dark:hover:bg-zinc-600 text-gray-700 dark:text-zinc-300 py-2 px-4 rounded-lg transition-colors"
-            >
-              Skip for now
-            </button>
+          <div className="pt-4">
             <button
               type="submit"
               disabled={isSubmitting}
-              className="flex-1 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+              className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
             >
               {isSubmitting ? (
                 <>
@@ -184,6 +177,13 @@ export const TelegramEmailForm = ({ telegramUser, onComplete, onSkip }: Telegram
               ) : (
                 'Complete Setup'
               )}
+            </button>
+            <button
+              type="button"
+              onClick={handleSkip}
+              className="w-full mt-3 text-sm text-gray-500 hover:text-gray-700 dark:text-zinc-400 dark:hover:text-zinc-200 transition-colors"
+            >
+              Skip for now
             </button>
           </div>
         </form>

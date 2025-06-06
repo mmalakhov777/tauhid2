@@ -37,6 +37,15 @@ interface TelegramWebApp {
   isActive: boolean;
   isExpanded: boolean;
   ready: () => void;
+  // Bot API 8.0+ methods
+  lockOrientation?: () => void;
+  // Bot API 7.7+ methods  
+  disableVerticalSwipes?: () => void;
+  // Bot API 6.1+ methods
+  setBackgroundColor?: (color: string) => void;
+  // Additional useful methods
+  expand?: () => void;
+  enableClosingConfirmation?: () => void;
 }
 
 export const useTelegram = () => {

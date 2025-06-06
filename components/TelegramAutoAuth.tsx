@@ -6,15 +6,70 @@ import { telegramAuth } from '@/app/(auth)/actions';
 import { toast } from '@/components/toast';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import { useTheme } from 'next-themes';
 import { TelegramEmailForm } from './TelegramEmailForm';
 
 export const TelegramAutoAuth = () => {
-  const { user: telegramUser, isTelegramAvailable, isLoading } = useTelegram();
+  const { user: telegramUser, webApp, isTelegramAvailable, isLoading } = useTelegram();
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const hasAttemptedAuth = useRef(false);
+  const hasOptimizedWebApp = useRef(false);
   const router = useRouter();
   const { data: session, update: updateSession } = useSession();
+  const { theme } = useTheme();
+
+  // Telegram WebApp optimizations
+  useEffect(() => {
+    if (webApp && isTelegramAvailable && !hasOptimizedWebApp.current) {
+      hasOptimizedWebApp.current = true;
+      
+      try {
+        // Lock orientation to current mode for stable experience
+        if (typeof webApp.lockOrientation === 'function') {
+          webApp.lockOrientation();
+          console.log('🔒 Telegram: Orientation locked');
+        }
+
+        // Disable vertical swipes to prevent conflicts with app gestures
+        if (typeof webApp.disableVerticalSwipes === 'function') {
+          webApp.disableVerticalSwipes();
+          console.log('🚫 Telegram: Vertical swipes disabled');
+        }
+
+        // Set background color based on theme
+        if (typeof webApp.setBackgroundColor === 'function') {
+          const backgroundColor = theme === 'dark' ? '#0a0a0a' : '#ffffff';
+          webApp.setBackgroundColor(backgroundColor);
+          console.log('🎨 Telegram: Background color set to', backgroundColor);
+        }
+
+        // Expand the app to full height
+        if (typeof webApp.expand === 'function') {
+          webApp.expand();
+          console.log('📱 Telegram: App expanded');
+        }
+
+        // Enable closing confirmation to prevent accidental exits
+        if (typeof webApp.enableClosingConfirmation === 'function') {
+          webApp.enableClosingConfirmation();
+          console.log('⚠️ Telegram: Closing confirmation enabled');
+        }
+
+      } catch (error) {
+        console.error('Telegram WebApp optimization error:', error);
+      }
+    }
+  }, [webApp, isTelegramAvailable, theme]);
+
+  // Update background color when theme changes
+  useEffect(() => {
+    if (webApp && isTelegramAvailable && typeof webApp.setBackgroundColor === 'function') {
+      const backgroundColor = theme === 'dark' ? '#0a0a0a' : '#ffffff';
+      webApp.setBackgroundColor(backgroundColor);
+      console.log('🎨 Telegram: Background color updated to', backgroundColor);
+    }
+  }, [theme, webApp, isTelegramAvailable]);
 
   useEffect(() => {
     const autoAuthenticate = async () => {
