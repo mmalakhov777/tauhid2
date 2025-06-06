@@ -25,6 +25,9 @@ export const TelegramAutoAuth = () => {
       hasOptimizedWebApp.current = true;
       
       try {
+        // Check fullscreen mode status
+        console.log('📱 Telegram: Is Fullscreen:', webApp.isFullscreen);
+
         // Lock orientation to current mode for stable experience
         if (typeof webApp.lockOrientation === 'function') {
           webApp.lockOrientation();
@@ -54,6 +57,13 @@ export const TelegramAutoAuth = () => {
         if (typeof webApp.enableClosingConfirmation === 'function') {
           webApp.enableClosingConfirmation();
           console.log('⚠️ Telegram: Closing confirmation enabled');
+        }
+
+        // Additional fullscreen-specific optimizations
+        if (webApp.isFullscreen) {
+          console.log('🔳 Telegram: Running in fullscreen mode - optimal experience');
+        } else {
+          console.log('📱 Telegram: Running in normal mode');
         }
 
       } catch (error) {

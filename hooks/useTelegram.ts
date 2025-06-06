@@ -36,6 +36,7 @@ interface TelegramWebApp {
   colorScheme: 'light' | 'dark';
   isActive: boolean;
   isExpanded: boolean;
+  isFullscreen: boolean;
   ready: () => void;
   // Bot API 8.0+ methods
   lockOrientation?: () => void;
