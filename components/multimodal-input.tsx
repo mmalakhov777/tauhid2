@@ -297,7 +297,13 @@ function PureMultimodalInput({
         <PromptInputBox
           onSend={handleSend}
           isLoading={status === 'submitted' || status === 'streaming'}
-          placeholder="Send a message..."
+          placeholder={
+            status === 'submitted' 
+              ? "Processing your message..." 
+              : status === 'streaming' 
+                ? "Generating response..." 
+                : "Send a message..."
+          }
           className={cx(
             'w-full',
             className,
