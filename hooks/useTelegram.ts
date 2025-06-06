@@ -37,6 +37,8 @@ interface TelegramWebApp {
   isActive: boolean;
   isExpanded: boolean;
   isFullscreen: boolean;
+  viewportHeight: number;
+  viewportStableHeight: number;
   ready: () => void;
   // Bot API 8.0+ methods
   lockOrientation?: () => void;
@@ -48,6 +50,9 @@ interface TelegramWebApp {
   // Additional useful methods
   expand?: () => void;
   enableClosingConfirmation?: () => void;
+  // Event methods
+  onEvent?: (eventType: string, eventHandler: () => void) => void;
+  offEvent?: (eventType: string, eventHandler: () => void) => void;
 }
 
 export const useTelegram = () => {

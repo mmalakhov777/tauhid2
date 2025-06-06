@@ -71,15 +71,34 @@ export default async function RootLayout({
             __html: THEME_COLOR_SCRIPT,
           }}
         />
+        <style jsx global>{`
+          /* Telegram Mini App viewport support */
+          :root {
+            --tg-spacing-top: 20px;
+            --tg-viewport-height: var(--tg-viewport-height, 100vh);
+            --tg-viewport-stable-height: var(--tg-viewport-stable-height, 100vh);
+          }
+          
+          /* Mobile-specific Telegram spacing */
+          @media (max-width: 768px) {
+            body {
+              padding-top: var(--tg-spacing-top);
+              min-height: var(--tg-viewport-stable-height);
+            }
+          }
+          
+          /* Ensure proper spacing in Telegram context */
+          .telegram-app-container {
+            min-height: calc(var(--tg-viewport-stable-height, 100vh) - var(--tg-spacing-top, 20px));
+          }
+        `}</style>
       </head>
       <body className="antialiased">
-        {/* Mobile top spacing - 20px always visible */}
-        <div className="block md:hidden h-5 w-full bg-background"></div>
-        
         <Script 
           src="https://telegram.org/js/telegram-web-app.js?57" 
           strategy="beforeInteractive"
         />
+        
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
@@ -89,7 +108,9 @@ export default async function RootLayout({
           <Toaster position="top-center" />
           <SessionProvider>
             <TelegramAutoAuth />
-            {children}
+            <div className="telegram-app-container">
+              {children}
+            </div>
           </SessionProvider>
         </ThemeProvider>
       </body>
