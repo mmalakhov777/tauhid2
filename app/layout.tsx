@@ -72,7 +72,7 @@ export default async function RootLayout({
           }}
         />
       </head>
-      <body className="antialiased">
+      <body className="antialiased pb-5 md:pb-0">
         <Script 
           src="https://telegram.org/js/telegram-web-app.js?57" 
           strategy="beforeInteractive"

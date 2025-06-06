@@ -248,7 +248,7 @@ export function Chat({
 
   return (
     <>
-      <div className="flex flex-col min-w-0 h-dvh bg-background overflow-hidden">
+      <div className="flex flex-col min-w-0 h-dvh bg-background overflow-hidden pb-5 md:pb-0">
         {/* ChatHeader commented out - replaced by floating New Chat button
         <ChatHeader
           chatId={id}
