@@ -31,17 +31,6 @@ export const TelegramAutoAuth = () => {
           console.log('🔒 Telegram: Orientation locked');
         }
 
-        // Request fullscreen mode for immersive experience
-        if (typeof webApp.requestFullscreen === 'function') {
-          webApp.requestFullscreen();
-          console.log('📱 Telegram: Fullscreen requested');
-        }
-
-        // Log current fullscreen status
-        if (typeof webApp.isFullscreen === 'boolean') {
-          console.log('📱 Telegram: Fullscreen status:', webApp.isFullscreen);
-        }
-
         // Disable vertical swipes to prevent conflicts with app gestures
         if (typeof webApp.disableVerticalSwipes === 'function') {
           webApp.disableVerticalSwipes();

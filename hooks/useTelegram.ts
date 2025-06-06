@@ -36,13 +36,9 @@ interface TelegramWebApp {
   colorScheme: 'light' | 'dark';
   isActive: boolean;
   isExpanded: boolean;
-  isFullscreen: boolean;
-  viewportHeight: number;
-  viewportStableHeight: number;
   ready: () => void;
   // Bot API 8.0+ methods
   lockOrientation?: () => void;
-  requestFullscreen?: () => void;
   // Bot API 7.7+ methods  
   disableVerticalSwipes?: () => void;
   // Bot API 6.1+ methods
@@ -50,9 +46,6 @@ interface TelegramWebApp {
   // Additional useful methods
   expand?: () => void;
   enableClosingConfirmation?: () => void;
-  // Event methods
-  onEvent?: (eventType: string, eventHandler: () => void) => void;
-  offEvent?: (eventType: string, eventHandler: () => void) => void;
 }
 
 export const useTelegram = () => {
