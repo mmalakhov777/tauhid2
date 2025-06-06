@@ -2,7 +2,7 @@
 
 import { z } from 'zod';
 
-import { createUser, getUser, createUserWithTelegram } from '@/lib/db/queries';
+import { createUser, getUser, createUserWithTelegram, getUserByTelegramId } from '@/lib/db/queries';
 
 import { signIn } from './auth';
 
@@ -27,7 +27,7 @@ export interface LoginActionState {
 }
 
 export interface TelegramAuthState {
-  status: 'idle' | 'in_progress' | 'success' | 'failed' | 'invalid_data' | 'telegram_unavailable';
+  status: 'idle' | 'in_progress' | 'success' | 'failed' | 'invalid_data' | 'telegram_unavailable' | 'needs_email';
 }
 
 export const login = async (
@@ -103,22 +103,29 @@ export const telegramAuth = async (
 ): Promise<TelegramAuthState> => {
   try {
     const validatedData = telegramAuthSchema.parse(telegramData);
-
-    // Create a dummy email for Telegram users
-    const email = `telegram_${validatedData.telegramId}@telegram.local`;
     
-    // Check if user already exists
-    const [existingUser] = await getUser(email);
+    // Check if user already exists by Telegram ID
+    const [existingUser] = await getUserByTelegramId(validatedData.telegramId);
     
     if (!existingUser) {
-      // Create new user with Telegram data
-      await createUserWithTelegram(email, validatedData);
+      // Create new user with Telegram data but dummy email
+      const dummyEmail = `telegram_${validatedData.telegramId}@telegram.local`;
+      await createUserWithTelegram(dummyEmail, validatedData);
+      
+      // Return needs_email status for new users
+      return { status: 'needs_email' };
     }
 
-    // Sign in the user
+    // Check if user has a real email (not the dummy one)
+    if (existingUser.email.startsWith('telegram_') && existingUser.email.endsWith('@telegram.local')) {
+      // User exists but doesn't have a real email yet
+      return { status: 'needs_email' };
+    }
+
+    // Sign in the user with existing credentials
     await signIn('credentials', {
-      email: email,
-      password: 'telegram_auth', // We'll need to handle this in auth
+      email: existingUser.email,
+      password: 'telegram_auth',
       redirect: false,
     });
 

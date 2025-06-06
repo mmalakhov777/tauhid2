@@ -54,6 +54,17 @@ export async function getUser(email: string): Promise<Array<User>> {
   }
 }
 
+export async function getUserByTelegramId(telegramId: number): Promise<Array<User>> {
+  try {
+    return await db.select().from(user).where(eq(user.telegramId, telegramId));
+  } catch (error) {
+    throw new ChatSDKError(
+      'bad_request:database',
+      'Failed to get user by Telegram ID',
+    );
+  }
+}
+
 export async function createUser(email: string, password: string) {
   const hashedPassword = generateHashedPassword(password);
 
@@ -94,6 +105,26 @@ export async function createUserWithTelegram(
     });
   } catch (error) {
     throw new ChatSDKError('bad_request:database', 'Failed to create user with Telegram data');
+  }
+}
+
+export async function updateUserWithEmailPassword(
+  telegramId: number,
+  email: string,
+  password: string
+) {
+  const hashedPassword = generateHashedPassword(password);
+
+  try {
+    return await db
+      .update(user)
+      .set({ 
+        email, 
+        password: hashedPassword 
+      })
+      .where(eq(user.telegramId, telegramId));
+  } catch (error) {
+    throw new ChatSDKError('bad_request:database', 'Failed to update user with email and password');
   }
 }
 

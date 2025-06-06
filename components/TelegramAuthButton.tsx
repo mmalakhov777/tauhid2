@@ -6,6 +6,7 @@ import { telegramAuth } from '@/app/(auth)/actions';
 import { toast } from '@/components/toast';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import { TelegramEmailForm } from './TelegramEmailForm';
 
 interface TelegramAuthButtonProps {
   onSuccess?: () => void;
@@ -14,6 +15,7 @@ interface TelegramAuthButtonProps {
 export const TelegramAuthButton = ({ onSuccess }: TelegramAuthButtonProps) => {
   const { user, isTelegramAvailable, isLoading, error } = useTelegram();
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [showEmailForm, setShowEmailForm] = useState(false);
   const router = useRouter();
   const { update: updateSession } = useSession();
 
@@ -42,6 +44,9 @@ export const TelegramAuthButton = ({ onSuccess }: TelegramAuthButtonProps) => {
         updateSession();
         router.refresh();
         onSuccess?.();
+      } else if (result.status === 'needs_email') {
+        // User exists but needs email/password for web access
+        setShowEmailForm(true);
       } else {
         toast({ type: 'error', description: 'Failed to authenticate with Telegram' });
       }
@@ -51,6 +56,11 @@ export const TelegramAuthButton = ({ onSuccess }: TelegramAuthButtonProps) => {
     } finally {
       setIsAuthenticating(false);
     }
+  };
+
+  const handleEmailFormComplete = () => {
+    setShowEmailForm(false);
+    onSuccess?.();
   };
 
   if (isLoading) {
@@ -75,24 +85,33 @@ export const TelegramAuthButton = ({ onSuccess }: TelegramAuthButtonProps) => {
   }
 
   return (
-    <button
-      onClick={handleTelegramAuth}
-      disabled={isAuthenticating}
-      className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white rounded-lg transition-colors"
-    >
-      {isAuthenticating ? (
-        <>
-          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-          Authenticating...
-        </>
-      ) : (
-        <>
-          <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 0C5.374 0 0 5.373 0 12s5.374 12 12 12 12-5.373 12-12S18.626 0 12 0zm5.568 8.16c-.169 1.858-.896 6.728-.896 6.728-.896 6.728-1.268 7.928-1.268 7.928-.16.906-.923 1.101-1.517.683 0 0-2.271-1.702-3.414-2.559-.24-.18-.513-.54-.24-.96l2.34-2.277c.26-.252.52-.756 0-.756-.52 0-3.414 2.277-3.414 2.277-.817.533-1.75.684-1.75.684l-3.293-.906s-.414-.252-.274-.756c.14-.504.793-.756.793-.756s7.776-2.834 10.428-3.788c.793-.286 1.793-.133 1.793 1.125z"/>
-          </svg>
-          Continue with Telegram
-        </>
+    <>
+      <button
+        onClick={handleTelegramAuth}
+        disabled={isAuthenticating}
+        className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white rounded-lg transition-colors"
+      >
+        {isAuthenticating ? (
+          <>
+            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            Authenticating...
+          </>
+        ) : (
+          <>
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 0C5.374 0 0 5.373 0 12s5.374 12 12 12 12-5.373 12-12S18.626 0 12 0zm5.568 8.16c-.169 1.858-.896 6.728-.896 6.728-.896 6.728-1.268 7.928-1.268 7.928-.16.906-.923 1.101-1.517.683 0 0-2.271-1.702-3.414-2.559-.24-.18-.513-.54-.24-.96l2.34-2.277c.26-.252.52-.756 0-.756-.52 0-3.414 2.277-3.414 2.277-.817.533-1.75.684-1.75.684l-3.293-.906s-.414-.252-.274-.756c.14-.504.793-.756.793-.756s7.776-2.834 10.428-3.788c.793-.286 1.793-.133 1.793 1.125z"/>
+            </svg>
+            Continue with Telegram
+          </>
+        )}
+      </button>
+
+      {showEmailForm && user && (
+        <TelegramEmailForm 
+          telegramUser={user} 
+          onComplete={handleEmailFormComplete}
+        />
       )}
-    </button>
+    </>
   );
 }; 
