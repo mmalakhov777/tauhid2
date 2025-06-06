@@ -79,97 +79,112 @@ export default async function RootLayout({
               --tg-viewport-stable-height: 100vh;
             }
             
-            /* Mobile-specific styles to prevent swipe-to-close and add top spacing */
+            /* Force 20px top spacing on mobile for Telegram Mini App */
             @media (max-width: 768px) {
-              .mobile-body {
-                overflow: hidden;
-                height: 100vh;
-                padding-top: 20px;
+              body {
+                padding-top: 20px !important;
+                margin-top: 0 !important;
               }
-
-              .mobile-wrap {
-                position: absolute;
-                left: 0;
-                top: 20px;
-                right: 0;
-                bottom: 0;
-                overflow-x: hidden;
-                overflow-y: auto;
-                background: var(--background);
+              
+              /* Ensure all content respects the padding */
+              body > * {
+                margin-top: 0 !important;
               }
-
-              .mobile-content {
-                min-height: calc(100% + 1px);
-                background: var(--background);
+              
+              /* Fixed header spacer */
+              .telegram-top-spacer {
+                position: fixed !important;
+                top: 0 !important;
+                left: 0 !important;
+                right: 0 !important;
+                height: 20px !important;
+                background-color: var(--background, #ffffff) !important;
+                z-index: 999999 !important;
+                display: block !important;
               }
             }
           `
         }} />
       </head>
-      <body className="antialiased" id="app-body">
+      <body className="antialiased">
         <Script 
           src="https://telegram.org/js/telegram-web-app.js?57" 
           strategy="beforeInteractive"
         />
         
-        <div id="app-wrap">
-          <div id="app-content">
-            <ThemeProvider
-              attribute="class"
-              defaultTheme="system"
-              enableSystem
-              disableTransitionOnChange
-            >
-              <Toaster position="top-center" />
-              <SessionProvider>
-                <TelegramAutoAuth />
-                {children}
-              </SessionProvider>
-            </ThemeProvider>
-          </div>
+        {/* Top spacing bar - will be made visible via JavaScript */}
+        <div 
+          id="telegram-top-bar"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            height: '20px',
+            backgroundColor: 'var(--background)',
+            borderBottom: '1px solid rgba(0,0,0,0.1)',
+            zIndex: 999999,
+            display: 'none',
+          }}
+        />
+        
+        {/* Main content wrapper */}
+        <div id="main-content" style={{ paddingTop: '0' }}>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <Toaster position="top-center" />
+            <SessionProvider>
+              <TelegramAutoAuth />
+              {children}
+            </SessionProvider>
+          </ThemeProvider>
         </div>
         
         <script dangerouslySetInnerHTML={{
           __html: `
-            // Apply Telegram Mini App sticky behavior and top spacing
+            // Force 20px top spacing for mobile Telegram
             (function() {
-              // Wait for Telegram WebApp to be available
-              function applyTelegramStyles() {
-                if (window.Telegram && window.Telegram.WebApp) {
-                  const tg = window.Telegram.WebApp;
+              function applyMobileSpacing() {
+                const isMobile = window.innerWidth < 768;
+                const topBar = document.getElementById('telegram-top-bar');
+                const mainContent = document.getElementById('main-content');
+                
+                if (isMobile && topBar && mainContent) {
+                  // Show the top bar
+                  topBar.style.display = 'block';
+                  // Add padding to main content
+                  mainContent.style.paddingTop = '20px';
                   
-                  // Check if we're on mobile
-                  const isMobile = window.innerWidth < 768;
+                  // Also try to set body padding
+                  document.body.style.paddingTop = '20px';
                   
-                  // Skip for desktop platforms
-                  if (['macos', 'tdesktop', 'weba', 'web', 'webk'].includes(tg.platform)) {
-                    return;
-                  }
-                  
-                  if (isMobile) {
-                    // Expand the app
-                    if (tg.expand) {
-                      tg.expand();
-                    }
-                    
-                    // Apply mobile classes to prevent swipe-to-close
-                    document.getElementById('app-body').classList.add('mobile-body');
-                    document.getElementById('app-wrap').classList.add('mobile-wrap');
-                    document.getElementById('app-content').classList.add('mobile-content');
-                  }
+                  console.log('Telegram Mini App: 20px top spacing applied');
                 }
               }
               
-              // Try immediately
-              applyTelegramStyles();
+              // Apply immediately
+              applyMobileSpacing();
               
-              // Also try after DOM is loaded
+              // Apply after DOM ready
               if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', applyTelegramStyles);
+                document.addEventListener('DOMContentLoaded', applyMobileSpacing);
               }
               
-              // And after a short delay as fallback
-              setTimeout(applyTelegramStyles, 100);
+              // Apply after Telegram WebApp is ready
+              if (window.Telegram && window.Telegram.WebApp) {
+                window.Telegram.WebApp.ready();
+                applyMobileSpacing();
+              }
+              
+              // Apply on resize
+              window.addEventListener('resize', applyMobileSpacing);
+              
+              // Final attempt after delay
+              setTimeout(applyMobileSpacing, 500);
             })();
           `
         }} />
