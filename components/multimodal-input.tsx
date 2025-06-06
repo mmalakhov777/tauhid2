@@ -241,25 +241,28 @@ function PureMultimodalInput({
     const currentUrl = window.location.href;
     
     if (isTelegramAvailable && webApp) {
-      // For Telegram Mini Apps, we need to use shareMessage with prepared inline messages
-      // Since we don't have a prepared message ID from the bot, we'll fall back to copying the link
-      // In a real implementation, the bot would need to call savePreparedInlineMessage first
+      // Use Telegram's openTelegramLink to share via Telegram's native share dialog
       try {
-        // Check if shareMessage is available (Bot API 8.0+)
-        if (webApp.shareMessage && typeof webApp.shareMessage === 'function') {
-          // This would require a prepared message ID from the bot
-          // For now, we'll fall back to copying the link
-          console.log('shareMessage is available but requires prepared message ID from bot');
-          await navigator.clipboard.writeText(currentUrl);
-          toast.success('Chat link copied to clipboard!');
+        // Create a share URL that will open Telegram's share dialog
+        const shareText = encodeURIComponent(`Check out this conversation: ${currentUrl}`);
+        const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(currentUrl)}&text=${shareText}`;
+        
+        // Check if openTelegramLink is available
+        if ((webApp as any).openTelegramLink) {
+          (webApp as any).openTelegramLink(telegramShareUrl);
         } else {
-          // Fallback to copying link for older Telegram versions
+          // Fallback to copying link
           await navigator.clipboard.writeText(currentUrl);
           toast.success('Chat link copied to clipboard!');
         }
       } catch (error) {
-        console.error('Share failed:', error);
-        toast.error('Failed to share chat');
+        // Fallback to copying link
+        try {
+          await navigator.clipboard.writeText(currentUrl);
+          toast.success('Chat link copied to clipboard!');
+        } catch (clipboardError) {
+          toast.error('Failed to share chat');
+        }
       }
     } else {
       // Non-Telegram: copy link to clipboard
@@ -267,7 +270,6 @@ function PureMultimodalInput({
         await navigator.clipboard.writeText(currentUrl);
         toast.success('Chat link copied to clipboard!');
       } catch (error) {
-        console.error('Copy failed:', error);
         toast.error('Failed to copy link');
       }
     }

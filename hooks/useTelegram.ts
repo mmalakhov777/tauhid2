@@ -44,6 +44,7 @@ interface TelegramWebApp {
   disableVerticalSwipes?: () => void;
   // Bot API 6.1+ methods
   setBackgroundColor?: (color: string) => void;
+  openTelegramLink?: (url: string) => void;
   // Additional useful methods
   expand?: () => void;
   enableClosingConfirmation?: () => void;
