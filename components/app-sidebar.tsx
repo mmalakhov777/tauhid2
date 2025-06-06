@@ -289,13 +289,16 @@ export function AppSidebar({ user }: { user: User | undefined }) {
         {/* Mobile sidebar */}
         <div
           ref={sidebarRef}
-          className="fixed inset-y-0 left-0 z-[999999] w-72 bg-sidebar text-sidebar-foreground border-r border-border"
+          className="fixed left-0 z-[999999] w-72 bg-sidebar text-sidebar-foreground border-r border-border"
           style={{
             transform: openMobile ? 'translateX(0)' : `translateX(-${SIDEBAR_WIDTH}px)`,
-            transition: 'transform 0.3s ease-out'
+            transition: 'transform 0.3s ease-out',
+            top: '0',
+            bottom: '20px', // 20px gap from bottom
+            height: 'calc(100vh - 20px)' // Full height minus bottom spacing
           }}
         >
-          <div className="flex h-full w-full flex-col">
+          <div className="flex h-full w-full flex-col pb-5">
             <SidebarHeader>
               <SidebarMenu>
                 <div className="flex flex-row justify-between items-center">
@@ -388,7 +391,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
 
   // Desktop sidebar - uses original Sidebar component
   return (
-    <Sidebar className="group-data-[side=left]:border-r border-border">
+    <Sidebar className="group-data-[side=left]:border-r border-border h-[calc(100vh-20px)]">
       <SidebarHeader>
         <SidebarMenu>
           <div className="flex flex-row justify-between items-center">
