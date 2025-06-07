@@ -31,7 +31,7 @@ export const EmailSetupBanner = ({ user }: EmailSetupBannerProps) => {
             Email Setup Pending
           </p>
           <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
-            You'll be prompted to complete email setup when sending your first message
+            You&apos;ll be prompted to complete email setup when sending your first message
           </p>
         </div>
       </div>
