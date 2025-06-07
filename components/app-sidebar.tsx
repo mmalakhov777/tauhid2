@@ -132,8 +132,8 @@ export function AppSidebar({ user }: { user: User | undefined }) {
           }`}
           style={{
             top: '0',
-            bottom: '20px', // 20px gap from bottom
-            height: 'calc(100vh - 20px)' // Full height minus bottom spacing
+            bottom: '0', // Remove bottom spacing
+            height: '100vh' // Full height without spacing
           }}
         >
           <div className="flex h-full w-full flex-col pb-5">
@@ -182,7 +182,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
               <SidebarHistory user={user} />
             </SidebarContent>
             <SidebarFooter>
-              <div className="flex flex-row items-center gap-2">
+              <div className="flex flex-row items-center gap-2 pb-2.5">
                 <div className="flex-shrink-0">
                   <SidebarMenu>
                     <SidebarMenuItem>
@@ -275,7 +275,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
         <SidebarHistory user={user} />
       </SidebarContent>
       <SidebarFooter>
-        <div className="flex flex-row items-center gap-2">
+        <div className="flex flex-row items-center gap-2 pb-2.5">
           <div className="flex-shrink-0">
             <SidebarMenu>
               <SidebarMenuItem>
