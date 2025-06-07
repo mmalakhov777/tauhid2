@@ -139,9 +139,40 @@ export const TelegramAutoAuth = () => {
   // Show loading indicator while authenticating
   if (isAuthenticating) {
     return (
-      <div className="fixed top-4 right-4 bg-white dark:bg-zinc-900 rounded-lg shadow-lg p-4 flex items-center gap-3 z-50">
-        <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
-        <span className="text-sm">Authenticating with Telegram...</span>
+      <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-6 p-8">
+          {/* Animated Telegram Logo */}
+          <div className="relative">
+            <div className="w-20 h-20 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center shadow-2xl animate-pulse">
+              <svg 
+                className="w-12 h-12 text-white" 
+                viewBox="0 0 24 24" 
+                fill="currentColor"
+              >
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69a.2.2 0 00-.05-.18c-.06-.05-.14-.03-.21-.02-.09.02-.38.24-1.07.72-.96.66-1.97 1.35-1.97 1.35s-.22.14-.63.02c-.4-.12-.9-.28-1.62-.52-.88-.3-1.57-.46-1.51-.97.03-.26.38-.53 1.05-.81 2.127-.98 3.53-1.63 4.21-1.94 2.48-1.18 3-.98 3.54-.98.12 0 .39.03.56.18.14.12.18.28.2.4-.01.06.01.24-.04.37z"/>
+              </svg>
+            </div>
+            {/* Rotating ring around logo */}
+            <div className="absolute inset-0 w-20 h-20 border-4 border-transparent border-t-blue-500 rounded-full animate-spin"></div>
+          </div>
+          
+          {/* Loading text */}
+          <div className="text-center space-y-2">
+            <h3 className="text-xl font-semibold text-foreground">
+              Connecting to Telegram
+            </h3>
+            <p className="text-sm text-muted-foreground max-w-sm">
+              Setting up your secure connection and personalizing your experience...
+            </p>
+          </div>
+          
+          {/* Animated dots */}
+          <div className="flex space-x-1">
+            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
+            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+            <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+          </div>
+        </div>
       </div>
     );
   }
