@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { chatId, chatUrl } = await request.json();
+    const { chatId, chatUrl, previewText } = await request.json();
     
     if (!chatId || !chatUrl) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -31,6 +31,7 @@ export async function POST(request: NextRequest) {
 
     console.log('[prepare-share] Preparing message for chat:', chatId);
     console.log('[prepare-share] Chat URL:', chatUrl);
+    console.log('[prepare-share] Preview text:', previewText);
     console.log('[prepare-share] User email:', session.user.email);
     console.log('[prepare-share] Telegram User ID:', dbUser.telegramId);
 
@@ -48,9 +49,9 @@ export async function POST(request: NextRequest) {
       type: 'article',
       id: chatId,
       title: 'Share Chat',
-      description: 'Share this conversation',
+      description: previewText || 'Share this conversation',
       input_message_content: {
-        message_text: `Check out this interesting conversation!\n\n🔗 Debug: ${miniAppUrl}`,
+        message_text: `${previewText || 'Check out this interesting conversation!'}\n\n🔗 Debug: ${miniAppUrl}`,
         parse_mode: 'HTML',
       },
       reply_markup: {

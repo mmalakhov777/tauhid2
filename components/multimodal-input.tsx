@@ -72,6 +72,7 @@ function PureMultimodalInput({
   const { impactOccurred, notificationOccurred } = useTelegramHaptics();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isInputActive, setIsInputActive] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
 
   const [localStorageInput, setLocalStorageInput] = useLocalStorage(
     'input',
@@ -231,7 +232,24 @@ function PureMultimodalInput({
     };
   }, []);
 
+  // Helper function to get first 10 words from first agent response
+  const getFirstAgentResponsePreview = useCallback(() => {
+    const firstAgentMessage = messages.find(msg => msg.role === 'assistant');
+    if (!firstAgentMessage || typeof firstAgentMessage.content !== 'string') {
+      return 'Check out this interesting conversation!';
+    }
+    
+    const words = firstAgentMessage.content.trim().split(/\s+/);
+    const first10Words = words.slice(0, 10).join(' ');
+    return first10Words + (words.length > 10 ? '...' : '');
+  }, [messages]);
+
   const handleShare = async () => {
+    // Prevent multiple simultaneous shares
+    if (isSharing) return;
+    
+    setIsSharing(true);
+    
     // Get the current URL
     const currentUrl = window.location.href;
     
@@ -247,6 +265,9 @@ function PureMultimodalInput({
       console.log('[handleShare] Using Telegram shareMessage API');
       
       try {
+        // Get preview text from first agent response
+        const previewText = getFirstAgentResponsePreview();
+        
         // First, prepare the message via our API
         console.log('[handleShare] Preparing message via API...');
         const prepareResponse = await fetch('/api/telegram/prepare-share', {
@@ -257,6 +278,7 @@ function PureMultimodalInput({
           body: JSON.stringify({
             chatId,
             chatUrl: currentUrl,
+            previewText,
           }),
         });
 
@@ -288,6 +310,7 @@ function PureMultimodalInput({
               notificationOccurred('warning');
               toast.error('Share was cancelled');
             }
+            setIsSharing(false);
           }
         );
         
@@ -303,6 +326,7 @@ function PureMultimodalInput({
         } catch (copyError) {
           console.error('[handleShare] Failed to copy as fallback:', copyError);
         }
+        setIsSharing(false);
       }
     } else {
       // For non-Telegram users or if shareMessage is not available
@@ -326,6 +350,7 @@ function PureMultimodalInput({
         notificationOccurred('error');
         toast.error('Failed to copy link');
       }
+      setIsSharing(false);
     }
   };
 
@@ -383,13 +408,14 @@ function PureMultimodalInput({
               data-testid="share-chat-button"
               className="rounded-full shadow-lg px-4 py-2 h-auto"
               variant="outline"
+              disabled={isSharing}
               onClick={(event) => {
                 event.preventDefault();
                 handleShare();
               }}
             >
               <ShareIcon />
-              <span className="ml-2">Share</span>
+              <span className="ml-2">{isSharing ? 'Sharing...' : 'Share'}</span>
             </Button>
           </motion.div>
         )}

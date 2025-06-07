@@ -25,6 +25,7 @@ export const TelegramEmailForm = ({ telegramUser, onComplete, onSkip }: Telegram
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSkipping, setIsSkipping] = useState(false);
   const router = useRouter();
   const { update: updateSession } = useSession();
 
@@ -83,114 +84,141 @@ export const TelegramEmailForm = ({ telegramUser, onComplete, onSkip }: Telegram
     }
   };
 
-  const handleSkip = () => {
-    onSkip?.();
+  const handleSkip = async () => {
+    setIsSkipping(true);
+    // Add a small delay to show loading state
+    setTimeout(() => {
+      onSkip?.();
+      setIsSkipping(false);
+    }, 500);
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-[9999999]">
-      <div className="bg-white dark:bg-zinc-900 rounded-lg p-6 w-full max-w-md">
-        <div className="flex items-center gap-3 mb-6">
-          {telegramUser.photo_url && (
-            <img 
-              src={telegramUser.photo_url} 
-              alt="Profile" 
-              className="w-12 h-12 rounded-full"
-            />
-          )}
-          <div>
-            <h3 className="text-lg font-semibold dark:text-zinc-50">
-              Welcome, {telegramUser.first_name}!
-            </h3>
-            <p className="text-sm text-gray-500 dark:text-zinc-400">
-              Complete your account setup
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999999] min-h-screen w-full">
+      <div className="bg-white dark:bg-zinc-900 rounded-lg w-full h-full md:w-full md:h-full lg:w-[90%] lg:h-[90%] xl:w-[80%] xl:h-[80%] 2xl:w-[70%] 2xl:h-[70%] lg:rounded-xl flex flex-col overflow-hidden">
+        {/* Header Section */}
+        <div className="flex-shrink-0 p-6 md:p-8 border-b border-gray-200 dark:border-zinc-700">
+          <div className="flex items-center gap-4 mb-4">
+            {telegramUser.photo_url && (
+              <img 
+                src={telegramUser.photo_url} 
+                alt="Profile" 
+                className="w-16 h-16 md:w-20 md:h-20 rounded-full"
+              />
+            )}
+            <div>
+              <h3 className="text-xl md:text-2xl font-semibold dark:text-zinc-50">
+                Welcome, {telegramUser.first_name}!
+              </h3>
+              <p className="text-sm md:text-base text-gray-500 dark:text-zinc-400">
+                Complete your account setup
+              </p>
+            </div>
+          </div>
+
+          <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <p className="text-sm md:text-base text-blue-700 dark:text-blue-300">
+              <strong>Why do we need this?</strong><br />
+              To access your account on the web app (outside Telegram), please provide an email and password.
             </p>
           </div>
         </div>
 
-        <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-          <p className="text-sm text-blue-700 dark:text-blue-300">
-            <strong>Why do we need this?</strong><br />
-            To access your account on the web app (outside Telegram), please provide an email and password.
-          </p>
+        {/* Form Section */}
+        <div className="flex-1 overflow-y-auto p-6 md:p-8">
+          <form onSubmit={handleSubmit} className="space-y-6 max-w-md mx-auto">
+            <div>
+              <label htmlFor="email" className="block text-sm md:text-base font-medium text-gray-700 dark:text-zinc-300 mb-2">
+                Email Address
+              </label>
+              <input
+                type="email"
+                id="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                disabled={isSubmitting}
+                className="w-full px-4 py-3 md:py-4 text-base border border-gray-300 dark:border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-800 dark:text-zinc-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                placeholder="your@email.com"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="password" className="block text-sm md:text-base font-medium text-gray-700 dark:text-zinc-300 mb-2">
+                Password
+              </label>
+              <input
+                type="password"
+                id="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={6}
+                disabled={isSubmitting}
+                className="w-full px-4 py-3 md:py-4 text-base border border-gray-300 dark:border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-800 dark:text-zinc-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                placeholder="At least 6 characters"
+              />
+            </div>
+
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm md:text-base font-medium text-gray-700 dark:text-zinc-300 mb-2">
+                Confirm Password
+              </label>
+              <input
+                type="password"
+                id="confirmPassword"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                minLength={6}
+                disabled={isSubmitting}
+                className="w-full px-4 py-3 md:py-4 text-base border border-gray-300 dark:border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-800 dark:text-zinc-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                placeholder="Confirm your password"
+              />
+            </div>
+          </form>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">
-              Email Address
-            </label>
-            <input
-              type="email"
-              id="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full px-3 py-2 border border-gray-300 dark:border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-800 dark:text-zinc-100"
-              placeholder="your@email.com"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">
-              Password
-            </label>
-            <input
-              type="password"
-              id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={6}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-800 dark:text-zinc-100"
-              placeholder="At least 6 characters"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">
-              Confirm Password
-            </label>
-            <input
-              type="password"
-              id="confirmPassword"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              required
-              minLength={6}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-zinc-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-zinc-800 dark:text-zinc-100"
-              placeholder="Confirm your password"
-            />
-          </div>
-
-          <div className="pt-4">
+        {/* Footer Section */}
+        <div className="flex-shrink-0 p-6 md:p-8 border-t border-gray-200 dark:border-zinc-700">
+          <div className="max-w-md mx-auto space-y-4">
             <button
               type="submit"
-              disabled={isSubmitting}
-              className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white py-2 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+              onClick={handleSubmit}
+              disabled={isSubmitting || isSkipping}
+              className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 dark:disabled:bg-blue-700 text-white py-3 md:py-4 px-6 rounded-lg transition-colors flex items-center justify-center gap-3 text-base md:text-lg font-medium disabled:cursor-not-allowed"
             >
               {isSubmitting ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Setting up...
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Setting up account...
                 </>
               ) : (
                 'Complete Setup'
               )}
             </button>
+            
             <button
               type="button"
               onClick={handleSkip}
-              className="w-full mt-3 text-sm text-gray-500 hover:text-gray-700 dark:text-zinc-400 dark:hover:text-zinc-200 transition-colors"
+              disabled={isSubmitting || isSkipping}
+              className="w-full py-3 md:py-4 text-sm md:text-base text-gray-500 hover:text-gray-700 dark:text-zinc-400 dark:hover:text-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              Skip for now
+              {isSkipping ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                  Skipping...
+                </>
+              ) : (
+                'Skip for now'
+              )}
             </button>
           </div>
-        </form>
 
-        <p className="text-xs text-gray-500 dark:text-zinc-400 mt-4 text-center">
-          You can complete this setup later to access the web app
-        </p>
+          <p className="text-xs md:text-sm text-gray-500 dark:text-zinc-400 mt-6 text-center max-w-md mx-auto">
+            You can complete this setup later to access the web app outside of Telegram
+          </p>
+        </div>
       </div>
     </div>
   );
