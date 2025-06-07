@@ -103,6 +103,7 @@ function PureMultimodalInput({
   const [showEmailSetupForm, setShowEmailSetupForm] = useState(false);
   const [preservedMessage, setPreservedMessage] = useState('');
   const [shouldSendAfterEmailSetup, setShouldSendAfterEmailSetup] = useState(false);
+  const [isCopyingChat, setIsCopyingChat] = useState(false);
 
   const { update: updateSession } = useSession();
 
@@ -203,6 +204,7 @@ function PureMultimodalInput({
     if (isReadonly) {
       console.log('[handleSend] Readonly chat detected, copying chat for user...');
       toast.info('Creating a copy of this conversation for you...');
+      setIsCopyingChat(true);
 
       try {
         const result = await copyChatForUser(chatId);
@@ -217,11 +219,13 @@ function PureMultimodalInput({
         } else {
           console.error('[handleSend] Failed to copy chat:', result.error);
           toast.error('Failed to create a copy of the conversation');
+          setIsCopyingChat(false);
           return;
         }
       } catch (error) {
         console.error('[handleSend] Error copying chat:', error);
         toast.error('Failed to create a copy of the conversation');
+        setIsCopyingChat(false);
         return;
       }
     }
@@ -530,6 +534,16 @@ function PureMultimodalInput({
 
   return (
     <div className="relative w-full flex flex-col gap-1">
+      {/* Loading overlay while copying chat */}
+      {isCopyingChat && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm rounded-lg">
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-sm text-muted-foreground">Creating your copy of the conversation...</p>
+          </div>
+        </div>
+      )}
+
       <AnimatePresence>
         {!isAtBottom && messages.length > 0 && !isInputActive && (status === 'ready' || status === 'error' || !status) && (
           <motion.div
@@ -626,15 +640,17 @@ function PureMultimodalInput({
       >
         <PromptInputBox
           onSend={handleSend}
-          isLoading={status === 'submitted' || status === 'streaming'}
+          isLoading={status === 'submitted' || status === 'streaming' || isCopyingChat}
           placeholder={
-            status === 'submitted' 
-              ? "Processing your message..." 
-              : status === 'streaming' 
-                ? "Generating response..." 
-                : messages.length > 0
-                  ? "Ask follow up..."
-                  : "Send a message..."
+            isCopyingChat
+              ? "Creating your copy of the conversation..."
+              : status === 'submitted' 
+                ? "Processing your message..." 
+                : status === 'streaming' 
+                  ? "Generating response..." 
+                  : messages.length > 0
+                    ? "Ask follow up..."
+                    : "Send a message..."
           }
           className={cx(
             'w-full',

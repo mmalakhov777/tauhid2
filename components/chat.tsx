@@ -248,6 +248,16 @@ export function Chat({
 
       setHasAppendedMessage(true);
       window.history.replaceState({}, '', `/chat/${id}`);
+      
+      // Scroll to bottom after appending the message
+      setTimeout(() => {
+        if (messagesContainerRef.current) {
+          messagesContainerRef.current.scrollTo({
+            top: messagesContainerRef.current.scrollHeight,
+            behavior: 'smooth'
+          });
+        }
+      }, 100);
     }
   }, [messageParam, append, hasAppendedMessage, hasAppendedQuery, id]);
 
