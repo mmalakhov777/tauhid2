@@ -16,8 +16,10 @@ import {
 import { toast } from 'sonner';
 import { useLocalStorage, useWindowSize } from 'usehooks-ts';
 import { useRouter } from 'next/navigation';
+import { useTelegram } from '@/hooks/useTelegram';
+import { useCopyToClipboard } from 'usehooks-ts';
 
-import { ArrowUpIcon, PaperclipIcon, StopIcon, PlusIcon } from './icons';
+import { ArrowUpIcon, PaperclipIcon, StopIcon, PlusIcon, ShareIcon } from './icons';
 import { PreviewAttachment } from './preview-attachment';
 import { Button } from './ui/button';
 import { PromptInputBox } from './ui/ai-prompt-box';
@@ -64,6 +66,8 @@ function PureMultimodalInput({
 }) {
   const { width } = useWindowSize();
   const router = useRouter();
+  const { webApp } = useTelegram();
+  const [_, copyToClipboard] = useCopyToClipboard();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isInputActive, setIsInputActive] = useState(false);
 
@@ -225,6 +229,38 @@ function PureMultimodalInput({
     };
   }, []);
 
+  const handleShare = async () => {
+    // Get the current URL
+    const currentUrl = window.location.href;
+    
+    if (webApp) {
+      // For Telegram users, we'll copy the link since shareMessage requires PreparedInlineMessage
+      // In a real implementation, you'd need to prepare the message via Bot API first
+      try {
+        await copyToClipboard(currentUrl);
+        toast.success('Chat link copied to clipboard!');
+        
+        // Optionally, you could also use Telegram's share functionality
+        // This would open Telegram's native share dialog
+        if (webApp.openTelegramLink) {
+          const shareText = `Check out this chat: ${currentUrl}`;
+          const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(currentUrl)}&text=${encodeURIComponent(shareText)}`;
+          webApp.openTelegramLink(telegramShareUrl);
+        }
+      } catch (error) {
+        toast.error('Failed to share chat');
+      }
+    } else {
+      // For non-Telegram users, just copy the link
+      try {
+        await copyToClipboard(currentUrl);
+        toast.success('Chat link copied to clipboard!');
+      } catch (error) {
+        toast.error('Failed to copy link');
+      }
+    }
+  };
+
   return (
     <div className="relative w-full flex flex-col gap-1">
       <AnimatePresence>
@@ -259,12 +295,11 @@ function PureMultimodalInput({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
             transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-            className="absolute bottom-36 left-[45%] -translate-x-1/2 z-50 flex justify-center items-center"
+            className="absolute bottom-36 left-1/2 -translate-x-1/2 z-50 flex justify-center items-center gap-3"
           >
             <Button
               data-testid="new-chat-button"
-              className="rounded-full shadow-lg"
-              size="icon"
+              className="rounded-full shadow-lg px-4 py-2 h-auto"
               variant="outline"
               onClick={(event) => {
                 event.preventDefault();
@@ -273,6 +308,20 @@ function PureMultimodalInput({
               }}
             >
               <PlusIcon />
+              <span className="ml-2">New Chat</span>
+            </Button>
+            
+            <Button
+              data-testid="share-chat-button"
+              className="rounded-full shadow-lg px-4 py-2 h-auto"
+              variant="outline"
+              onClick={(event) => {
+                event.preventDefault();
+                handleShare();
+              }}
+            >
+              <ShareIcon />
+              <span className="ml-2">Share</span>
             </Button>
           </motion.div>
         )}
