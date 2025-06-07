@@ -38,8 +38,8 @@ export async function POST(request: NextRequest) {
     const botUsername = process.env.TELEGRAM_BOT_USERNAME || 'your_bot_username';
     
     // Create Mini App deep link
-    // Format: https://t.me/botusername/appname?startapp=parameter
-    const miniAppUrl = `https://t.me/${botUsername}/app?startapp=chat_${chatId}`;
+    // For main Mini App: https://t.me/botusername?startapp=parameter
+    const miniAppUrl = `https://t.me/${botUsername}?startapp=chat_${chatId}`;
     
     console.log('[prepare-share] Mini App URL:', miniAppUrl);
 

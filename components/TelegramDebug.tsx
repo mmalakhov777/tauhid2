@@ -147,6 +147,7 @@ const TelegramDebug = () => {
       <p><strong>Viewport Stable Height:</strong> {webApp.viewportStableHeight}px</p>
       <p><strong>Header Color:</strong> {webApp.headerColor}</p>
       <p><strong>Background Color:</strong> {webApp.backgroundColor}</p>
+      <p><strong>Start Parameter:</strong> {webApp.initDataUnsafe?.start_param || 'None'}</p>
       <p><strong>User (unsafe):</strong></p>
       <pre style={{ backgroundColor: '#eee', padding: '10px', borderRadius: '4px', overflowX: 'auto' }}>
         {JSON.stringify(webApp.initDataUnsafe?.user, null, 2) || 'No user data'}
