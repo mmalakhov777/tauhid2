@@ -1,4 +1,5 @@
 'use client';
+'use client';
 
 import type { Attachment, UIMessage } from 'ai';
 import cx from 'classnames';
@@ -101,6 +102,7 @@ function PureMultimodalInput({
   const [shareButtonText, setShareButtonText] = useState('Share');
   const [showEmailSetupForm, setShowEmailSetupForm] = useState(false);
   const [preservedMessage, setPreservedMessage] = useState('');
+  const [shouldSendAfterEmailSetup, setShouldSendAfterEmailSetup] = useState(false);
 
   const { update: updateSession } = useSession();
 
@@ -118,6 +120,18 @@ function PureMultimodalInput({
   useEffect(() => {
     setLocalStorageInput(input);
   }, [input, setLocalStorageInput]);
+
+  // Effect to send message after email setup is complete
+  useEffect(() => {
+    if (shouldSendAfterEmailSetup && preservedMessage && !session?.user?.email?.startsWith('telegram_')) {
+      // Reset the flag first
+      setShouldSendAfterEmailSetup(false);
+      
+      // Send the preserved message
+      handleSend(preservedMessage);
+      setPreservedMessage('');
+    }
+  }, [shouldSendAfterEmailSetup, preservedMessage, session?.user?.email]);
 
   const uploadFile = async (file: File) => {
     const formData = new FormData();
@@ -486,13 +500,16 @@ function PureMultimodalInput({
     }
   };
 
-  const handleEmailFormComplete = () => {
+  const handleEmailFormComplete = async () => {
     setShowEmailSetupForm(false);
     toast.success('Email setup completed! You can now send messages.');
-    updateSession();
+    
+    // Wait for session to update
+    await updateSession();
+    
+    // Set flag to trigger message send after session update
     if (preservedMessage) {
-      setInput(preservedMessage);
-      setPreservedMessage('');
+      setShouldSendAfterEmailSetup(true);
     }
   };
 
