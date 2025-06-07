@@ -21,6 +21,9 @@ interface TelegramEmailFormProps {
 }
 
 export const TelegramEmailForm = ({ telegramUser, onComplete, onSkip }: TelegramEmailFormProps) => {
+  // Debug logging
+  console.log('TelegramEmailForm received telegramUser:', telegramUser);
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');

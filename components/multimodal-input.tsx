@@ -88,7 +88,7 @@ function PureMultimodalInput({
 }) {
   const { width } = useWindowSize();
   const router = useRouter();
-  const { webApp } = useTelegram();
+  const { webApp, user: telegramUser } = useTelegram();
   const [_, copyToClipboard] = useCopyToClipboard();
   const { impactOccurred, notificationOccurred } = useTelegramHaptics();
   const { setOpenMobile } = useSidebar();
@@ -681,11 +681,14 @@ function PureMultimodalInput({
         createPortal(
           <TelegramEmailForm 
             telegramUser={{
-              id: parseInt(session.user.id || '0'),
-              first_name: session.user.name?.split(' ')[0] || 'User',
-              last_name: session.user.name?.split(' ').slice(1).join(' '),
-              username: session.user.email?.split('@')[0],
-              photo_url: session.user.image || undefined,
+              id: telegramUser?.id || parseInt(session.user.id || '0'),
+              first_name: telegramUser?.first_name || session.user.name?.split(' ')[0] || 'User',
+              last_name: telegramUser?.last_name || session.user.name?.split(' ').slice(1).join(' ') || '',
+              username: telegramUser?.username || session.user.email?.split('@')[0],
+              photo_url: telegramUser?.photo_url || session.user.image || undefined,
+              language_code: telegramUser?.language_code,
+              is_premium: telegramUser?.is_premium,
+              allows_write_to_pm: telegramUser?.allows_write_to_pm,
             }}
             onComplete={handleEmailFormComplete}
             onSkip={handleEmailFormSkip}
