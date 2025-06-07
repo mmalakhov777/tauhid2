@@ -49,28 +49,57 @@ export function PureMessageActions({
     }
     
     if (webApp) {
-      // For Telegram users, we'll copy the message content and open share dialog
+      // For Telegram users
       try {
+        // First, copy to clipboard as fallback
         await copyToClipboard(textFromParts);
-        toast.success('Message copied to clipboard!');
         
-        // Use Telegram's share functionality to share the message content
-        if (webApp.openTelegramLink) {
-          // Truncate message for URL if it's too long
-          const shareText = textFromParts.length > 1000 
-            ? textFromParts.substring(0, 997) + '...' 
+        // Check if we have the shareMessage method (Bot API 8.0+)
+        if (webApp.shareMessage) {
+          // Note: This would require a PreparedInlineMessage ID from the backend
+          // For now, we'll show a message explaining this
+          toast.info('Direct message sharing requires bot integration. Message copied to clipboard!');
+        } else if (webApp.openTelegramLink) {
+          // Use Telegram's share dialog with the message content
+          // We can share text without a URL by using the text parameter
+          const shareText = textFromParts.length > 4000 
+            ? textFromParts.substring(0, 3997) + '...' 
             : textFromParts;
+          
+          // Create a share link with just the text (no URL required)
           const telegramShareUrl = `https://t.me/share/url?text=${encodeURIComponent(shareText)}`;
           webApp.openTelegramLink(telegramShareUrl);
+          
+          toast.success('Opening Telegram share dialog...');
+        } else {
+          // Fallback: just notify that content was copied
+          toast.success('Message copied to clipboard! You can paste it in any chat.');
         }
       } catch (error) {
         toast.error('Failed to share message');
       }
     } else {
-      // For non-Telegram users, just copy the message content
+      // For non-Telegram users, copy the message content
       try {
         await copyToClipboard(textFromParts);
-        toast.success('Message copied to clipboard!');
+        
+        // Also try to use the Web Share API if available
+        if (navigator.share && window.isSecureContext) {
+          try {
+            await navigator.share({
+              text: textFromParts,
+              title: 'Shared Message'
+            });
+            toast.success('Message shared!');
+          } catch (shareError) {
+            // User cancelled or share failed, but we already copied to clipboard
+            if ((shareError as Error).name !== 'AbortError') {
+              toast.success('Message copied to clipboard!');
+            }
+          }
+        } else {
+          toast.success('Message copied to clipboard!');
+        }
       } catch (error) {
         toast.error('Failed to copy message');
       }
