@@ -86,11 +86,9 @@ export const TelegramEmailForm = ({ telegramUser, onComplete, onSkip }: Telegram
 
   const handleSkip = async () => {
     setIsSkipping(true);
-    // Add a small delay to show loading state
-    setTimeout(() => {
-      onSkip?.();
-      setIsSkipping(false);
-    }, 500);
+    // Immediate action without delay
+    onSkip?.();
+    setIsSkipping(false);
   };
 
   return (
