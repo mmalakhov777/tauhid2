@@ -765,19 +765,19 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
             >
               {isLoading || isTranscribing ? (
                 <>
-                  <Square className="h-4 w-4 animate-pulse" />
+                <Square className="h-4 w-4 animate-pulse" />
                   {isTranscribing && <span className="ml-2 text-sm">Transcribing...</span>}
                 </>
               ) : isRecording ? (
                 <>
-                  <StopCircle className="h-4 w-4" />
+                <StopCircle className="h-4 w-4" />
                   <span className="ml-2 text-sm">Stop</span>
                 </>
               ) : hasContent && !isRecording ? (
                 <ArrowUp className="h-4 w-4" />
               ) : (
                 <>
-                  <Mic className="h-4 w-4" />
+                <Mic className="h-4 w-4" />
                   <span className="ml-2 text-sm">Speak</span>
                 </>
               )}

@@ -88,9 +88,9 @@ export default async function RootLayout({
           <Toaster position="top-center" />
           <SessionProvider>
             <AuthLoadingProvider>
-              <TelegramStartHandler />
-              <TelegramAutoAuth />
-              {children}
+            <TelegramStartHandler />
+            <TelegramAutoAuth />
+            {children}
             </AuthLoadingProvider>
           </SessionProvider>
         </ThemeProvider>

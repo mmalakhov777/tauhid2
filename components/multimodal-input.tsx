@@ -194,26 +194,26 @@ function PureMultimodalInput({
 
     // Check if this is a readonly chat (viewing someone else's chat)
     if (isReadonly) {
+      console.log('[handleSend] Readonly chat detected, copying chat for user...');
       toast.info('Creating a copy of this conversation for you...');
 
       try {
         const result = await copyChatForUser(chatId);
+        console.log('[handleSend] Copy chat result:', result);
+        
         if (result.success && result.newChatId) {
-          // Navigate to the new chat
-          router.push(`/chat/${result.newChatId}`);
-          
-          // Wait a bit for navigation to complete before sending the message
-          setTimeout(() => {
-            // The message will be sent in the new chat after navigation
-            setInput(message);
-          }, 500);
+          // Navigate to the new chat with the message as a query parameter
+          const newUrl = `/chat/${result.newChatId}?message=${encodeURIComponent(message)}`;
+          console.log('[handleSend] Navigating to new chat:', newUrl);
+          router.push(newUrl);
           return;
         } else {
+          console.error('[handleSend] Failed to copy chat:', result.error);
           toast.error('Failed to create a copy of the conversation');
           return;
         }
       } catch (error) {
-        console.error('Error copying chat:', error);
+        console.error('[handleSend] Error copying chat:', error);
         toast.error('Failed to create a copy of the conversation');
         return;
       }

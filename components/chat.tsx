@@ -220,8 +220,10 @@ export function Chat({
 
   const searchParams = useSearchParams();
   const query = searchParams.get('query');
+  const messageParam = searchParams.get('message');
 
   const [hasAppendedQuery, setHasAppendedQuery] = useState(false);
+  const [hasAppendedMessage, setHasAppendedMessage] = useState(false);
 
   useEffect(() => {
     if (query && !hasAppendedQuery) {
@@ -234,6 +236,20 @@ export function Chat({
       window.history.replaceState({}, '', `/chat/${id}`);
     }
   }, [query, append, hasAppendedQuery, id]);
+
+  // Handle message parameter (for copied chats)
+  useEffect(() => {
+    if (messageParam && !hasAppendedMessage && !hasAppendedQuery) {
+      console.log('[chat] Message parameter detected, sending message:', messageParam);
+      append({
+        role: 'user',
+        content: messageParam,
+      });
+
+      setHasAppendedMessage(true);
+      window.history.replaceState({}, '', `/chat/${id}`);
+    }
+  }, [messageParam, append, hasAppendedMessage, hasAppendedQuery, id]);
 
   const { data: votes } = useSWR<Array<Vote>>(
     messages.length >= 2 ? `/api/vote?chatId=${id}` : null,
@@ -317,22 +333,22 @@ export function Chat({
             
             {/* Input section right below greeting */}
             <div className="w-full max-w-full mb-4 sm:mb-6">
-              <MultimodalInput
-                chatId={id}
-                input={input}
-                setInput={setInput}
-                handleSubmit={handleSubmit}
-                status={status}
-                stop={stop}
-                attachments={attachments}
-                setAttachments={setAttachments}
-                messages={messages}
-                setMessages={setMessages}
-                append={append}
-                selectedVisibilityType={visibilityType}
-                session={session}
+                <MultimodalInput
+                  chatId={id}
+                  input={input}
+                  setInput={setInput}
+                  handleSubmit={handleSubmit}
+                  status={status}
+                  stop={stop}
+                  attachments={attachments}
+                  setAttachments={setAttachments}
+                  messages={messages}
+                  setMessages={setMessages}
+                  append={append}
+                  selectedVisibilityType={visibilityType}
+                  session={session}
                 isReadonly={isReadonly}
-              />
+                />
             </div>
             
             {/* Show suggested actions below the input when no messages */}
@@ -364,22 +380,22 @@ export function Chat({
             />
 
             <form className="flex mx-auto px-2 gap-2 w-full md:max-w-3xl">
-              <MultimodalInput
-                chatId={id}
-                input={input}
-                setInput={setInput}
-                handleSubmit={handleSubmit}
-                status={status}
-                stop={stop}
-                attachments={attachments}
-                setAttachments={setAttachments}
-                messages={messages}
-                setMessages={setMessages}
-                append={append}
-                selectedVisibilityType={visibilityType}
-                session={session}
+                <MultimodalInput
+                  chatId={id}
+                  input={input}
+                  setInput={setInput}
+                  handleSubmit={handleSubmit}
+                  status={status}
+                  stop={stop}
+                  attachments={attachments}
+                  setAttachments={setAttachments}
+                  messages={messages}
+                  setMessages={setMessages}
+                  append={append}
+                  selectedVisibilityType={visibilityType}
+                  session={session}
                 isReadonly={isReadonly}
-              />
+                />
             </form>
           </>
         )}
