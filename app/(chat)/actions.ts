@@ -12,7 +12,7 @@ import {
   saveMessages,
 } from '@/lib/db/queries';
 import type { VisibilityType } from '@/components/visibility-selector';
-import { myProvider } from '@/lib/ai/providers';
+import { myProvider, fallbackProvider } from '@/lib/ai/providers';
 import { auth } from '@/app/(auth)/auth';
 import { generateUUID } from '@/lib/utils';
 
@@ -30,33 +30,29 @@ export async function generateTitleFromUserMessage({
     const { text: title } = await generateText({
       model: myProvider.languageModel('title-model'),
       system: `\n
-    - you will generate a short title based on the first message a user begins a conversation with
-    - ensure it is not more than 80 characters long
-    - the title should be a summary of the user's message
-    - do not use quotes or colons`,
+      - you will generate a short title based on the first message a user begins a conversation with
+      - ensure it is not more than 80 characters long
+      - the title should be a summary of the user's message
+      - do not use quotes or colons`,
       prompt: JSON.stringify(message),
     });
-
     return title;
   } catch (error) {
-    console.log('[generateTitleFromUserMessage] Primary model failed, using fallback:', error);
-    
+    console.warn('Primary provider failed for title generation, trying fallback:', error);
     try {
-      // Use OpenRouter fallback model
       const { text: title } = await generateText({
-        model: myProvider.languageModel('title-model-fallback'),
+        model: fallbackProvider.languageModel('title-model'),
         system: `\n
-    - you will generate a short title based on the first message a user begins a conversation with
-    - ensure it is not more than 80 characters long
-    - the title should be a summary of the user's message
-    - do not use quotes or colons`,
+        - you will generate a short title based on the first message a user begins a conversation with
+        - ensure it is not more than 80 characters long
+        - the title should be a summary of the user's message
+        - do not use quotes or colons`,
         prompt: JSON.stringify(message),
       });
-
       return title;
     } catch (fallbackError) {
-      console.error('[generateTitleFromUserMessage] Fallback model also failed:', fallbackError);
-      // Return a generic title if both models fail
+      console.error('Both primary and fallback providers failed for title generation:', fallbackError);
+      // Return a simple fallback title
       return 'New Conversation';
     }
   }

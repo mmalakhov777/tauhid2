@@ -24,7 +24,7 @@ import { generateUUID, getTrailingMessageId } from '@/lib/utils';
 import { generateTitleFromUserMessage } from '../../actions';
 import { getWeather } from '@/lib/ai/tools/get-weather';
 import { isProductionEnvironment, isVectorSearchEnabled } from '@/lib/constants';
-import { myProvider } from '@/lib/ai/providers';
+import { myProvider, fallbackProvider } from '@/lib/ai/providers';
 import { entitlementsByUserType } from '@/lib/ai/entitlements';
 import { postRequestBodySchema, type PostRequestBody } from './schema';
 import { geolocation } from '@vercel/functions';
@@ -429,96 +429,10 @@ REMEMBER: More citations = Better answer. Use them ALL! Add [CIT] directly witho
         }
 
         try {
-          const result = streamText({
-            model: myProvider.languageModel(selectedChatModel),
-            system: modifiedSystemPrompt,
-            messages: messages,
-            maxSteps: 5,
-            experimental_activeTools:
-              selectedChatModel === 'chat-model-reasoning'
-                ? []
-                : [
-                    'getWeather',
-                  ],
-            experimental_transform: smoothStream({ chunking: 'word' }),
-            experimental_generateMessageId: generateUUID,
-            tools: {
-              getWeather,
-            },
-            onFinish: async ({ response }) => {
-              // Only save assistant message after streaming completes successfully
-              if (session.user?.id) {
-                try {
-                  const assistantId = getTrailingMessageId({
-                    messages: response.messages.filter(
-                      (message) => message.role === 'assistant',
-                    ),
-                  });
-
-                  if (!assistantId) {
-                    console.error('No assistant message found in response');
-                    return;
-                  }
-
-                  const [, assistantMessage] = appendResponseMessages({
-                    messages: [message],
-                    responseMessages: response.messages,
-                  });
-
-                  // Save only the assistant message (user message already saved)
-                  await saveMessages({
-                    messages: [
-                      {
-                        id: assistantId,
-                        chatId: id,
-                        role: assistantMessage.role,
-                        parts: assistantMessage.parts,
-                        attachments:
-                          assistantMessage.experimental_attachments ?? [],
-                        createdAt: new Date(),
-                      },
-                    ],
-                  });
-                  
-                  // Save vector search results if available
-                  const vectorSearchData = (globalThis as any).__vectorSearchDataToSave;
-                  if (vectorSearchData) {
-                    try {
-                      await saveVectorSearchResult({
-                        messageId: assistantId,
-                        ...vectorSearchData,
-                      });
-                      // Clean up
-                      delete (globalThis as any).__vectorSearchDataToSave;
-                    } catch (error) {
-                      console.error('Failed to save vector search results:', error);
-                    }
-                  }
-                } catch (error) {
-                  console.error('Failed to save assistant message:', error);
-                }
-              }
-            },
-            experimental_telemetry: {
-              isEnabled: isProductionEnvironment,
-              functionId: 'stream-text',
-            },
-          });
-
-          result.consumeStream();
-
-          result.mergeIntoDataStream(buffer, {
-            sendReasoning: true,
-          });
-        } catch (error) {
-          console.error('Error in streamText execution:', error);
-          
-          // Try fallback model if primary fails
+          let result;
           try {
-            console.log('[chat route] Primary model failed, trying OpenRouter fallback...');
-            
-            const fallbackResult = streamText({
-              model: myProvider.languageModel('chat-model-fallback'),
+            result = streamText({
+              model: myProvider.languageModel(selectedChatModel),
               system: modifiedSystemPrompt,
               messages: messages,
               maxSteps: 5,
@@ -534,7 +448,7 @@ REMEMBER: More citations = Better answer. Use them ALL! Add [CIT] directly witho
                 getWeather,
               },
               onFinish: async ({ response }) => {
-                // Same save logic as above
+                // Only save assistant message after streaming completes successfully
                 if (session.user?.id) {
                   try {
                     const assistantId = getTrailingMessageId({
@@ -553,6 +467,7 @@ REMEMBER: More citations = Better answer. Use them ALL! Add [CIT] directly witho
                       responseMessages: response.messages,
                     });
 
+                    // Save only the assistant message (user message already saved)
                     await saveMessages({
                       messages: [
                         {
@@ -567,6 +482,7 @@ REMEMBER: More citations = Better answer. Use them ALL! Add [CIT] directly witho
                       ],
                     });
                     
+                    // Save vector search results if available
                     const vectorSearchData = (globalThis as any).__vectorSearchDataToSave;
                     if (vectorSearchData) {
                       try {
@@ -574,6 +490,84 @@ REMEMBER: More citations = Better answer. Use them ALL! Add [CIT] directly witho
                           messageId: assistantId,
                           ...vectorSearchData,
                         });
+                        // Clean up
+                        delete (globalThis as any).__vectorSearchDataToSave;
+                      } catch (error) {
+                        console.error('Failed to save vector search results:', error);
+                      }
+                    }
+                  } catch (error) {
+                    console.error('Failed to save assistant message:', error);
+                  }
+                }
+              },
+              experimental_telemetry: {
+                isEnabled: isProductionEnvironment,
+                functionId: 'stream-text',
+              },
+            });
+          } catch (primaryError) {
+            console.warn('Primary provider failed, trying fallback provider:', primaryError);
+            result = streamText({
+              model: fallbackProvider.languageModel(selectedChatModel),
+              system: modifiedSystemPrompt,
+              messages: messages,
+              maxSteps: 5,
+              experimental_activeTools:
+                selectedChatModel === 'chat-model-reasoning'
+                  ? []
+                  : [
+                      'getWeather',
+                    ],
+              experimental_transform: smoothStream({ chunking: 'word' }),
+              experimental_generateMessageId: generateUUID,
+              tools: {
+                getWeather,
+              },
+              onFinish: async ({ response }) => {
+                // Only save assistant message after streaming completes successfully
+                if (session.user?.id) {
+                  try {
+                    const assistantId = getTrailingMessageId({
+                      messages: response.messages.filter(
+                        (message) => message.role === 'assistant',
+                      ),
+                    });
+
+                    if (!assistantId) {
+                      console.error('No assistant message found in response');
+                      return;
+                    }
+
+                    const [, assistantMessage] = appendResponseMessages({
+                      messages: [message],
+                      responseMessages: response.messages,
+                    });
+
+                    // Save only the assistant message (user message already saved)
+                    await saveMessages({
+                      messages: [
+                        {
+                          id: assistantId,
+                          chatId: id,
+                          role: assistantMessage.role,
+                          parts: assistantMessage.parts,
+                          attachments:
+                            assistantMessage.experimental_attachments ?? [],
+                          createdAt: new Date(),
+                        },
+                      ],
+                    });
+                    
+                    // Save vector search results if available
+                    const vectorSearchData = (globalThis as any).__vectorSearchDataToSave;
+                    if (vectorSearchData) {
+                      try {
+                        await saveVectorSearchResult({
+                          messageId: assistantId,
+                          ...vectorSearchData,
+                        });
+                        // Clean up
                         delete (globalThis as any).__vectorSearchDataToSave;
                       } catch (error) {
                         console.error('Failed to save vector search results:', error);
@@ -589,16 +583,16 @@ REMEMBER: More citations = Better answer. Use them ALL! Add [CIT] directly witho
                 functionId: 'stream-text-fallback',
               },
             });
-
-            fallbackResult.consumeStream();
-
-            fallbackResult.mergeIntoDataStream(buffer, {
-              sendReasoning: true,
-            });
-          } catch (fallbackError) {
-            console.error('Fallback model also failed:', fallbackError);
-            throw fallbackError;
           }
+
+          result.consumeStream();
+
+          result.mergeIntoDataStream(buffer, {
+            sendReasoning: true,
+          });
+        } catch (error) {
+          console.error('Error in streamText execution:', error);
+          throw error;
         }
       },
       onError: (error) => {

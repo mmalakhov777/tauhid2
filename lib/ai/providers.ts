@@ -12,9 +12,33 @@ import {
   titleModel,
 } from './models.test';
 
-// Create OpenRouter instance with the provided API key
+// Create OpenRouter instance as fallback
 const openrouter = createOpenRouter({
-  apiKey: process.env.OPENROUTER_API_KEY,
+  apiKey: process.env.OPENROUTER_API_KEY || '',
+});
+
+// Primary provider (Groq)
+const groqProvider = customProvider({
+  languageModels: {
+    'chat-model': groq('mistral-saba-24b'),
+    'chat-model-reasoning': wrapLanguageModel({
+      model: groq('mistral-saba-24b'),
+      middleware: extractReasoningMiddleware({ tagName: 'think' }),
+    }),
+    'title-model': groq('mistral-saba-24b'),
+  },
+});
+
+// Fallback provider (OpenRouter)
+const openrouterProvider = customProvider({
+  languageModels: {
+    'chat-model': openrouter.chat('mistralai/mistral-7b-instruct'),
+    'chat-model-reasoning': wrapLanguageModel({
+      model: openrouter.chat('mistralai/mistral-7b-instruct'),
+      middleware: extractReasoningMiddleware({ tagName: 'think' }),
+    }),
+    'title-model': openrouter.chat('mistralai/mistral-7b-instruct'),
+  },
 });
 
 export const myProvider = isTestEnvironment
@@ -25,16 +49,7 @@ export const myProvider = isTestEnvironment
         'title-model': titleModel,
       },
     })
-  : customProvider({
-      languageModels: {
-        'chat-model': groq('mistral-saba-24b'),
-        'chat-model-reasoning': wrapLanguageModel({
-          model: groq('mistral-saba-24b'),
-          middleware: extractReasoningMiddleware({ tagName: 'think' }),
-        }),
-        'title-model': groq('mistral-saba-24b'),
-        // OpenRouter fallback models
-        'chat-model-fallback': openrouter.chat('meta-llama/llama-3.1-70b-instruct'),
-        'title-model-fallback': openrouter.chat('meta-llama/llama-3.1-8b-instruct'),
-      },
-    });
+  : groqProvider;
+
+// Export fallback provider for use when Groq fails
+export const fallbackProvider = openrouterProvider;
