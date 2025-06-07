@@ -36,33 +36,43 @@ export function PureMessageActions({
   if (message.role === 'user') return null;
 
   const handleShare = async () => {
-    // Get the current URL
-    const currentUrl = window.location.href;
+    // Get the message content
+    const textFromParts = message.parts
+      ?.filter((part) => part.type === 'text')
+      .map((part) => part.text)
+      .join('\n')
+      .trim();
+
+    if (!textFromParts) {
+      toast.error("There's no text to share!");
+      return;
+    }
     
     if (webApp) {
-      // For Telegram users, we'll copy the link since shareMessage requires PreparedInlineMessage
-      // In a real implementation, you'd need to prepare the message via Bot API first
+      // For Telegram users, we'll copy the message content and open share dialog
       try {
-        await copyToClipboard(currentUrl);
-        toast.success('Chat link copied to clipboard!');
+        await copyToClipboard(textFromParts);
+        toast.success('Message copied to clipboard!');
         
-        // Optionally, you could also use Telegram's share functionality
-        // This would open Telegram's native share dialog
+        // Use Telegram's share functionality to share the message content
         if (webApp.openTelegramLink) {
-          const shareText = `Check out this chat: ${currentUrl}`;
-          const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(currentUrl)}&text=${encodeURIComponent(shareText)}`;
+          // Truncate message for URL if it's too long
+          const shareText = textFromParts.length > 1000 
+            ? textFromParts.substring(0, 997) + '...' 
+            : textFromParts;
+          const telegramShareUrl = `https://t.me/share/url?text=${encodeURIComponent(shareText)}`;
           webApp.openTelegramLink(telegramShareUrl);
         }
       } catch (error) {
-        toast.error('Failed to share chat');
+        toast.error('Failed to share message');
       }
     } else {
-      // For non-Telegram users, just copy the link
+      // For non-Telegram users, just copy the message content
       try {
-        await copyToClipboard(currentUrl);
-        toast.success('Chat link copied to clipboard!');
+        await copyToClipboard(textFromParts);
+        toast.success('Message copied to clipboard!');
       } catch (error) {
-        toast.error('Failed to copy link');
+        toast.error('Failed to copy message');
       }
     }
   };
@@ -107,7 +117,7 @@ export function PureMessageActions({
               <ShareIcon />
             </Button>
           </TooltipTrigger>
-          <TooltipContent>Share Chat</TooltipContent>
+          <TooltipContent>Share Message</TooltipContent>
         </Tooltip>
 
         <Tooltip>
