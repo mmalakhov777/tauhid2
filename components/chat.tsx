@@ -20,6 +20,7 @@ import { useChatVisibility } from '@/hooks/use-chat-visibility';
 import { useAutoResume } from '@/hooks/use-auto-resume';
 import { ChatSDKError } from '@/lib/errors';
 import { DEFAULT_CHAT_MODEL } from '@/lib/ai/models';
+import { useTelegramLoading } from './TelegramAutoAuth';
 
 export function Chat({
   id,
@@ -40,6 +41,7 @@ export function Chat({
   const [vectorSearchProgress, setVectorSearchProgress] = useState<any>(null);
   const [vectorSearchData, setVectorSearchData] = useState<any>(null);
   const [dbOperationsComplete, setDbOperationsComplete] = useState(true); // Track when DB operations are done
+  const { setIsLoading: setIsGlobalLoading } = useTelegramLoading();
 
   const { visibilityType } = useChatVisibility({
     chatId: id,
@@ -245,6 +247,16 @@ export function Chat({
     data,
     setMessages,
   });
+
+  // Dismiss global loading when chat is ready
+  useEffect(() => {
+    // Small delay to ensure the chat UI is fully rendered
+    const timer = setTimeout(() => {
+      setIsGlobalLoading(false);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [setIsGlobalLoading]);
 
   return (
     <>
