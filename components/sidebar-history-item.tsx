@@ -4,7 +4,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from './ui/sidebar';
-import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,8 +22,9 @@ import {
   MoreHorizontalIcon,
   ShareIcon,
   TrashIcon,
+  LoaderIcon,
 } from './icons';
-import { memo } from 'react';
+import { memo, useState } from 'react';
 import { useChatVisibility } from '@/hooks/use-chat-visibility';
 
 const PureChatItem = ({
@@ -37,17 +38,46 @@ const PureChatItem = ({
   onDelete: (chatId: string) => void;
   setOpenMobile: (open: boolean) => void;
 }) => {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(false);
   const { visibilityType, setVisibilityType } = useChatVisibility({
     chatId: chat.id,
     initialVisibilityType: chat.visibility,
   });
 
+  const handleChatClick = () => {
+    setOpenMobile(false);
+    setIsLoading(true);
+    // Use router.push for instant navigation - this will show loading.tsx immediately
+    router.push(`/chat/${chat.id}`);
+    
+    // Reset loading state after a short delay (the loading.tsx will take over)
+    setTimeout(() => {
+      setIsLoading(false);
+    }, 500);
+  };
+
+  const handleMouseEnter = () => {
+    // Prefetch the chat route on hover for faster loading
+    router.prefetch(`/chat/${chat.id}`);
+  };
+
   return (
     <SidebarMenuItem>
       <SidebarMenuButton asChild isActive={isActive}>
-        <Link href={`/chat/${chat.id}`} onClick={() => setOpenMobile(false)}>
-          <span>{chat.title}</span>
-        </Link>
+        <button 
+          onClick={handleChatClick} 
+          onMouseEnter={handleMouseEnter}
+          className="w-full text-left flex items-center gap-2"
+          disabled={isLoading}
+        >
+          {isLoading && (
+            <div className="animate-spin flex-shrink-0">
+              <LoaderIcon size={14} />
+            </div>
+          )}
+          <span className={isLoading ? 'opacity-70' : ''}>{chat.title}</span>
+        </button>
       </SidebarMenuButton>
 
       <DropdownMenu modal={true}>

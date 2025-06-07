@@ -9,7 +9,6 @@ import { PlusIcon, GlobeIcon } from '@/components/icons';
 import { SidebarHistory } from '@/components/sidebar-history';
 import { SidebarUserNav } from '@/components/sidebar-user-nav';
 import { EmailSetupBanner } from '@/components/EmailSetupBanner';
-import { useTelegram } from '@/hooks/useTelegram';
 import { Button } from '@/components/ui/button';
 import {
   Sidebar,
@@ -35,7 +34,6 @@ import {
 export function AppSidebar({ user }: { user: User | undefined }) {
   const router = useRouter();
   const { setOpenMobile, openMobile } = useSidebar();
-  const { user: telegramUser } = useTelegram();
   const [selectedLanguage, setSelectedLanguage] = useState('en');
   
   // Check if we're on mobile
@@ -62,49 +60,13 @@ export function AppSidebar({ user }: { user: User | undefined }) {
     { code: 'es', name: 'Español' },
   ];
 
-  const isTelegramUser = user?.email?.startsWith('telegram_') && user?.email?.endsWith('@telegram.local');
-
-  // Map Telegram language codes to our supported languages
-  const mapTelegramLanguage = (telegramLangCode?: string): string => {
-    if (!telegramLangCode) return 'en';
-    
-    const langMap: { [key: string]: string } = {
-      'en': 'en',
-      'tr': 'tr',
-      'ar': 'ar',
-      'ru': 'ru',
-      'de': 'de',
-      'fr': 'fr',
-      'es': 'es',
-      // Add more mappings as needed
-    };
-    
-    return langMap[telegramLangCode] || 'en';
-  };
-
-  // Load language from localStorage on mount or set from Telegram data
+  // Load language from localStorage on mount
   useEffect(() => {
-    // If user is a Telegram user and we have their language preference
-    if (isTelegramUser && telegramUser?.language_code) {
-      const telegramMappedLang = mapTelegramLanguage(telegramUser.language_code);
-      const savedLanguage = localStorage.getItem('selectedLanguage');
-      
-      // Only set from Telegram if no saved preference exists
-      if (!savedLanguage) {
-        setSelectedLanguage(telegramMappedLang);
-        localStorage.setItem('selectedLanguage', telegramMappedLang);
-        console.log('🔍 Language set from Telegram:', telegramMappedLang);
-      } else if (languages.some(lang => lang.code === savedLanguage)) {
-        setSelectedLanguage(savedLanguage);
-      }
-    } else {
-      // Non-Telegram user - use saved preference or default
-      const savedLanguage = localStorage.getItem('selectedLanguage');
-      if (savedLanguage && languages.some(lang => lang.code === savedLanguage)) {
-        setSelectedLanguage(savedLanguage);
-      }
+    const savedLanguage = localStorage.getItem('selectedLanguage');
+    if (savedLanguage && languages.some(lang => lang.code === savedLanguage)) {
+      setSelectedLanguage(savedLanguage);
     }
-  }, [telegramUser, isTelegramUser]);
+  }, []);
 
   const handleLanguageChange = (languageCode: string) => {
     console.log('🔍 Language changed to:', languageCode);
@@ -139,41 +101,24 @@ export function AppSidebar({ user }: { user: User | undefined }) {
           <div className="flex h-full w-full flex-col pb-5">
             <SidebarHeader>
               <SidebarMenu>
-                <div className="flex flex-row justify-between items-center">
-                  <Link
-                    href="/"
+                <div className="flex flex-row justify-center items-center">
+                  <button
                     onClick={() => {
                       setOpenMobile(false);
+                      router.push('/');
                     }}
                     className="flex flex-row gap-3 items-center"
                   >
-                    <div className="px-2 hover:bg-muted rounded-md cursor-pointer py-1 flex items-center gap-3 transition-colors duration-200">
+                    <div className="rounded-md cursor-pointer flex items-center gap-3 transition-colors duration-200">
                       <Image
-                        src="/assets/logowithtext.png"
+                        src="/assets/conceptlogo2.webp"
                         alt="Logo"
                         width={350}
                         height={150}
-                        className="h-24 w-auto"
+                        className="h-60 w-auto"
                       />
                     </div>
-                  </Link>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        type="button"
-                        className="p-2 h-fit hover:bg-muted transition-colors duration-200"
-                        onClick={() => {
-                          setOpenMobile(false);
-                          router.push('/');
-                          router.refresh();
-                        }}
-                      >
-                        <PlusIcon />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent align="end">New Chat</TooltipContent>
-                  </Tooltip>
+                  </button>
                 </div>
               </SidebarMenu>
             </SidebarHeader>
@@ -232,41 +177,24 @@ export function AppSidebar({ user }: { user: User | undefined }) {
     <Sidebar className="group-data-[side=left]:border-r border-border h-screen">
       <SidebarHeader>
         <SidebarMenu>
-          <div className="flex flex-row justify-between items-center">
-            <Link
-              href="/"
+          <div className="flex flex-row justify-center items-center">
+            <button
               onClick={() => {
                 setOpenMobile(false);
+                router.push('/');
               }}
               className="flex flex-row gap-3 items-center"
             >
-              <div className="px-2 hover:bg-muted rounded-md cursor-pointer py-1 flex items-center gap-3 transition-colors duration-200">
+              <div className="rounded-md cursor-pointer flex items-center gap-3 transition-colors duration-200">
                 <Image
-                  src="/assets/logowithtext.png"
+                  src="/assets/conceptlogo2.webp"
                   alt="Logo"
                   width={350}
                   height={150}
-                  className="h-24 w-auto"
+                  className="h-60 w-auto"
                 />
               </div>
-            </Link>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  type="button"
-                  className="p-2 h-fit hover:bg-muted transition-colors duration-200"
-                  onClick={() => {
-                    setOpenMobile(false);
-                    router.push('/');
-                    router.refresh();
-                  }}
-                >
-                  <PlusIcon />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent align="end">New Chat</TooltipContent>
-            </Tooltip>
+            </button>
           </div>
         </SidebarMenu>
       </SidebarHeader>

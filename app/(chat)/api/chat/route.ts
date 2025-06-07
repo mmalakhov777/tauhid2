@@ -178,6 +178,64 @@ export async function POST(request: Request) {
       message,
     });
 
+    // Log the user request details
+    console.log('[chat route] User request details:', {
+      chatId: id,
+      messageId: message.id,
+      messageRole: message.role,
+      selectedLanguage,
+      selectedChatModel,
+      selectedVisibilityType,
+    });
+
+    // Extract and log user message content
+    let userMessageContent = '';
+    if (message.parts && Array.isArray(message.parts)) {
+      console.log('[chat route] Message parts:', message.parts.map(part => ({
+        type: part.type,
+        textLength: part.type === 'text' ? part.text?.length : 0,
+        textPreview: part.type === 'text' ? part.text?.substring(0, 100) + '...' : 'N/A'
+      })));
+      
+      for (const part of message.parts) {
+        if (part.type === 'text' && part.text) {
+          userMessageContent += part.text;
+        }
+      }
+    } else if (message.content) {
+      userMessageContent = message.content;
+      console.log('[chat route] Message content (legacy):', {
+        contentLength: message.content.length,
+        contentPreview: message.content.substring(0, 100) + '...'
+      });
+    }
+
+    console.log('[chat route] Extracted user message content:', {
+      totalLength: userMessageContent.length,
+      contentPreview: userMessageContent.substring(0, 200) + '...',
+      fullContent: userMessageContent // Full content for debugging
+    });
+
+    // Log attachments if any
+    if (message.experimental_attachments && message.experimental_attachments.length > 0) {
+      console.log('[chat route] Message attachments:', message.experimental_attachments.map(att => ({
+        name: att.name,
+        contentType: att.contentType,
+        url: att.url
+      })));
+    }
+
+    // Log the final messages array that will be sent to AI
+    console.log('[chat route] Final messages array for AI:', {
+      totalMessages: messages.length,
+      lastMessage: messages[messages.length - 1],
+      messagesPreview: messages.map(msg => ({
+        role: msg.role,
+        contentLength: typeof msg.content === 'string' ? msg.content.length : 'N/A',
+        partsCount: msg.parts ? msg.parts.length : 0
+      }))
+    });
+
     // Handle vector search request
     if (isVectorSearchRequest && !isStreamRequest) {
       // Step 1: Return citations and messageId only
@@ -378,15 +436,50 @@ export async function POST(request: Request) {
     if (messageId && messageContextMap.has(messageId)) {
       // Build context block from stored citations
       const allContexts = getContextByMessageId(messageId);
-      contextBlock = buildContextBlock(
-        allContexts.filter((ctx: any) => ctx.metadata?.type === 'classic' || ctx.metadata?.type === 'CLS' || (!ctx.metadata?.type && !ctx.namespace)),
-        allContexts.filter((ctx: any) => ctx.metadata?.type === 'modern' || ctx.metadata?.type === 'MOD'),
-        allContexts.filter((ctx: any) => ctx.metadata?.type === 'risale' || ctx.metadata?.type === 'RIS' || (ctx.namespace && ['Sozler-Bediuzzaman_Said_Nursi', 'Mektubat-Bediuzzaman_Said_Nursi', 'lemalar-bediuzzaman_said_nursi', 'Hasir_Risalesi-Bediuzzaman_Said_Nursi', 'Otuz_Uc_Pencere-Bediuzzaman_Said_Nursi', 'Hastalar_Risalesi-Bediuzzaman_Said_Nursi', 'ihlas_risaleleri-bediuzzaman_said_nursi', 'enne_ve_zerre_risalesi-bediuzzaman_said_nursi', 'tabiat_risalesi-bediuzzaman_said_nursi', 'kader_risalesi-bediuzzaman_said_nursi'].includes(ctx.namespace))),
-        allContexts.filter((ctx: any) => ctx.metadata?.type === 'youtube' || ctx.metadata?.type === 'YT' || (ctx.namespace && ['4455', 'Islam_The_Ultimate_Peace', '2238', 'Islamic_Guidance', '2004', 'MercifulServant', '1572', 'Towards_Eternity'].includes(ctx.namespace)))
-      );
+      const classicContexts = allContexts.filter((ctx: any) => ctx.metadata?.type === 'classic' || ctx.metadata?.type === 'CLS' || (!ctx.metadata?.type && !ctx.namespace));
+      const modernContexts = allContexts.filter((ctx: any) => ctx.metadata?.type === 'modern' || ctx.metadata?.type === 'MOD');
+      const risaleContexts = allContexts.filter((ctx: any) => ctx.metadata?.type === 'risale' || ctx.metadata?.type === 'RIS' || (ctx.namespace && ['Sozler-Bediuzzaman_Said_Nursi', 'Mektubat-Bediuzzaman_Said_Nursi', 'lemalar-bediuzzaman_said_nursi', 'Hasir_Risalesi-Bediuzzaman_Said_Nursi', 'Otuz_Uc_Pencere-Bediuzzaman_Said_Nursi', 'Hastalar_Risalesi-Bediuzzaman_Said_Nursi', 'ihlas_risaleleri-bediuzzaman_said_nursi', 'enne_ve_zerre_risalesi-bediuzzaman_said_nursi', 'tabiat_risalesi-bediuzzaman_said_nursi', 'kader_risalesi-bediuzzaman_said_nursi'].includes(ctx.namespace)));
+      const youtubeContexts = allContexts.filter((ctx: any) => ctx.metadata?.type === 'youtube' || ctx.metadata?.type === 'YT' || (ctx.namespace && ['4455', 'Islam_The_Ultimate_Peace', '2238', 'Islamic_Guidance', '2004', 'MercifulServant', '1572', 'Towards_Eternity'].includes(ctx.namespace)));
+      
+      const totalCitations = classicContexts.length + modernContexts.length + risaleContexts.length + youtubeContexts.length;
+      
+      if (totalCitations === 0) {
+        // Use completely different prompt for zero citations
+        const noCitationsPrompt = `
 
-      // Add STRONG emphasis on using ALL citations when context is available
-      const citationEmphasis = `
+GENERAL KNOWLEDGE RESPONSE MODE:
+You are responding based on general Islamic knowledge without access to specific scholarly sources or citations for this particular question.
+
+IMPORTANT DISCLAIMERS TO INCLUDE:
+- Begin your response by acknowledging: "Based on general Islamic knowledge..."
+- Emphasize that this response lacks specific scholarly citations and may have reduced accuracy
+- Recommend consulting qualified Islamic scholars, local imams, or authentic Islamic sources for authoritative guidance
+- Suggest that the user verify this information with reliable Islamic authorities
+
+RESPONSE GUIDELINES:
+- Provide helpful general information based on widely accepted Islamic principles
+- Be honest about the limitations of your response
+- Do NOT use any [CIT] references or citation numbers
+- Do NOT claim to have specific sources when you don't
+- Maintain a humble and cautious tone about the reliability of the information
+- Focus on well-established, commonly accepted Islamic teachings
+- Avoid controversial or disputed matters where possible
+
+TRUSTWORTHINESS NOTICE:
+- Clearly indicate that this response has reduced trustworthiness due to lack of specific citations
+- Encourage the user to seek verification from qualified Islamic authorities
+- Remind them that for important religious matters, consulting scholars is always preferable
+
+Remember: Honesty about limitations is more valuable than false confidence. Guide the user toward authoritative sources while providing what general help you can.${languageInstruction}`;
+
+        // Use the no-citations prompt instead of the regular context
+        modifiedSystemPrompt = modifiedSystemPrompt + noCitationsPrompt;
+      } else {
+        // Use the existing citation-based prompt
+        contextBlock = buildContextBlock(classicContexts, modernContexts, risaleContexts, youtubeContexts);
+
+        // Add STRONG emphasis on using ALL citations when context is available
+        const citationEmphasis = `
 
 CRITICAL CITATION REQUIREMENTS:
 - You MUST use ALL available citations provided in the context
@@ -411,8 +504,40 @@ CONTEXT-AWARE RESPONSES:
 
 REMEMBER: More citations = Better answer. Use them ALL! Add [CIT] directly without connecting phrases.`;
 
-      // Append context block and citation emphasis to system prompt
-      modifiedSystemPrompt = modifiedSystemPrompt + '\n\n' + contextBlock + citationEmphasis;
+        // Append context block and citation emphasis to system prompt
+        modifiedSystemPrompt = modifiedSystemPrompt + '\n\n' + contextBlock + citationEmphasis;
+      }
+    } else {
+      // No vector search context available - use general knowledge prompt
+      const noCitationsPrompt = `
+
+GENERAL KNOWLEDGE RESPONSE MODE:
+You are responding based on general Islamic knowledge without access to specific scholarly sources or citations for this particular question.
+
+IMPORTANT DISCLAIMERS TO INCLUDE:
+- Begin your response by acknowledging: "Based on general Islamic knowledge..."
+- Emphasize that this response lacks specific scholarly citations and may have reduced accuracy
+- Recommend consulting qualified Islamic scholars, local imams, or authentic Islamic sources for authoritative guidance
+- Suggest that the user verify this information with reliable Islamic authorities
+
+RESPONSE GUIDELINES:
+- Provide helpful general information based on widely accepted Islamic principles
+- Be honest about the limitations of your response
+- Do NOT use any [CIT] references or citation numbers
+- Do NOT claim to have specific sources when you don't
+- Maintain a humble and cautious tone about the reliability of the information
+- Focus on well-established, commonly accepted Islamic teachings
+- Avoid controversial or disputed matters where possible
+
+TRUSTWORTHINESS NOTICE:
+- Clearly indicate that this response has reduced trustworthiness due to lack of specific citations
+- Encourage the user to seek verification from qualified Islamic authorities
+- Remind them that for important religious matters, consulting scholars is always preferable
+
+Remember: Honesty about limitations is more valuable than false confidence. Guide the user toward authoritative sources while providing what general help you can.${languageInstruction}`;
+
+      // Use the no-citations prompt when no vector search context is available
+      modifiedSystemPrompt = modifiedSystemPrompt + noCitationsPrompt;
     }
 
     const stream = createDataStream({
@@ -431,6 +556,20 @@ REMEMBER: More citations = Better answer. Use them ALL! Add [CIT] directly witho
         try {
           let result;
           try {
+            // Log what we're sending to the AI model
+            console.log('[chat route] Sending to AI model:', {
+              model: selectedChatModel,
+              systemPromptLength: modifiedSystemPrompt.length,
+              systemPromptPreview: modifiedSystemPrompt.substring(0, 300) + '...',
+              messagesCount: messages.length,
+              lastUserMessage: messages[messages.length - 1],
+              hasVectorSearchContext: !!messageId,
+              languageInstruction: languageInstruction || 'None'
+            });
+
+            // Log the full system prompt for debugging (can be commented out in production)
+            console.log('[chat route] Full system prompt:', modifiedSystemPrompt);
+
             result = streamText({
               model: myProvider.languageModel(selectedChatModel),
               system: modifiedSystemPrompt,

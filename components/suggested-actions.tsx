@@ -85,7 +85,7 @@ function PureSuggestedActions({
                   content: suggestedAction.action,
                 });
               }}
-              className="w-full flex items-start justify-between text-left px-2 py-2 sm:py-2 min-h-[40px] sm:min-h-[48px] h-auto hover:bg-transparent active:bg-muted/50 border-b border-border/30 rounded-none last:border-b-0 group touch-manipulation"
+              className="w-full flex items-start justify-between text-left px-2 py-1 sm:py-1.5 min-h-[32px] sm:min-h-[36px] h-auto hover:bg-transparent active:bg-muted/50 border-b border-border/30 rounded-none last:border-b-0 group touch-manipulation"
             >
               <span className="text-sm sm:text-base font-normal mr-2 text-muted-foreground group-hover:text-foreground group-active:text-foreground transition-colors duration-200 leading-relaxed sm:leading-normal break-words whitespace-normal">
                 {suggestedAction.title}

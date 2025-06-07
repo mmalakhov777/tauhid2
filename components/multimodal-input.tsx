@@ -70,6 +70,7 @@ function PureMultimodalInput({
   selectedVisibilityType,
   session,
   isReadonly,
+  hideSuggestedActionsText,
 }: {
   chatId: string;
   input: UseChatHelpers['input'];
@@ -86,6 +87,7 @@ function PureMultimodalInput({
   selectedVisibilityType: VisibilityType;
   session: Session | null;
   isReadonly?: boolean;
+  hideSuggestedActionsText?: boolean;
 }) {
   const { width } = useWindowSize();
   const router = useRouter();
@@ -578,18 +580,21 @@ function PureMultimodalInput({
             transition={{ type: 'spring', stiffness: 300, damping: 20 }}
             className="absolute bottom-36 left-0 right-0 z-20 flex justify-center items-center gap-3"
           >
-            <Button
-              data-testid="sidebar-toggle-button"
-              className="rounded-full shadow-lg"
-              size="icon"
-              variant="outline"
-              onClick={(event) => {
-                event.preventDefault();
-                setOpenMobile(true);
-              }}
-            >
-              <MenuIcon />
-            </Button>
+            {/* Hide sidebar toggle button on desktop */}
+            {width && width <= 768 && (
+              <Button
+                data-testid="sidebar-toggle-button"
+                className="rounded-full shadow-lg"
+                size="icon"
+                variant="outline"
+                onClick={(event) => {
+                  event.preventDefault();
+                  setOpenMobile(true);
+                }}
+              >
+                <MenuIcon />
+              </Button>
+            )}
             
             <Button
               data-testid="new-chat-button"
@@ -654,6 +659,8 @@ function PureMultimodalInput({
           }
           className={cx(
             'w-full',
+            // Make input bigger when shown with suggested actions (empty state)
+            messages.length === 0 && '[&_textarea]:min-h-[60px] [&_textarea]:text-lg',
             className,
           )}
           onAttachmentClick={() => fileInputRef.current?.click()}
@@ -676,17 +683,19 @@ function PureMultimodalInput({
       </div>
 
       {/* Consent Text */}
-      <div className="text-xs text-muted-foreground text-center px-1 py-1.5">
-        It&apos;s always better to ask an Imam. 
-        <a 
-          href="https://www.google.com/maps/search/mosque+near+me" 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="ml-2 text-primary hover:text-primary/80"
-        >
-          Find near mosque
-        </a>
-      </div>
+      {!hideSuggestedActionsText && (
+        <div className="text-xs text-muted-foreground text-center px-1 py-1.5">
+          It&apos;s always better to ask an Imam. 
+          <a 
+            href="https://www.google.com/maps/search/mosque+near+me" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="ml-2 text-primary hover:text-primary/80"
+          >
+            Find near mosque
+          </a>
+        </div>
+      )}
 
       {/* Show attachments preview below the input */}
       {attachments.length > 0 && (
@@ -757,6 +766,8 @@ export const MultimodalInput = memo(
     if (prevProps.status !== nextProps.status) return false;
     if (!equal(prevProps.attachments, nextProps.attachments)) return false;
     if (prevProps.selectedVisibilityType !== nextProps.selectedVisibilityType)
+      return false;
+    if (prevProps.hideSuggestedActionsText !== nextProps.hideSuggestedActionsText)
       return false;
 
     return true;

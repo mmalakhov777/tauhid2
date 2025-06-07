@@ -333,11 +333,11 @@ export function Chat({
           <div className="flex-1 flex flex-col items-center justify-center px-2 sm:px-3 md:px-4 w-full max-w-3xl mx-auto overflow-hidden">
             {/* Greeting section */}
             <div className="mb-6 sm:mb-8 w-full max-w-full">
-              <div className="text-xl sm:text-2xl md:text-3xl font-semibold mb-2 text-left break-words">
-                Hello there!
+              <div className="text-3xl sm:text-2xl md:text-3xl font-semibold mb-2 text-left break-words">
+                Assalamu Alaikum!
               </div>
-              <div className="text-lg sm:text-xl md:text-2xl text-zinc-500 text-left break-words">
-                How can I help you today?
+              <div className="text-2xl sm:text-xl md:text-2xl text-zinc-500 text-left break-words">
+                How can I assist you with Islamic knowledge today?
               </div>
             </div>
             
@@ -357,7 +357,8 @@ export function Chat({
                   append={append}
                   selectedVisibilityType={visibilityType}
                   session={session}
-                isReadonly={isReadonly}
+                  isReadonly={isReadonly}
+                  hideSuggestedActionsText={!isReadonly && attachments.length === 0}
                 />
             </div>
             
@@ -404,7 +405,8 @@ export function Chat({
                   append={append}
                   selectedVisibilityType={visibilityType}
                   session={session}
-                isReadonly={isReadonly}
+                  isReadonly={isReadonly}
+                  hideSuggestedActionsText={false}
                 />
             </form>
           </>
