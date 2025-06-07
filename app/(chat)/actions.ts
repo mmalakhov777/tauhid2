@@ -26,17 +26,42 @@ export async function generateTitleFromUserMessage({
 }: {
   message: UIMessage;
 }) {
-  const { text: title } = await generateText({
-    model: myProvider.languageModel('title-model'),
-    system: `\n
+  try {
+    const { text: title } = await generateText({
+      model: myProvider.languageModel('title-model'),
+      system: `\n
     - you will generate a short title based on the first message a user begins a conversation with
     - ensure it is not more than 80 characters long
     - the title should be a summary of the user's message
     - do not use quotes or colons`,
-    prompt: JSON.stringify(message),
-  });
+      prompt: JSON.stringify(message),
+    });
 
-  return title;
+    return title;
+  } catch (error) {
+    console.error('Failed to generate title:', error);
+    
+    // Fallback: Extract text from message parts if available
+    let fallbackTitle = 'New conversation';
+    
+    try {
+      // Try to extract text from message parts
+      if (message.parts && Array.isArray(message.parts)) {
+        const textPart = message.parts.find((part: any) => part.type === 'text');
+        if (textPart && textPart.type === 'text' && 'text' in textPart) {
+          fallbackTitle = String(textPart.text)
+            .replace(/\n/g, ' ')
+            .substring(0, 80)
+            .trim();
+        }
+      }
+    } catch (e) {
+      // If extraction fails, use default
+      console.error('Failed to extract text from message:', e);
+    }
+    
+    return fallbackTitle || 'New conversation';
+  }
 }
 
 export async function deleteTrailingMessages({ id }: { id: string }) {

@@ -26,6 +26,6 @@ export const myProvider = isTestEnvironment
           model: groq('mistral-saba-24b'),
           middleware: extractReasoningMiddleware({ tagName: 'think' }),
         }),
-        'title-model': groq('mistral-saba-24b'),
+        'title-model': groq('llama-3.3-70b-versatile'),
       },
     });
