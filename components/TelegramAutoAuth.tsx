@@ -83,6 +83,18 @@ export const TelegramAutoAuth = () => {
         hasAttemptedAuth.current = true;
         setIsAuthenticating(true);
 
+        // Check for start parameter to navigate to specific chat after auth
+        let targetChatId = null;
+        if (webApp && (window as any).Telegram?.WebApp?.initDataUnsafe?.start_param) {
+          const startParam = (window as any).Telegram.WebApp.initDataUnsafe.start_param;
+          console.log('[TelegramAutoAuth] Start parameter detected:', startParam);
+          
+          if (startParam.startsWith('chat_')) {
+            targetChatId = startParam.replace('chat_', '');
+            console.log('[TelegramAutoAuth] Target chat ID:', targetChatId);
+          }
+        }
+
         try {
           const result = await telegramAuth({
             telegramId: telegramUser.id,
@@ -98,7 +110,19 @@ export const TelegramAutoAuth = () => {
           if (result.status === 'success') {
             toast({ type: 'success', description: `Welcome back, ${telegramUser.first_name}!` });
             updateSession();
-            router.refresh();
+            
+            // Navigate to specific chat if start parameter was provided
+            if (targetChatId) {
+              console.log('[TelegramAutoAuth] Navigating to target chat:', targetChatId);
+              router.push(`/chat/${targetChatId}`);
+              
+              // Clear the start parameter to prevent re-navigation
+              if ((window as any).Telegram?.WebApp?.initDataUnsafe) {
+                (window as any).Telegram.WebApp.initDataUnsafe.start_param = undefined;
+              }
+            } else {
+              router.refresh();
+            }
           } else if (result.status === 'needs_email') {
             // New user - create them with dummy email immediately, no form shown
             console.log('New user detected, creating with dummy email...');
@@ -121,7 +145,19 @@ export const TelegramAutoAuth = () => {
                 description: `Welcome, ${telegramUser.first_name}! You can start chatting right away.` 
               });
               updateSession();
-              router.refresh();
+              
+              // Navigate to specific chat if start parameter was provided
+              if (targetChatId) {
+                console.log('[TelegramAutoAuth] Navigating to target chat for new user:', targetChatId);
+                router.push(`/chat/${targetChatId}`);
+                
+                // Clear the start parameter to prevent re-navigation
+                if ((window as any).Telegram?.WebApp?.initDataUnsafe) {
+                  (window as any).Telegram.WebApp.initDataUnsafe.start_param = undefined;
+                }
+              } else {
+                router.refresh();
+              }
             }
           }
         } catch (error) {
@@ -134,7 +170,7 @@ export const TelegramAutoAuth = () => {
     };
 
     autoAuthenticate();
-  }, [isLoading, isTelegramAvailable, telegramUser, session, updateSession, router]);
+  }, [isLoading, isTelegramAvailable, telegramUser, session, updateSession, router, webApp]);
 
   // Show loading indicator while authenticating
   if (isAuthenticating) {
