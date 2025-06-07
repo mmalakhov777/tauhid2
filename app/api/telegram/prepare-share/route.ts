@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
       title: 'Share Chat',
       description: 'Share this conversation',
       input_message_content: {
-        message_text: `Check out this interesting conversation!`,
+        message_text: `Check out this interesting conversation!\n\n🔗 Debug: ${miniAppUrl}`,
         parse_mode: 'HTML',
       },
       reply_markup: {
