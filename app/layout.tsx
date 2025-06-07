@@ -2,8 +2,9 @@ import { Toaster } from 'sonner';
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { ThemeProvider } from '@/components/theme-provider';
-import { TelegramAutoAuth, TelegramLoadingProvider } from '@/components/TelegramAutoAuth';
+import { TelegramAutoAuth } from '@/components/TelegramAutoAuth';
 import { TelegramStartHandler } from '@/components/TelegramStartHandler';
+import { AuthLoadingProvider } from '@/contexts/AuthLoadingContext';
 import Script from 'next/script';
 
 import './globals.css';
@@ -86,11 +87,11 @@ export default async function RootLayout({
         >
           <Toaster position="top-center" />
           <SessionProvider>
-            <TelegramLoadingProvider>
+            <AuthLoadingProvider>
               <TelegramStartHandler />
               <TelegramAutoAuth />
               {children}
-            </TelegramLoadingProvider>
+            </AuthLoadingProvider>
           </SessionProvider>
         </ThemeProvider>
       </body>

@@ -1,43 +1,24 @@
 'use client';
 
-import { useEffect, useState, useRef, createContext, useContext } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useTelegram } from '@/hooks/useTelegram';
 import { telegramAuth } from '@/app/(auth)/actions';
 import { toast } from '@/components/toast';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useTheme } from 'next-themes';
+import { useAuthLoading } from '@/contexts/AuthLoadingContext';
 import { TelegramEmailForm } from './TelegramEmailForm';
-
-// Global loading context
-const TelegramLoadingContext = createContext<{
-  isLoading: boolean;
-  setIsLoading: (loading: boolean) => void;
-}>({
-  isLoading: false,
-  setIsLoading: () => {},
-});
-
-export const useTelegramLoading = () => useContext(TelegramLoadingContext);
-
-export const TelegramLoadingProvider = ({ children }: { children: React.ReactNode }) => {
-  const [isLoading, setIsLoading] = useState(false);
-  
-  return (
-    <TelegramLoadingContext.Provider value={{ isLoading, setIsLoading }}>
-      {children}
-    </TelegramLoadingContext.Provider>
-  );
-};
 
 export const TelegramAutoAuth = () => {
   const { user: telegramUser, webApp, isTelegramAvailable, isLoading } = useTelegram();
-  const { isLoading: isGlobalLoading, setIsLoading: setIsGlobalLoading } = useTelegramLoading();
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
   const hasAttemptedAuth = useRef(false);
   const hasOptimizedWebApp = useRef(false);
   const router = useRouter();
   const { data: session, update: updateSession } = useSession();
   const { theme } = useTheme();
+  const { isAuthLoading, setIsAuthLoading } = useAuthLoading();
 
   // Telegram WebApp optimizations
   useEffect(() => {
@@ -102,7 +83,8 @@ export const TelegramAutoAuth = () => {
         !session?.user
       ) {
         hasAttemptedAuth.current = true;
-        setIsGlobalLoading(true);
+        setIsAuthenticating(true);
+        setIsAuthLoading(true); // Set global loading state
 
         // Check for start parameter to navigate to specific chat after auth
         let targetChatId = null;
@@ -132,6 +114,9 @@ export const TelegramAutoAuth = () => {
             toast({ type: 'success', description: `Welcome back, ${telegramUser.first_name}!` });
             updateSession();
             
+            // Don't clear loading state here - let the chat component do it
+            setIsAuthenticating(false);
+            
             // Navigate to specific chat if start parameter was provided
             if (targetChatId) {
               console.log('[TelegramAutoAuth] Navigating to target chat:', targetChatId);
@@ -144,12 +129,10 @@ export const TelegramAutoAuth = () => {
                 if ((window as any).Telegram?.WebApp?.initDataUnsafe) {
                   (window as any).Telegram.WebApp.initDataUnsafe.start_param = undefined;
                 }
-                
-                // Note: Loading state will be cleared by the Chat component when it's ready
               }, 100);
             } else {
-              // No specific chat to navigate to, clear loading immediately
-              setIsGlobalLoading(false);
+              // If no target chat, clear loading immediately
+              setIsAuthLoading(false);
               router.refresh();
             }
           } else if (result.status === 'needs_email') {
@@ -175,6 +158,9 @@ export const TelegramAutoAuth = () => {
               });
               updateSession();
               
+              // Don't clear loading state here - let the chat component do it
+              setIsAuthenticating(false);
+              
               // Navigate to specific chat if start parameter was provided
               if (targetChatId) {
                 console.log('[TelegramAutoAuth] Navigating to target chat for new user:', targetChatId);
@@ -187,29 +173,29 @@ export const TelegramAutoAuth = () => {
                   if ((window as any).Telegram?.WebApp?.initDataUnsafe) {
                     (window as any).Telegram.WebApp.initDataUnsafe.start_param = undefined;
                   }
-                  
-                  // Note: Loading state will be cleared by the Chat component when it's ready
                 }, 100);
               } else {
-                // No specific chat to navigate to, clear loading immediately
-                setIsGlobalLoading(false);
+                // If no target chat, clear loading immediately
+                setIsAuthLoading(false);
                 router.refresh();
               }
             }
           }
         } catch (error) {
           console.error('Auto-authentication error:', error);
-          setIsGlobalLoading(false);
           // Silent fail - user can still use manual auth buttons
+          setIsAuthLoading(false); // Clear loading on error
+        } finally {
+          setIsAuthenticating(false);
         }
       }
     };
 
     autoAuthenticate();
-  }, [isLoading, isTelegramAvailable, telegramUser, session, updateSession, router, webApp, setIsGlobalLoading]);
+  }, [isLoading, isTelegramAvailable, telegramUser, session, updateSession, router, webApp, setIsAuthLoading]);
 
-  // Show loading indicator while authenticating
-  if (isGlobalLoading) {
+  // Show loading indicator while authenticating or auth is loading globally
+  if (isAuthenticating || isAuthLoading) {
     return (
       <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
         <div className="flex flex-col items-center gap-6 p-8">
@@ -231,10 +217,12 @@ export const TelegramAutoAuth = () => {
           {/* Loading text */}
           <div className="text-center space-y-2">
             <h3 className="text-xl font-semibold text-foreground">
-              Loading Chat
+              {isAuthLoading && !isAuthenticating ? 'Loading Chat' : 'Connecting to Telegram'}
             </h3>
             <p className="text-sm text-muted-foreground max-w-sm">
-              Setting up your secure connection and loading the conversation...
+              {isAuthLoading && !isAuthenticating 
+                ? 'Preparing your conversation...' 
+                : 'Setting up your secure connection and personalizing your experience...'}
             </p>
           </div>
           
