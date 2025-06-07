@@ -39,8 +39,8 @@ export const TelegramEmailForm = ({ telegramUser, onComplete, onSkip }: Telegram
     if (!email) {
       return 'Email is required';
     }
-    if (!emailRegex.test(email)) {
-      return 'Please enter a valid email address (e.g., user@example.com)';
+    if (!emailRegex.test(email.trim())) {
+      return 'Please enter a valid email address';
     }
     return '';
   };
@@ -51,12 +51,6 @@ export const TelegramEmailForm = ({ telegramUser, onComplete, onSkip }: Telegram
     }
     if (password.length < 6) {
       return 'Password must be at least 6 characters long';
-    }
-    if (!/[a-zA-Z]/.test(password)) {
-      return 'Password must contain at least one letter';
-    }
-    if (!/[0-9]/.test(password)) {
-      return 'Password must contain at least one number';
     }
     return '';
   };
@@ -81,6 +75,16 @@ export const TelegramEmailForm = ({ telegramUser, onComplete, onSkip }: Telegram
     const emailError = validateEmail(email);
     const passwordError = validatePassword(password);
     const confirmPasswordError = validateConfirmPassword(confirmPassword, password);
+    
+    // Debug logging
+    console.log('Validation results:', {
+      email: email,
+      emailError,
+      password: password ? '[HIDDEN]' : '',
+      passwordError,
+      confirmPassword: confirmPassword ? '[HIDDEN]' : '',
+      confirmPasswordError
+    });
     
     if (emailError || passwordError || confirmPasswordError) {
       setErrors({
