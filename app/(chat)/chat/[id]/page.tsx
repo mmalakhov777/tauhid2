@@ -56,7 +56,7 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
       id={chat.id}
       initialMessages={convertToUIMessages(messagesFromDb)}
       initialVisibilityType={chat.visibility}
-      isReadonly={session?.user?.id !== chat.userId}
+      isReadonly={session?.user?.id !== chat.userId && chat.visibility !== 'public'}
       session={session}
       autoResume={true}
     />
