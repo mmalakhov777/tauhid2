@@ -14,7 +14,7 @@ import {
 
 // Create OpenRouter instance with the provided API key
 const openrouter = createOpenRouter({
-  apiKey: process.env.OPENROUTER_API_KEY || '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',
+  apiKey: process.env.OPENROUTER_API_KEY,
 });
 
 export const myProvider = isTestEnvironment
