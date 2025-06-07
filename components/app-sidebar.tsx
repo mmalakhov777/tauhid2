@@ -3,7 +3,7 @@
 import type { User } from 'next-auth';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 
 import { PlusIcon, GlobeIcon } from '@/components/icons';
 import { SidebarHistory } from '@/components/sidebar-history';
@@ -37,15 +37,6 @@ export function AppSidebar({ user }: { user: User | undefined }) {
   const { setOpenMobile, openMobile } = useSidebar();
   const { user: telegramUser } = useTelegram();
   const [selectedLanguage, setSelectedLanguage] = useState('en');
-  
-  // Swipe gesture state
-  const [isSwipeActive, setIsSwipeActive] = useState(false);
-  const [swipeProgress, setSwipeProgress] = useState(0);
-  const [startX, setStartX] = useState(0);
-  const sidebarRef = useRef<HTMLDivElement>(null);
-  const overlayRef = useRef<HTMLDivElement>(null);
-  const SIDEBAR_WIDTH = 288; // 18rem in pixels
-  const SWIPE_THRESHOLD = 50; // Minimum swipe distance to trigger open
   
   // Check if we're on mobile
   const [isMobile, setIsMobile] = useState(false);
@@ -91,154 +82,6 @@ export function AppSidebar({ user }: { user: User | undefined }) {
     return langMap[telegramLangCode] || 'en';
   };
 
-  // Touch event handlers for swipe gesture
-  const handleTouchStart = (e: TouchEvent) => {
-    const touch = e.touches[0];
-    const startX = touch.clientX;
-    
-    if (!openMobile) {
-      // Opening gesture - swipe from left half of screen
-      if (startX <= window.innerWidth / 2) {
-        setIsSwipeActive(true);
-        setStartX(startX);
-        setSwipeProgress(0);
-      }
-    } else {
-      // Closing gesture - can start from anywhere when sidebar is open
-      setIsSwipeActive(true);
-      setStartX(startX);
-      setSwipeProgress(1); // Start at fully open
-    }
-  };
-
-  const handleTouchMove = (e: TouchEvent) => {
-    if (!isSwipeActive) return;
-    
-    const touch = e.touches[0];
-    const currentX = touch.clientX;
-    const deltaX = currentX - startX;
-    
-    let progress;
-    if (!openMobile) {
-      // Opening - calculate progress from 0 to 1
-      progress = Math.max(0, Math.min(1, deltaX / SIDEBAR_WIDTH));
-    } else {
-      // Closing - calculate progress from 1 to 0
-      progress = Math.max(0, Math.min(1, 1 + (deltaX / SIDEBAR_WIDTH)));
-    }
-    
-    setSwipeProgress(progress);
-    
-    // Apply transform to sidebar and overlay
-    if (sidebarRef.current) {
-      const translateX = -SIDEBAR_WIDTH + (progress * SIDEBAR_WIDTH);
-      sidebarRef.current.style.transform = `translateX(${translateX}px)`;
-      sidebarRef.current.style.transition = 'none';
-    }
-    
-    if (overlayRef.current) {
-      overlayRef.current.style.opacity = `${progress * 0.5}`;
-      overlayRef.current.style.visibility = 'visible';
-      overlayRef.current.style.transition = 'none';
-    }
-    
-    // Prevent scrolling while swiping
-    e.preventDefault();
-  };
-
-  const handleTouchEnd = () => {
-    if (!isSwipeActive) return;
-    
-    setIsSwipeActive(false);
-    
-    let shouldOpen;
-    if (!openMobile) {
-      // Opening - check if swiped enough to open
-      shouldOpen = swipeProgress > 0.3 || (swipeProgress * SIDEBAR_WIDTH) > SWIPE_THRESHOLD;
-    } else {
-      // Closing - check if swiped enough to close
-      shouldOpen = swipeProgress > 0.7; // Stay open if progress is still above 70%
-    }
-    
-    if (shouldOpen) {
-      setOpenMobile(true);
-      // Animate to fully open
-      if (sidebarRef.current) {
-        sidebarRef.current.style.transform = 'translateX(0)';
-        sidebarRef.current.style.transition = 'transform 0.3s ease-out';
-      }
-      if (overlayRef.current) {
-        overlayRef.current.style.opacity = '0.5';
-        overlayRef.current.style.transition = 'opacity 0.3s ease-out';
-      }
-    } else {
-      setOpenMobile(false);
-      // Animate to fully closed
-      if (sidebarRef.current) {
-        sidebarRef.current.style.transform = `translateX(-${SIDEBAR_WIDTH}px)`;
-        sidebarRef.current.style.transition = 'transform 0.3s ease-out';
-      }
-      
-      if (overlayRef.current) {
-        overlayRef.current.style.opacity = '0';
-        overlayRef.current.style.transition = 'opacity 0.3s ease-out';
-        setTimeout(() => {
-          if (overlayRef.current) {
-            overlayRef.current.style.visibility = 'hidden';
-          }
-        }, 300);
-      }
-    }
-    
-    setSwipeProgress(0);
-  };
-
-  // Add touch event listeners
-  useEffect(() => {
-    const handleTouchStartWrapper = (e: TouchEvent) => handleTouchStart(e);
-    const handleTouchMoveWrapper = (e: TouchEvent) => handleTouchMove(e);
-    const handleTouchEndWrapper = () => handleTouchEnd();
-
-    document.addEventListener('touchstart', handleTouchStartWrapper, { passive: false });
-    document.addEventListener('touchmove', handleTouchMoveWrapper, { passive: false });
-    document.addEventListener('touchend', handleTouchEndWrapper);
-
-    return () => {
-      document.removeEventListener('touchstart', handleTouchStartWrapper);
-      document.removeEventListener('touchmove', handleTouchMoveWrapper);
-      document.removeEventListener('touchend', handleTouchEndWrapper);
-    };
-  }, [isSwipeActive, startX, swipeProgress, openMobile]);
-
-  // Reset transforms when sidebar opens/closes normally
-  useEffect(() => {
-    if (sidebarRef.current) {
-      if (openMobile) {
-        sidebarRef.current.style.transform = 'translateX(0)';
-        sidebarRef.current.style.transition = 'transform 0.3s ease-out';
-      } else if (!isSwipeActive) {
-        sidebarRef.current.style.transform = `translateX(-${SIDEBAR_WIDTH}px)`;
-        sidebarRef.current.style.transition = 'transform 0.3s ease-out';
-      }
-    }
-    
-    if (overlayRef.current) {
-      if (openMobile) {
-        overlayRef.current.style.opacity = '0.5';
-        overlayRef.current.style.visibility = 'visible';
-        overlayRef.current.style.transition = 'opacity 0.3s ease-out';
-      } else if (!isSwipeActive) {
-        overlayRef.current.style.opacity = '0';
-        overlayRef.current.style.transition = 'opacity 0.3s ease-out';
-        setTimeout(() => {
-          if (overlayRef.current && !openMobile) {
-            overlayRef.current.style.visibility = 'hidden';
-          }
-        }, 300);
-      }
-    }
-  }, [openMobile, isSwipeActive]);
-
   // Load language from localStorage on mount or set from Telegram data
   useEffect(() => {
     // If user is a Telegram user and we have their language preference
@@ -270,29 +113,24 @@ export function AppSidebar({ user }: { user: User | undefined }) {
     console.log('🔍 Language saved to localStorage:', languageCode);
   };
 
-  // On mobile, return only our custom swipe sidebar
+  // On mobile, return only our custom mobile sidebar
   if (isMobile) {
     return (
       <>
-        {/* Swipe overlay for mobile */}
+        {/* Overlay for mobile */}
         <div
-          ref={overlayRef}
-          className="fixed inset-0 bg-black/50 z-30"
-          style={{
-            visibility: 'hidden',
-            opacity: 0,
-            transition: 'opacity 0.3s ease-out'
-          }}
+          className={`fixed inset-0 bg-black/50 z-30 transition-opacity duration-300 ${
+            openMobile ? 'opacity-100 visible' : 'opacity-0 invisible'
+          }`}
           onClick={() => setOpenMobile(false)}
         />
         
         {/* Mobile sidebar */}
         <div
-          ref={sidebarRef}
-          className="fixed left-0 z-40 w-72 bg-sidebar text-sidebar-foreground border-r border-border"
+          className={`fixed left-0 z-40 w-72 bg-sidebar text-sidebar-foreground border-r border-border transition-transform duration-300 ${
+            openMobile ? 'translate-x-0' : '-translate-x-full'
+          }`}
           style={{
-            transform: openMobile ? 'translateX(0)' : `translateX(-${SIDEBAR_WIDTH}px)`,
-            transition: 'transform 0.3s ease-out',
             top: '0',
             bottom: '20px', // 20px gap from bottom
             height: 'calc(100vh - 20px)' // Full height minus bottom spacing
