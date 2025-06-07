@@ -4,7 +4,7 @@ import { useCopyToClipboard } from 'usehooks-ts';
 
 import type { Vote } from '@/lib/db/schema';
 
-import { CopyIcon, ThumbDownIcon, ThumbUpIcon } from './icons';
+import { CopyIcon, ThumbDownIcon, ThumbUpIcon, ShareIcon } from './icons';
 import { Button } from './ui/button';
 import {
   Tooltip,
@@ -15,6 +15,7 @@ import {
 import { memo } from 'react';
 import equal from 'fast-deep-equal';
 import { toast } from 'sonner';
+import { useTelegram } from '@/hooks/useTelegram';
 
 export function PureMessageActions({
   chatId,
@@ -29,9 +30,42 @@ export function PureMessageActions({
 }) {
   const { mutate } = useSWRConfig();
   const [_, copyToClipboard] = useCopyToClipboard();
+  const { webApp } = useTelegram();
 
   if (isLoading) return null;
   if (message.role === 'user') return null;
+
+  const handleShare = async () => {
+    // Get the current URL
+    const currentUrl = window.location.href;
+    
+    if (webApp) {
+      // For Telegram users, we'll copy the link since shareMessage requires PreparedInlineMessage
+      // In a real implementation, you'd need to prepare the message via Bot API first
+      try {
+        await copyToClipboard(currentUrl);
+        toast.success('Chat link copied to clipboard!');
+        
+        // Optionally, you could also use Telegram's share functionality
+        // This would open Telegram's native share dialog
+        if (webApp.openTelegramLink) {
+          const shareText = `Check out this chat: ${currentUrl}`;
+          const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(currentUrl)}&text=${encodeURIComponent(shareText)}`;
+          webApp.openTelegramLink(telegramShareUrl);
+        }
+      } catch (error) {
+        toast.error('Failed to share chat');
+      }
+    } else {
+      // For non-Telegram users, just copy the link
+      try {
+        await copyToClipboard(currentUrl);
+        toast.success('Chat link copied to clipboard!');
+      } catch (error) {
+        toast.error('Failed to copy link');
+      }
+    }
+  };
 
   return (
     <TooltipProvider delayDuration={0}>
@@ -61,6 +95,19 @@ export function PureMessageActions({
             </Button>
           </TooltipTrigger>
           <TooltipContent>Copy</TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              className="py-1 px-2 h-fit text-muted-foreground"
+              variant="outline"
+              onClick={handleShare}
+            >
+              <ShareIcon />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Share Chat</TooltipContent>
         </Tooltip>
 
         <Tooltip>

@@ -15,11 +15,19 @@ interface WebAppUser {
   photo_url?: string;
 }
 
+interface WebAppChat {
+  id: number;
+  type: 'group' | 'supergroup' | 'channel';
+  title: string;
+  username?: string;
+  photo_url?: string;
+}
+
 interface WebAppInitData {
   query_id?: string;
   user?: WebAppUser;
   receiver?: WebAppUser;
-  chat?: any;
+  chat?: WebAppChat;
   chat_type?: 'sender' | 'private' | 'group' | 'supergroup' | 'channel';
   chat_instance?: string;
   start_param?: string;
@@ -28,26 +36,93 @@ interface WebAppInitData {
   hash: string;
 }
 
+interface ThemeParams {
+  bg_color?: string;
+  text_color?: string;
+  hint_color?: string;
+  link_color?: string;
+  button_color?: string;
+  button_text_color?: string;
+  secondary_bg_color?: string;
+  header_bg_color?: string;
+  bottom_bar_bg_color?: string;
+  accent_text_color?: string;
+  section_bg_color?: string;
+}
+
+interface MainButton {
+  text: string;
+  color: string;
+  textColor: string;
+  isVisible: boolean;
+  isActive: boolean;
+  isProgressVisible: boolean;
+  setText: (text: string) => void;
+  onClick: (callback: () => void) => void;
+  offClick: (callback: () => void) => void;
+  show: () => void;
+  hide: () => void;
+  enable: () => void;
+  disable: () => void;
+  showProgress: (leaveActive?: boolean) => void;
+  hideProgress: () => void;
+  setParams: (params: { text?: string; color?: string; text_color?: string; is_active?: boolean; is_visible?: boolean }) => void;
+}
+
+interface HapticFeedback {
+  impactOccurred: (style: 'light' | 'medium' | 'heavy' | 'rigid' | 'soft') => void;
+  notificationOccurred: (type: 'error' | 'success' | 'warning') => void;
+  selectionChanged: () => void;
+}
+
+interface PopupParams {
+  title?: string;
+  message: string;
+  buttons?: Array<{
+    id?: string;
+    type?: 'default' | 'ok' | 'close' | 'cancel' | 'destructive';
+    text?: string;
+  }>;
+}
+
 interface TelegramWebApp {
   initData: string;
   initDataUnsafe: WebAppInitData;
   version: string;
   platform: string;
   colorScheme: 'light' | 'dark';
-  isActive: boolean;
+  themeParams: ThemeParams;
   isExpanded: boolean;
+  viewportHeight: number;
+  viewportStableHeight: number;
+  headerColor: string;
+  backgroundColor: string;
+  isClosingConfirmationEnabled: boolean;
   ready: () => void;
+  expand: () => void;
+  close: () => void;
+  MainButton: MainButton;
+  HapticFeedback: HapticFeedback;
+  openLink: (url: string, options?: { try_instant_view?: boolean }) => void;
+  openTelegramLink: (url: string) => void;
+  showPopup: (params: PopupParams) => void;
+  showAlert: (message: string, callback?: () => void) => void;
+  showConfirm: (message: string, callback?: (confirmed: boolean) => void) => void;
+  enableClosingConfirmation: () => void;
+  disableClosingConfirmation: () => void;
+  onEvent: (eventType: string, eventHandler: () => void) => void;
+  offEvent: (eventType: string, eventHandler: () => void) => void;
+  sendData: (data: string) => void;
+  switchInlineQuery: (query: string, choose_chat_types?: Array<'users' | 'bots' | 'groups' | 'channels'>) => void;
+  setHeaderColor: (color: 'bg_color' | 'secondary_bg_color' | string) => void;
+  setBackgroundColor: (color: string) => void;
+  isVersionAtLeast: (version: string) => boolean;
+  // Bot API 7.7+ methods
+  disableVerticalSwipes?: () => void;
   // Bot API 8.0+ methods
   lockOrientation?: () => void;
-  shareMessage?: (msgId: string, callback?: (success: boolean) => void) => void;
-  // Bot API 7.7+ methods  
-  disableVerticalSwipes?: () => void;
-  // Bot API 6.1+ methods
-  setBackgroundColor?: (color: string) => void;
-  openTelegramLink?: (url: string) => void;
-  // Additional useful methods
-  expand?: () => void;
-  enableClosingConfirmation?: () => void;
+  unlockOrientation?: () => void;
+  shareMessage?: (msg_id: string, callback?: (success: boolean) => void) => void;
 }
 
 export const useTelegram = () => {
