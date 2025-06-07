@@ -111,15 +111,22 @@ export const TelegramAutoAuth = () => {
             toast({ type: 'success', description: `Welcome back, ${telegramUser.first_name}!` });
             updateSession();
             
+            // Clear loading state immediately
+            setIsAuthenticating(false);
+            
             // Navigate to specific chat if start parameter was provided
             if (targetChatId) {
               console.log('[TelegramAutoAuth] Navigating to target chat:', targetChatId);
-              router.push(`/chat/${targetChatId}`);
               
-              // Clear the start parameter to prevent re-navigation
-              if ((window as any).Telegram?.WebApp?.initDataUnsafe) {
-                (window as any).Telegram.WebApp.initDataUnsafe.start_param = undefined;
-              }
+              // Small delay to ensure state updates are processed
+              setTimeout(() => {
+                router.push(`/chat/${targetChatId}`);
+                
+                // Clear the start parameter to prevent re-navigation
+                if ((window as any).Telegram?.WebApp?.initDataUnsafe) {
+                  (window as any).Telegram.WebApp.initDataUnsafe.start_param = undefined;
+                }
+              }, 100);
             } else {
               router.refresh();
             }
@@ -146,15 +153,22 @@ export const TelegramAutoAuth = () => {
               });
               updateSession();
               
+              // Clear loading state immediately
+              setIsAuthenticating(false);
+              
               // Navigate to specific chat if start parameter was provided
               if (targetChatId) {
                 console.log('[TelegramAutoAuth] Navigating to target chat for new user:', targetChatId);
-                router.push(`/chat/${targetChatId}`);
                 
-                // Clear the start parameter to prevent re-navigation
-                if ((window as any).Telegram?.WebApp?.initDataUnsafe) {
-                  (window as any).Telegram.WebApp.initDataUnsafe.start_param = undefined;
-                }
+                // Small delay to ensure state updates are processed
+                setTimeout(() => {
+                  router.push(`/chat/${targetChatId}`);
+                  
+                  // Clear the start parameter to prevent re-navigation
+                  if ((window as any).Telegram?.WebApp?.initDataUnsafe) {
+                    (window as any).Telegram.WebApp.initDataUnsafe.start_param = undefined;
+                  }
+                }, 100);
               } else {
                 router.refresh();
               }
