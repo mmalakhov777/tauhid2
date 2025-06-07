@@ -277,7 +277,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
         {/* Swipe overlay for mobile */}
         <div
           ref={overlayRef}
-          className="fixed inset-0 bg-black/50 z-[999998]"
+          className="fixed inset-0 bg-black/50 z-30"
           style={{
             visibility: 'hidden',
             opacity: 0,
@@ -289,7 +289,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
         {/* Mobile sidebar */}
         <div
           ref={sidebarRef}
-          className="fixed left-0 z-[999999] w-72 bg-sidebar text-sidebar-foreground border-r border-border"
+          className="fixed left-0 z-40 w-72 bg-sidebar text-sidebar-foreground border-r border-border"
           style={{
             transform: openMobile ? 'translateX(0)' : `translateX(-${SIDEBAR_WIDTH}px)`,
             transition: 'transform 0.3s ease-out',
@@ -391,7 +391,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
 
   // Desktop sidebar - uses original Sidebar component
   return (
-    <Sidebar className="group-data-[side=left]:border-r border-border h-[calc(100vh-20px)]">
+    <Sidebar className="group-data-[side=left]:border-r border-border h-screen">
       <SidebarHeader>
         <SidebarMenu>
           <div className="flex flex-row justify-between items-center">

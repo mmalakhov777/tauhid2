@@ -4,7 +4,7 @@ import { X, Youtube } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { CitationMarker } from './citation-marker';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface CitationModalProps {
   isOpen: boolean;
@@ -16,12 +16,83 @@ interface CitationModalProps {
 export function CitationModal({ isOpen, onClose, citation, citationNumber }: CitationModalProps) {
   const [activeTab, setActiveTab] = useState<'details' | 'original'>('details');
   
+  // Swipe gesture state
+  const [isSwipeActive, setIsSwipeActive] = useState(false);
+  const [swipeProgress, setSwipeProgress] = useState(0);
+  const [startX, setStartX] = useState(0);
+  const MODAL_WIDTH = 512; // max-w-lg in pixels (32rem = 512px)
+  const SWIPE_THRESHOLD = 50; // Minimum swipe distance to trigger close
+  
   // Log what data is received by the modal
   console.log('🔧 CitationModal received - isOpen:', isOpen);
   console.log('🔧 CitationModal received - citationNumber:', citationNumber);
   console.log('🔧 CitationModal received - citation:', citation);
   console.log('🔧 CitationModal received - citation.metadata:', citation?.metadata);
   console.log('🔧 CitationModal received - citation.namespace:', citation?.namespace);
+  
+  // Touch event handlers for swipe gesture
+  const handleTouchStart = (e: TouchEvent) => {
+    const touch = e.touches[0];
+    const startX = touch.clientX;
+    
+    // Only start swipe if touching from the modal area
+    if (startX >= window.innerWidth - MODAL_WIDTH) {
+      setIsSwipeActive(true);
+      setStartX(startX);
+      setSwipeProgress(0);
+    }
+  };
+
+  const handleTouchMove = (e: TouchEvent) => {
+    if (!isSwipeActive) return;
+    
+    const touch = e.touches[0];
+    const currentX = touch.clientX;
+    const deltaX = currentX - startX;
+    
+    // Only allow rightward swipes (positive deltaX)
+    if (deltaX > 0) {
+      const progress = Math.min(1, deltaX / MODAL_WIDTH);
+      setSwipeProgress(progress);
+      
+      // Prevent scrolling while swiping
+      e.preventDefault();
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (!isSwipeActive) return;
+    
+    setIsSwipeActive(false);
+    
+    // Check if swiped enough to close
+    const shouldClose = swipeProgress > 0.3 || (swipeProgress * MODAL_WIDTH) > SWIPE_THRESHOLD;
+    
+    if (shouldClose) {
+      onClose();
+    }
+    
+    setSwipeProgress(0);
+  };
+
+  // Add touch event listeners
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleTouchStartWrapper = (e: TouchEvent) => handleTouchStart(e);
+    const handleTouchMoveWrapper = (e: TouchEvent) => handleTouchMove(e);
+    const handleTouchEndWrapper = () => handleTouchEnd();
+
+    document.addEventListener('touchstart', handleTouchStartWrapper, { passive: false });
+    document.addEventListener('touchmove', handleTouchMoveWrapper, { passive: false });
+    document.addEventListener('touchend', handleTouchEndWrapper);
+
+    return () => {
+      document.removeEventListener('touchstart', handleTouchStartWrapper);
+      document.removeEventListener('touchmove', handleTouchMoveWrapper);
+      document.removeEventListener('touchend', handleTouchEndWrapper);
+    };
+  }, [isOpen, isSwipeActive, startX, swipeProgress]);
   
   if (!citation) return null;
 
@@ -115,7 +186,11 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber }: Cit
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="fixed right-0 top-0 h-full w-full max-w-lg bg-background border-l shadow-xl z-[60] overflow-hidden"
+            className="fixed right-0 top-0 h-full w-full max-w-lg bg-background md:border-l shadow-xl z-[60] overflow-hidden"
+            style={{
+              transform: isSwipeActive ? `translateX(${swipeProgress * MODAL_WIDTH}px)` : undefined,
+              transition: isSwipeActive ? 'none' : undefined
+            }}
           >
             <div className="flex flex-col h-full">
               {/* Header */}

@@ -19,8 +19,11 @@ import { useRouter } from 'next/navigation';
 import { useTelegram } from '@/hooks/useTelegram';
 import { useCopyToClipboard } from 'usehooks-ts';
 import { useTelegramHaptics } from '@/hooks/use-telegram-haptics';
+import { useSWRConfig } from 'swr';
+import { unstable_serialize } from 'swr/infinite';
+import { getChatHistoryPaginationKey } from '@/components/sidebar-history';
 
-import { ArrowUpIcon, PaperclipIcon, StopIcon, PlusIcon, ShareIcon } from './icons';
+import { ArrowUpIcon, PaperclipIcon, StopIcon, PlusIcon, ShareIcon, MenuIcon } from './icons';
 import { PreviewAttachment } from './preview-attachment';
 import { Button } from './ui/button';
 import { PromptInputBox } from './ui/ai-prompt-box';
@@ -33,6 +36,19 @@ import { useScrollToBottom } from '@/hooks/use-scroll-to-bottom';
 import type { VisibilityType } from './visibility-selector';
 import { VisibilitySelector } from './visibility-selector';
 import type { Session } from 'next-auth';
+import { useSidebar } from './ui/sidebar';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from './ui/alert-dialog';
+import { updateChatVisibility } from '@/app/(chat)/actions';
+import { Loader2 } from 'lucide-react';
 
 function PureMultimodalInput({
   chatId,
@@ -70,9 +86,14 @@ function PureMultimodalInput({
   const { webApp } = useTelegram();
   const [_, copyToClipboard] = useCopyToClipboard();
   const { impactOccurred, notificationOccurred } = useTelegramHaptics();
+  const { setOpenMobile } = useSidebar();
+  const { mutate } = useSWRConfig();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isInputActive, setIsInputActive] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [isMakingPublic, setIsMakingPublic] = useState(false);
+  const [shareButtonText, setShareButtonText] = useState('Share');
 
   const [localStorageInput, setLocalStorageInput] = useLocalStorage(
     'input',
@@ -244,7 +265,48 @@ function PureMultimodalInput({
     return first10Words + (words.length > 10 ? '...' : '');
   }, [messages]);
 
+  const handleMakePublicAndShare = async () => {
+    setIsMakingPublic(true);
+    
+    try {
+      await updateChatVisibility({
+        chatId,
+        visibility: 'public',
+      });
+      
+      // Refresh the visibility state in SWR cache
+      mutate(`${chatId}-visibility`, 'public', false);
+      mutate(unstable_serialize(getChatHistoryPaginationKey));
+      mutate('/api/history');
+      
+      // Close modal and proceed with sharing
+      setShowShareModal(false);
+      setIsMakingPublic(false);
+      
+      // Wait a moment for the visibility update to propagate
+      setTimeout(() => {
+        handleShareInternal();
+      }, 500);
+      
+    } catch (error) {
+      console.error('Failed to make chat public:', error);
+      toast.error('Failed to make chat public');
+      setIsMakingPublic(false);
+    }
+  };
+
   const handleShare = async () => {
+    // Check if chat is private
+    if (selectedVisibilityType === 'private') {
+      setShowShareModal(true);
+      return;
+    }
+    
+    // If public, proceed with sharing
+    handleShareInternal();
+  };
+
+  const handleShareInternal = async () => {
     // Prevent multiple simultaneous shares
     if (isSharing) return;
     
@@ -287,12 +349,19 @@ function PureMultimodalInput({
 
         if (!prepareResponse.ok) {
           console.error('[handleShare] Failed to prepare message:', prepareData);
-          notificationOccurred('error');
-          toast.error(`Failed to prepare share: ${prepareData.details || prepareData.error}`);
           
-          // Fallback to copying link
+          // If prepare fails, fall back to simple copy
+          console.log('[handleShare] Falling back to copy link');
           await copyToClipboard(currentUrl);
+          setShareButtonText('Link Copied');
+          notificationOccurred('success');
           toast.success('Chat link copied to clipboard!');
+          
+          // Reset button text after 2 seconds
+          setTimeout(() => {
+            setShareButtonText('Share');
+            setIsSharing(false);
+          }, 2000);
           return;
         }
 
@@ -316,17 +385,25 @@ function PureMultimodalInput({
         
       } catch (error) {
         console.error('[handleShare] Error during share process:', error);
-        notificationOccurred('error');
-        toast.error('Failed to share chat');
         
-        // Fallback to copying link
+        // Fallback to copying link with button state change
         try {
           await copyToClipboard(currentUrl);
-          toast.success('Chat link copied to clipboard instead!');
+          setShareButtonText('Link Copied');
+          notificationOccurred('success');
+          toast.success('Chat link copied to clipboard!');
+          
+          // Reset button text after 2 seconds
+          setTimeout(() => {
+            setShareButtonText('Share');
+            setIsSharing(false);
+          }, 2000);
         } catch (copyError) {
           console.error('[handleShare] Failed to copy as fallback:', copyError);
+          notificationOccurred('error');
+          toast.error('Failed to copy link');
+          setIsSharing(false);
         }
-        setIsSharing(false);
       }
     } else {
       // For non-Telegram users or if shareMessage is not available
@@ -335,8 +412,15 @@ function PureMultimodalInput({
       
       try {
         await copyToClipboard(currentUrl);
+        setShareButtonText('Link Copied');
         notificationOccurred('success');
         toast.success('Chat link copied to clipboard!');
+        
+        // Reset button text after 2 seconds
+        setTimeout(() => {
+          setShareButtonText('Share');
+          setIsSharing(false);
+        }, 2000);
         
         // If we have openTelegramLink, use the share URL as additional option
         if (webApp?.openTelegramLink) {
@@ -349,21 +433,21 @@ function PureMultimodalInput({
         console.error('[handleShare] Failed to copy link:', error);
         notificationOccurred('error');
         toast.error('Failed to copy link');
+        setIsSharing(false);
       }
-      setIsSharing(false);
     }
   };
 
   return (
     <div className="relative w-full flex flex-col gap-1">
       <AnimatePresence>
-        {!isAtBottom && messages.length > 0 && !isInputActive && (
+        {!isAtBottom && messages.length > 0 && !isInputActive && (status === 'ready' || status === 'error' || !status) && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
             transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-            className="absolute bottom-36 left-[45%] -translate-x-1/2 z-50 flex justify-center items-center"
+            className="absolute bottom-36 left-[45%] -translate-x-1/2 z-20 flex justify-center items-center"
           >
             <Button
               data-testid="scroll-to-bottom-button"
@@ -382,14 +466,27 @@ function PureMultimodalInput({
       </AnimatePresence>
 
       <AnimatePresence>
-        {isAtBottom && messages.length > 0 && !isInputActive && (
+        {isAtBottom && messages.length > 0 && !isInputActive && (status === 'ready' || status === 'error' || !status) && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
             transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-            className="absolute bottom-36 left-0 right-0 z-50 flex justify-center items-center gap-3"
+            className="absolute bottom-36 left-0 right-0 z-20 flex justify-center items-center gap-3"
           >
+            <Button
+              data-testid="sidebar-toggle-button"
+              className="rounded-full shadow-lg"
+              size="icon"
+              variant="outline"
+              onClick={(event) => {
+                event.preventDefault();
+                setOpenMobile(true);
+              }}
+            >
+              <MenuIcon />
+            </Button>
+            
             <Button
               data-testid="new-chat-button"
               className="rounded-full shadow-lg px-4 py-2 h-auto"
@@ -415,7 +512,7 @@ function PureMultimodalInput({
               }}
             >
               <ShareIcon />
-              <span className="ml-2">{isSharing ? 'Sharing...' : 'Share'}</span>
+              <span className="ml-2">{shareButtonText}</span>
             </Button>
           </motion.div>
         )}
@@ -445,7 +542,9 @@ function PureMultimodalInput({
               ? "Processing your message..." 
               : status === 'streaming' 
                 ? "Generating response..." 
-                : "Send a message..."
+                : messages.length > 0
+                  ? "Ask follow up..."
+                  : "Send a message..."
           }
           className={cx(
             'w-full',
@@ -494,6 +593,32 @@ function PureMultimodalInput({
           ))}
         </div>
       )}
+
+      {/* Share Modal for Private Chats */}
+      <AlertDialog open={showShareModal} onOpenChange={setShowShareModal}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Make Chat Public to Share</AlertDialogTitle>
+            <AlertDialogDescription>
+              This chat is currently private and can only be viewed by you. To share it with others, you need to make it public first. 
+              Anyone with the link will be able to view the conversation.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isMakingPublic}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleMakePublicAndShare}
+              disabled={isMakingPublic}
+              className="flex items-center gap-2"
+            >
+              {isMakingPublic && <Loader2 className="h-4 w-4 animate-spin" />}
+              {isMakingPublic ? 'Making Public...' : 'Make Public & Share'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

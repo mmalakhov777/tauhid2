@@ -741,16 +741,16 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
           >
             <Button
               variant="default"
-              size="icon"
+              size={hasContent && !isRecording && !isTranscribing ? "icon" : "default"}
               className={cn(
-                "h-8 w-8 rounded-full transition-all duration-200",
+                "rounded-full transition-all duration-200",
                 hasContent && !isRecording && !isTranscribing
-                  ? "bg-primary hover:bg-primary/90 text-primary-foreground"
+                  ? "h-8 w-8 bg-primary hover:bg-primary/90 text-primary-foreground"
                   : isRecording
-                  ? "bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+                  ? "h-8 px-3 bg-destructive hover:bg-destructive/90 text-destructive-foreground"
                   : isTranscribing
-                  ? "bg-muted text-muted-foreground"
-                  : "bg-muted hover:bg-accent text-muted-foreground hover:text-accent-foreground"
+                  ? "h-8 px-3 bg-muted text-muted-foreground"
+                  : "h-8 px-3 bg-muted hover:bg-accent text-muted-foreground hover:text-accent-foreground"
               )}
               onClick={(e) => {
                 e.preventDefault();
@@ -764,13 +764,22 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
               type="button"
             >
               {isLoading || isTranscribing ? (
-                <Square className="h-4 w-4 animate-pulse" />
+                <>
+                  <Square className="h-4 w-4 animate-pulse" />
+                  {isTranscribing && <span className="ml-2 text-sm">Transcribing...</span>}
+                </>
               ) : isRecording ? (
-                <StopCircle className="h-4 w-4" />
+                <>
+                  <StopCircle className="h-4 w-4" />
+                  <span className="ml-2 text-sm">Stop</span>
+                </>
               ) : hasContent && !isRecording ? (
                 <ArrowUp className="h-4 w-4" />
               ) : (
-                <Mic className="h-4 w-4" />
+                <>
+                  <Mic className="h-4 w-4" />
+                  <span className="ml-2 text-sm">Speak</span>
+                </>
               )}
             </Button>
           </PromptInputAction>
