@@ -19,6 +19,20 @@ export const TelegramAutoAuth = () => {
   const { data: session, update: updateSession } = useSession();
   const { theme } = useTheme();
   const { isAuthLoading, setIsAuthLoading } = useAuthLoading();
+  const [isLoaderVisible, setIsLoaderVisible] = useState(false);
+
+  // Sync loader visibility with loading states
+  useEffect(() => {
+    if (isAuthenticating || isAuthLoading) {
+      setIsLoaderVisible(true);
+    } else {
+      // Delay hiding to allow for fade out
+      const timer = setTimeout(() => {
+        setIsLoaderVisible(false);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [isAuthenticating, isAuthLoading]);
 
   // Telegram WebApp optimizations
   useEffect(() => {
@@ -195,10 +209,12 @@ export const TelegramAutoAuth = () => {
   }, [isLoading, isTelegramAvailable, telegramUser, session, updateSession, router, webApp, setIsAuthLoading]);
 
   // Show loading indicator while authenticating or auth is loading globally
-  if (isAuthenticating || isAuthLoading) {
+  if (isLoaderVisible) {
     return (
-      <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-6 p-8">
+      <div className={`fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center transition-opacity duration-300 ${
+        isAuthenticating || isAuthLoading ? 'opacity-100' : 'opacity-0'
+      }`}>
+        <div className="flex flex-col items-center gap-6 p-8 transition-transform duration-300 transform">
           {/* Animated Telegram Logo */}
           <div className="relative">
             <div className="w-20 h-20 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full flex items-center justify-center shadow-2xl animate-pulse">

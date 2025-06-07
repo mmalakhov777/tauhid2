@@ -42,6 +42,7 @@ export function Chat({
   const [vectorSearchData, setVectorSearchData] = useState<any>(null);
   const [dbOperationsComplete, setDbOperationsComplete] = useState(true); // Track when DB operations are done
   const { setIsAuthLoading } = useAuthLoading();
+  const [isChatReady, setIsChatReady] = useState(false);
 
   const { visibilityType } = useChatVisibility({
     chatId: id,
@@ -248,15 +249,32 @@ export function Chat({
     setMessages,
   });
 
+  // Mark chat as ready after initial render
+  useEffect(() => {
+    setIsChatReady(true);
+  }, []);
+
   // Clear auth loading when chat is ready
   useEffect(() => {
-    // Small delay to ensure smooth transition
-    const timer = setTimeout(() => {
-      setIsAuthLoading(false);
-    }, 300);
+    if (!isChatReady) return;
+    
+    // Use requestAnimationFrame to ensure the chat is painted before hiding loader
+    const rafId = requestAnimationFrame(() => {
+      // Additional frame to ensure everything is rendered
+      requestAnimationFrame(() => {
+        // Small delay for smooth transition after paint
+        setTimeout(() => {
+          setIsAuthLoading(false);
+        }, 100);
+      });
+    });
 
-    return () => clearTimeout(timer);
-  }, [setIsAuthLoading]);
+    return () => {
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+      }
+    };
+  }, [setIsAuthLoading, isChatReady]);
 
   return (
     <>
