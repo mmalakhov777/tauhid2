@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { TelegramEmailForm } from './TelegramEmailForm';
 import { useTelegram } from '@/hooks/useTelegram';
 import { toast } from '@/components/toast';
@@ -67,13 +68,16 @@ export const EmailSetupBanner = ({ user }: EmailSetupBannerProps) => {
         </div>
       </div>
 
-      {showEmailForm && telegramUser && (
-        <TelegramEmailForm 
-          telegramUser={telegramUser} 
-          onComplete={handleEmailFormComplete}
-          onSkip={handleEmailFormSkip}
-        />
-      )}
+      {showEmailForm && telegramUser && typeof document !== 'undefined' && 
+        createPortal(
+          <TelegramEmailForm 
+            telegramUser={telegramUser} 
+            onComplete={handleEmailFormComplete}
+            onSkip={handleEmailFormSkip}
+          />,
+          document.body
+        )
+      }
     </>
   );
 }; 
