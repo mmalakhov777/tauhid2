@@ -18,6 +18,7 @@ import {
   saveChat,
   saveMessages,
   saveVectorSearchResult,
+  testDatabaseConnection,
 } from '@/lib/db/queries';
 import { generateUUID, getTrailingMessageId } from '@/lib/utils';
 import { generateTitleFromUserMessage } from '../../actions';
@@ -74,6 +75,13 @@ function getStreamContext() {
 }
 
 export async function POST(request: Request) {
+  // Test database connection first
+  const dbConnected = await testDatabaseConnection();
+  if (!dbConnected) {
+    console.error('[chat route] Database connection test failed');
+    return new ChatSDKError('bad_request:database', 'Database connection failed').toResponse();
+  }
+
   // Check if this is a vector search request
   const url = new URL(request.url);
   const isVectorSearchRequest = url.searchParams.get('vector') === '1';
@@ -91,6 +99,13 @@ export async function POST(request: Request) {
   try {
     const { id, message, selectedChatModel, selectedVisibilityType, selectedLanguage } =
       requestBody;
+
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(id)) {
+      console.error('[chat route] Invalid chat ID format:', { id });
+      return new ChatSDKError('bad_request:api', 'Invalid chat ID format').toResponse();
+    }
 
     const session = await auth();
 
@@ -116,12 +131,39 @@ export async function POST(request: Request) {
         message,
       });
 
-      await saveChat({
+      console.log('[chat route] Attempting to save new chat:', {
         id,
         userId: session.user.id,
         title,
         visibility: selectedVisibilityType,
+        titleLength: title?.length,
+        userIdType: typeof session.user.id,
+        idType: typeof id,
+        visibilityType: typeof selectedVisibilityType
       });
+
+      try {
+        await saveChat({
+          id,
+          userId: session.user.id,
+          title,
+          visibility: selectedVisibilityType,
+        });
+        console.log('[chat route] Chat saved successfully');
+      } catch (saveChatError) {
+        console.error('[chat route] Failed to save chat:', {
+          error: saveChatError,
+          errorMessage: saveChatError instanceof Error ? saveChatError.message : 'Unknown error',
+          errorStack: saveChatError instanceof Error ? saveChatError.stack : undefined,
+          chatData: {
+            id,
+            userId: session.user.id,
+            title,
+            visibility: selectedVisibilityType
+          }
+        });
+        throw saveChatError;
+      }
     } else {
       if (chat.userId !== session.user.id) {
         return new ChatSDKError('forbidden:chat').toResponse();

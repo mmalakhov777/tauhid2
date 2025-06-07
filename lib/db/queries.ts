@@ -39,9 +39,70 @@ import { ChatSDKError } from '../errors';
 // use the Drizzle adapter for Auth.js / NextAuth
 // https://authjs.dev/reference/adapter/drizzle
 
-// biome-ignore lint: Forbidden non-null assertion.
-const client = postgres(process.env.POSTGRES_URL!);
+// Configure PostgreSQL client with connection pooling and retry logic
+const client = postgres(process.env.POSTGRES_URL!, {
+  max: 10, // Maximum number of connections in the pool
+  idle_timeout: 20, // Close idle connections after 20 seconds
+  connect_timeout: 10, // Connection timeout in seconds
+  onnotice: () => {}, // Suppress notices
+  onparameter: () => {}, // Suppress parameter status messages
+  connection: {
+    application_name: 'tauhid2-chat'
+  },
+  // Add retry logic for connection errors
+  fetch_types: false, // Disable type fetching to reduce connection overhead
+  prepare: false, // Disable prepared statements to reduce connection state
+});
+
 const db = drizzle(client);
+
+// Helper function to check if error is a connection error
+function isConnectionError(error: any): boolean {
+  const connectionErrorCodes = ['ECONNRESET', 'ECONNREFUSED', 'ETIMEDOUT', 'ENOTFOUND', 'ENETUNREACH'];
+  return connectionErrorCodes.includes(error?.code) || 
+         error?.message?.includes('connection') ||
+         error?.message?.includes('ECONNRESET');
+}
+
+// Helper function to format database errors
+function formatDatabaseError(error: any, operation: string) {
+  const errorInfo = {
+    operation,
+    errorType: error?.constructor?.name || 'Unknown',
+    errorMessage: error?.message || 'Unknown error',
+    errorCode: error?.code,
+    errorDetail: error?.detail,
+    errorHint: error?.hint,
+    isConnectionError: isConnectionError(error),
+    timestamp: new Date().toISOString()
+  };
+
+  if (isConnectionError(error)) {
+    console.error(`[DB] Connection error during ${operation}:`, errorInfo);
+    console.error('[DB] Database connection may be unstable. Check your PostgreSQL server and network.');
+  } else {
+    console.error(`[DB] Error during ${operation}:`, errorInfo);
+  }
+
+  return errorInfo;
+}
+
+// Test database connection
+export async function testDatabaseConnection() {
+  try {
+    const result = await db.execute('SELECT 1');
+    console.log('[DB] Database connection test successful');
+    return true;
+  } catch (error) {
+    console.error('[DB] Database connection test failed:', {
+      error,
+      errorMessage: error instanceof Error ? error.message : 'Unknown error',
+      errorCode: (error as any)?.code,
+      postgresUrl: process.env.POSTGRES_URL ? 'Set (hidden)' : 'Not set'
+    });
+    return false;
+  }
+}
 
 export async function getUser(email: string): Promise<Array<User>> {
   try {
@@ -156,17 +217,99 @@ export async function saveChat({
   title: string;
   visibility: VisibilityType;
 }) {
-  try {
-    return await db.insert(chat).values({
-      id,
-      createdAt: new Date(),
-      userId,
-      title,
-      visibility,
-    });
-  } catch (error) {
-    throw new ChatSDKError('bad_request:database', 'Failed to save chat');
+  console.log('[saveChat] Attempting to insert chat:', {
+    id,
+    userId,
+    title,
+    visibility,
+    titleLength: title?.length,
+    createdAt: new Date().toISOString()
+  });
+
+  // Retry logic for connection errors
+  let retries = 3;
+  let lastError: any;
+
+  while (retries > 0) {
+    try {
+      // First check if chat already exists (race condition handling)
+      const existingChat = await getChatById({ id });
+      if (existingChat) {
+        console.log('[saveChat] Chat already exists, skipping insert:', {
+          id,
+          existingUserId: existingChat.userId,
+          requestedUserId: userId
+        });
+        // If chat exists but belongs to different user, throw error
+        if (existingChat.userId !== userId) {
+          throw new ChatSDKError('forbidden:chat', 'Chat belongs to another user');
+        }
+        return existingChat;
+      }
+
+      const result = await db.insert(chat).values({
+        id,
+        createdAt: new Date(),
+        userId,
+        title,
+        visibility,
+      });
+      console.log('[saveChat] Chat inserted successfully:', result);
+      return result;
+    } catch (error) {
+      lastError = error;
+      
+      // Check if it's a connection error and we have retries left
+      if (isConnectionError(error) && retries > 1) {
+        console.log(`[saveChat] Connection error, retrying... (${retries - 1} retries left)`);
+        retries--;
+        // Wait a bit before retrying
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        continue;
+      }
+
+      // Check if it's a unique constraint violation
+      if ((error as any)?.code === '23505' || (error as any)?.message?.includes('duplicate key')) {
+        console.log('[saveChat] Duplicate key error, attempting to fetch existing chat');
+        try {
+          const existingChat = await getChatById({ id });
+          if (existingChat && existingChat.userId === userId) {
+            console.log('[saveChat] Found existing chat for same user, returning it');
+            return existingChat;
+          }
+        } catch (fetchError) {
+          console.error('[saveChat] Failed to fetch existing chat after duplicate key error:', fetchError);
+        }
+      }
+
+      // Format and log the error
+      const errorInfo = formatDatabaseError(error, 'saveChat');
+      console.error('[saveChat] Final error details:', {
+        ...errorInfo,
+        chatData: {
+          id,
+          userId,
+          title,
+          visibility,
+          createdAt: new Date().toISOString()
+        },
+        retriesLeft: retries - 1
+      });
+
+      // If it's a connection error, throw a more specific error
+      if (isConnectionError(error)) {
+        throw new ChatSDKError('bad_request:database', 'Database connection lost. Please try again.');
+      }
+
+      throw new ChatSDKError('bad_request:database', 'Failed to save chat');
+    }
   }
+
+  // If we've exhausted all retries
+  if (isConnectionError(lastError)) {
+    throw new ChatSDKError('bad_request:database', 'Database connection lost after multiple retries. Please try again later.');
+  }
+  throw new ChatSDKError('bad_request:database', 'Failed to save chat');
 }
 
 export async function deleteChatById({ id }: { id: string }) {
@@ -265,12 +408,57 @@ export async function getChatsByUserId({
 }
 
 export async function getChatById({ id }: { id: string }) {
-  try {
-    const [selectedChat] = await db.select().from(chat).where(eq(chat.id, id));
-    return selectedChat;
-  } catch (error) {
-    throw new ChatSDKError('bad_request:database', 'Failed to get chat by id');
+  console.log('[getChatById] Fetching chat:', { id });
+  
+  let retries = 3;
+  let lastError: any;
+
+  while (retries > 0) {
+    try {
+      const [selectedChat] = await db.select().from(chat).where(eq(chat.id, id));
+      console.log('[getChatById] Chat query result:', {
+        id,
+        found: !!selectedChat,
+        chatData: selectedChat ? {
+          id: selectedChat.id,
+          userId: selectedChat.userId,
+          title: selectedChat.title,
+          visibility: selectedChat.visibility,
+          createdAt: selectedChat.createdAt
+        } : null
+      });
+      return selectedChat;
+    } catch (error) {
+      lastError = error;
+      
+      // Check if it's a connection error and we have retries left
+      if (isConnectionError(error) && retries > 1) {
+        console.log(`[getChatById] Connection error, retrying... (${retries - 1} retries left)`);
+        retries--;
+        await new Promise(resolve => setTimeout(resolve, 500));
+        continue;
+      }
+
+      const errorInfo = formatDatabaseError(error, 'getChatById');
+      console.error('[getChatById] Final error details:', {
+        ...errorInfo,
+        id,
+        retriesLeft: retries - 1
+      });
+
+      if (isConnectionError(error)) {
+        throw new ChatSDKError('bad_request:database', 'Database connection lost while fetching chat');
+      }
+
+      throw new ChatSDKError('bad_request:database', 'Failed to get chat by id');
+    }
   }
+
+  // If we've exhausted all retries
+  if (isConnectionError(lastError)) {
+    throw new ChatSDKError('bad_request:database', 'Database connection lost after multiple retries');
+  }
+  throw new ChatSDKError('bad_request:database', 'Failed to get chat by id');
 }
 
 export async function saveMessages({
