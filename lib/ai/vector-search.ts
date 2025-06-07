@@ -1,11 +1,9 @@
 import { Pinecone } from '@pinecone-database/pinecone';
-import OpenAI from 'openai';
 import { v4 as uuidv4 } from 'uuid';
 
 // Environment variables
 const PINECONE_API_KEY = process.env.PINECONE_API_KEY || '';
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY || '';
-const EMBED_MODEL = 'text-embedding-3-large';
+const RAILWAY_EMBEDDING_SERVICE_URL = process.env.RAILWAY_EMBEDDING_SERVICE_URL || 'http://localhost:3001';
 
 // Index names
 const CLASSIC_INDEX_NAME = process.env.PINECONE_CLASSIC_INDEX || 'cls-books';
@@ -40,7 +38,6 @@ const YOUTUBE_NAMESPACES = [
 
 // Initialize clients
 const pinecone = new Pinecone({ apiKey: PINECONE_API_KEY });
-const openai = new OpenAI({ apiKey: OPENAI_API_KEY });
 
 // Per-message context store
 export const messageContextMap = new Map<string, any[]>();
@@ -54,18 +51,81 @@ export interface VectorSearchResult {
   query?: string;
 }
 
+// Railway embedding service functions
+async function getEmbedding(text: string): Promise<number[]> {
+  try {
+    const response = await fetch(`${RAILWAY_EMBEDDING_SERVICE_URL}/embed`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ text }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Embedding service error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    if (!data.success || !data.embedding) {
+      throw new Error('Invalid embedding response');
+    }
+
+    return data.embedding;
+  } catch (error) {
+    console.error('Error getting embedding from Railway service:', error);
+    throw error;
+  }
+}
+
+async function improveUserQueries(
+  query: string, 
+  history: string,
+  selectedChatModel: string
+): Promise<string[]> {
+  try {
+    const response = await fetch(`${RAILWAY_EMBEDDING_SERVICE_URL}/improve-queries`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        query, 
+        history, 
+        selectedChatModel 
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Query improvement service error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    if (!data.success || !data.improvedQueries) {
+      throw new Error('Invalid query improvement response');
+    }
+
+    console.log('[vector-search] Improved queries from Railway service:', {
+      originalQuery: query,
+      historyLength: history.length,
+      improvedQueries: data.improvedQueries
+    });
+
+    return data.improvedQueries;
+  } catch (error) {
+    console.error('Error improving queries via Railway service:', error);
+    return [query, query, query]; // fallback to 3x original
+  }
+}
+
 async function getTopKContext(
   indexName: string, 
   query: string, 
   k = 2
 ): Promise<VectorSearchResult[]> {
   try {
-    // Get embedding for the query
-    const embeddingResponse = await openai.embeddings.create({
-      model: EMBED_MODEL,
-      input: query,
-    });
-    const queryEmbedding = embeddingResponse.data[0].embedding;
+    // Get embedding for the query using Railway service
+    const queryEmbedding = await getEmbedding(query);
 
     // Query Pinecone
     const index = pinecone.index(indexName);
@@ -148,11 +208,7 @@ async function getTopKContextAllNamespaces(
   k = 2
 ): Promise<VectorSearchResult[]> {
   try {
-    const embeddingResponse = await openai.embeddings.create({
-      model: EMBED_MODEL,
-      input: query,
-    });
-    const queryEmbedding = embeddingResponse.data[0].embedding;
+    const queryEmbedding = await getEmbedding(query);
 
     // Run queries in parallel for all namespaces
     const results = await Promise.all(
@@ -257,104 +313,6 @@ export function buildContextBlock(
   contextBlock += '\n';
   
   return contextBlock;
-}
-
-export async function improveUserQueries(
-  query: string, 
-  history: string,
-  selectedChatModel: string
-): Promise<string[]> {
-  try {
-    const prompt = `You are analyzing a conversation to generate improved search queries. The conversation history shows the full context of what has been discussed.
-
-IMPORTANT: Consider the ENTIRE conversation when generating queries, not just the last question. The user's current question may be a follow-up or refer to earlier topics.
-
-Generate exactly 3 improved search queries based on:
-1. The user's current question
-2. The entire conversation context (what was discussed before)
-3. Any references to previous topics or follow-up nature of the question
-
-Each query should:
-- Be compact and specific (minimum words needed)
-- Target different aspects: one for the main topic, one for related context from earlier in conversation, one for deeper/broader implications
-- Be self-contained (no pronouns like "it", "this", "that")
-- Consider if this is a follow-up question that needs context from earlier messages
-
-Examples of good variety:
-- If asking "What about prayer times?" after discussing prayer, include queries about both general prayer times AND specific aspects discussed earlier
-- If asking "Can you explain more?" after a topic, create queries that capture both the specific aspect they want explained AND the broader topic context
-
-Return ONLY a JSON array of exactly 3 search query strings.
-
-Full conversation history:
-${history}
-
-Current user question to improve:
-${query}`;
-
-    // Use OpenAI for query improvement
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [{ role: 'user', content: prompt }],
-      stream: false,
-      response_format: { type: 'json_object' }
-    });
-
-    const content = response.choices[0].message.content || '{}';
-    const result = JSON.parse(content);
-    let queries: string[] = [];
-    
-    // Handle various response formats
-    if (Array.isArray(result)) {
-      queries = result;
-    } else if (result.queries && Array.isArray(result.queries)) {
-      queries = result.queries;
-    } else if (result.questions && Array.isArray(result.questions)) {
-      queries = result.questions;
-    } else if (result.improved_queries && Array.isArray(result.improved_queries)) {
-      queries = result.improved_queries;
-    } else if (typeof result === 'object') {
-      // Handle numeric keys like {"1": "query1", "2": "query2", "3": "query3"}
-      const numericKeys = Object.keys(result).filter(key => /^\d+$/.test(key)).sort();
-      if (numericKeys.length > 0) {
-        queries = numericKeys.map(key => result[key]);
-      }
-    }
-    
-    // Ensure exactly 3 queries
-    if (!queries || queries.length === 0) {
-      queries = [query, query, query];
-    } else if (queries.length === 1) {
-      queries = [queries[0], queries[0], queries[0]];
-    } else if (queries.length === 2) {
-      queries = [queries[0], queries[1], query];
-    } else if (queries.length > 3) {
-      queries = queries.slice(0, 3);
-    }
-    
-    // Additional validation: check if all queries are identical
-    const uniqueQueries = [...new Set(queries)];
-    if (uniqueQueries.length === 1) {
-      // Create simple variations if all queries are the same
-      const baseQuery = queries[0].trim();
-      queries = [
-        baseQuery,
-        `Islamic perspective on ${baseQuery.toLowerCase().replace('?', '')}`,
-        `Detailed explanation of ${baseQuery.toLowerCase().replace('?', '')}`
-      ];
-    }
-    
-    console.log('[vector-search] Improved queries from conversation:', {
-      originalQuery: query,
-      historyLength: history.length,
-      improvedQueries: queries
-    });
-    
-    return queries;
-  } catch (error) {
-    console.error('Error improving queries:', error);
-    return [query, query, query]; // fallback to 3x original
-  }
 }
 
 export function buildConversationHistory(messages: any[]): string {

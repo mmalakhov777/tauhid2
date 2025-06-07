@@ -3,7 +3,6 @@ import {
   extractReasoningMiddleware,
   wrapLanguageModel,
 } from 'ai';
-import { groq } from '@ai-sdk/groq';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { isTestEnvironment } from '../constants';
 import {
@@ -12,32 +11,20 @@ import {
   titleModel,
 } from './models.test';
 
-// Create OpenRouter instance as fallback
+// Create OpenRouter instance as primary provider
 const openrouter = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY || '',
 });
 
-// Primary provider (Groq)
-const groqProvider = customProvider({
-  languageModels: {
-    'chat-model': groq('mistral-saba-24b'),
-    'chat-model-reasoning': wrapLanguageModel({
-      model: groq('mistral-saba-24b'),
-      middleware: extractReasoningMiddleware({ tagName: 'think' }),
-    }),
-    'title-model': groq('mistral-saba-24b'),
-  },
-});
-
-// Fallback provider (OpenRouter)
+// Primary provider (OpenRouter)
 const openrouterProvider = customProvider({
   languageModels: {
-    'chat-model': openrouter.chat('mistralai/mistral-7b-instruct'),
+    'chat-model': openrouter.chat('mistralai/mistral-saba:nitro'),
     'chat-model-reasoning': wrapLanguageModel({
-      model: openrouter.chat('mistralai/mistral-7b-instruct'),
+      model: openrouter.chat('mistralai/mistral-saba:nitro'),
       middleware: extractReasoningMiddleware({ tagName: 'think' }),
     }),
-    'title-model': openrouter.chat('mistralai/mistral-7b-instruct'),
+    'title-model': openrouter.chat('mistralai/mistral-saba:nitro'),
   },
 });
 
@@ -49,7 +36,7 @@ export const myProvider = isTestEnvironment
         'title-model': titleModel,
       },
     })
-  : groqProvider;
+  : openrouterProvider;
 
-// Export fallback provider for use when Groq fails
+// Export the same provider as fallback (no actual fallback needed now)
 export const fallbackProvider = openrouterProvider;
