@@ -8,7 +8,6 @@ import { useState, useEffect } from 'react';
 import { PlusIcon, GlobeIcon } from '@/components/icons';
 import { SidebarHistory } from '@/components/sidebar-history';
 import { SidebarUserNav } from '@/components/sidebar-user-nav';
-import { EmailSetupBanner } from '@/components/EmailSetupBanner';
 import { useTelegram } from '@/hooks/useTelegram';
 import { Button } from '@/components/ui/button';
 import {
@@ -178,7 +177,6 @@ export function AppSidebar({ user }: { user: User | undefined }) {
               </SidebarMenu>
             </SidebarHeader>
             <SidebarContent>
-              {user && <EmailSetupBanner user={user} />}
               <SidebarHistory user={user} />
             </SidebarContent>
             <SidebarFooter>
@@ -271,7 +269,6 @@ export function AppSidebar({ user }: { user: User | undefined }) {
         </SidebarMenu>
       </SidebarHeader>
       <SidebarContent>
-        {user && <EmailSetupBanner user={user} />}
         <SidebarHistory user={user} />
       </SidebarContent>
       <SidebarFooter>
