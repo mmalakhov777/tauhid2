@@ -18,6 +18,7 @@ import { useLocalStorage, useWindowSize } from 'usehooks-ts';
 import { useRouter } from 'next/navigation';
 import { useTelegram } from '@/hooks/useTelegram';
 import { useCopyToClipboard } from 'usehooks-ts';
+import { useTelegramHaptics } from '@/hooks/use-telegram-haptics';
 
 import { ArrowUpIcon, PaperclipIcon, StopIcon, PlusIcon, ShareIcon } from './icons';
 import { PreviewAttachment } from './preview-attachment';
@@ -68,6 +69,7 @@ function PureMultimodalInput({
   const router = useRouter();
   const { webApp } = useTelegram();
   const [_, copyToClipboard] = useCopyToClipboard();
+  const { shareMessage, impactOccurred, notificationOccurred } = useTelegramHaptics();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isInputActive, setIsInputActive] = useState(false);
 
@@ -234,21 +236,67 @@ function PureMultimodalInput({
     const currentUrl = window.location.href;
     
     if (webApp) {
-      // For Telegram users, we'll copy the link since shareMessage requires PreparedInlineMessage
-      // In a real implementation, you'd need to prepare the message via Bot API first
+      // For Telegram users, try to use native shareMessage if available
       try {
+        // Get the last assistant message for sharing
+        const lastAssistantMessage = messages
+          .filter(msg => msg.role === 'assistant')
+          .pop();
+        
+        if (lastAssistantMessage) {
+          // Prepare the message for sharing via our API
+          const response = await fetch('/api/share/prepare', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              chatId,
+              messageText: lastAssistantMessage.parts
+                ?.filter(part => part.type === 'text')
+                .map(part => part.text)
+                .join('') || 'Check out this conversation',
+              chatTitle: 'AI Chat Conversation',
+            }),
+          });
+
+          if (response.ok) {
+            const { messageId } = await response.json();
+            
+            // Use Telegram's native share dialog
+            const shareSuccess = shareMessage(messageId, (success) => {
+              if (success) {
+                notificationOccurred('success');
+                toast.success('Message shared successfully!');
+              } else {
+                notificationOccurred('warning');
+                toast.error('Share was cancelled');
+              }
+            });
+
+            if (shareSuccess) {
+              impactOccurred('light');
+              return; // Exit early if native sharing worked
+            }
+          }
+        }
+        
+        // Fallback to copying link if native sharing fails
         await copyToClipboard(currentUrl);
         toast.success('Chat link copied to clipboard!');
+        impactOccurred('light');
         
-        // Optionally, you could also use Telegram's share functionality
-        // This would open Telegram's native share dialog
-        if (webApp.openTelegramLink) {
-          const shareText = `Check out this chat: ${currentUrl}`;
-          const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(currentUrl)}&text=${encodeURIComponent(shareText)}`;
-          webApp.openTelegramLink(telegramShareUrl);
-        }
       } catch (error) {
-        toast.error('Failed to share chat');
+        console.error('Share error:', error);
+        // Fallback to copying link
+        try {
+          await copyToClipboard(currentUrl);
+          toast.success('Chat link copied to clipboard!');
+          impactOccurred('light');
+        } catch (copyError) {
+          notificationOccurred('error');
+          toast.error('Failed to share chat');
+        }
       }
     } else {
       // For non-Telegram users, just copy the link
