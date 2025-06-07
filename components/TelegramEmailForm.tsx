@@ -25,6 +25,7 @@ export const TelegramEmailForm = ({ telegramUser, onComplete, onSkip }: Telegram
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSkipping, setIsSkipping] = useState(false);
   const router = useRouter();
   const { update: updateSession } = useSession();
 
@@ -84,6 +85,7 @@ export const TelegramEmailForm = ({ telegramUser, onComplete, onSkip }: Telegram
   };
 
   const handleSkip = () => {
+    setIsSkipping(true);
     onSkip?.();
   };
 
@@ -179,7 +181,7 @@ export const TelegramEmailForm = ({ telegramUser, onComplete, onSkip }: Telegram
             <button
               type="submit"
               onClick={handleSubmit}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isSkipping}
               className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 dark:disabled:bg-blue-700 text-white py-3 md:py-4 px-6 rounded-lg transition-colors flex items-center justify-center gap-3 text-base md:text-lg font-medium disabled:cursor-not-allowed"
             >
               {isSubmitting ? (
@@ -195,10 +197,17 @@ export const TelegramEmailForm = ({ telegramUser, onComplete, onSkip }: Telegram
             <button
               type="button"
               onClick={handleSkip}
-              disabled={isSubmitting}
-              className="w-full py-3 md:py-4 text-sm md:text-base text-gray-500 hover:text-gray-700 dark:text-zinc-400 dark:hover:text-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isSubmitting || isSkipping}
+              className="w-full py-3 md:py-4 text-sm md:text-base text-gray-500 hover:text-gray-700 dark:text-zinc-400 dark:hover:text-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              Skip for now
+              {isSkipping ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-gray-400 dark:border-gray-500 border-t-transparent rounded-full animate-spin" />
+                  <span>Skipping...</span>
+                </>
+              ) : (
+                'Skip for now'
+              )}
             </button>
           </div>
 
