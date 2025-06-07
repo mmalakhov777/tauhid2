@@ -183,6 +183,13 @@ function PureMultimodalInput({
   );
 
   const handleSend = useCallback(async (message: string, files?: File[]) => {
+    console.log('[handleSend] Starting send process:', {
+      isReadonly,
+      chatId,
+      sessionUserId: session?.user?.id,
+      message: message.substring(0, 50) + '...'
+    });
+
     // Check if user needs email setup before sending
     const needsEmailSetup = session?.user?.email?.startsWith('telegram_') && session?.user?.email?.endsWith('@telegram.local');
     

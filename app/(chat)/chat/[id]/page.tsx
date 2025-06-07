@@ -51,12 +51,22 @@ export default async function Page(props: { params: Promise<{ id: string }> }) {
 
   const cookieStore = await cookies();
 
+  const isReadonly = session?.user?.id !== chat.userId;
+  
+  console.log('[chat page] Chat access check:', {
+    chatId: chat.id,
+    chatUserId: chat.userId,
+    sessionUserId: session?.user?.id,
+    isReadonly,
+    visibility: chat.visibility
+  });
+
   return (
     <Chat
       id={chat.id}
       initialMessages={convertToUIMessages(messagesFromDb)}
       initialVisibilityType={chat.visibility}
-      isReadonly={session?.user?.id !== chat.userId && chat.visibility !== 'public'}
+      isReadonly={isReadonly}
       session={session}
       autoResume={true}
     />
