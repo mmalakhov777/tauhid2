@@ -317,23 +317,22 @@ export function Chat({
             
             {/* Input section right below greeting */}
             <div className="w-full max-w-full mb-4 sm:mb-6">
-              {!isReadonly && (
-                <MultimodalInput
-                  chatId={id}
-                  input={input}
-                  setInput={setInput}
-                  handleSubmit={handleSubmit}
-                  status={status}
-                  stop={stop}
-                  attachments={attachments}
-                  setAttachments={setAttachments}
-                  messages={messages}
-                  setMessages={setMessages}
-                  append={append}
-                  selectedVisibilityType={visibilityType}
-                  session={session}
-                />
-              )}
+              <MultimodalInput
+                chatId={id}
+                input={input}
+                setInput={setInput}
+                handleSubmit={handleSubmit}
+                status={status}
+                stop={stop}
+                attachments={attachments}
+                setAttachments={setAttachments}
+                messages={messages}
+                setMessages={setMessages}
+                append={append}
+                selectedVisibilityType={visibilityType}
+                session={session}
+                isReadonly={isReadonly}
+              />
             </div>
             
             {/* Show suggested actions below the input when no messages */}
@@ -365,23 +364,22 @@ export function Chat({
             />
 
             <form className="flex mx-auto px-2 gap-2 w-full md:max-w-3xl">
-              {!isReadonly && (
-                <MultimodalInput
-                  chatId={id}
-                  input={input}
-                  setInput={setInput}
-                  handleSubmit={handleSubmit}
-                  status={status}
-                  stop={stop}
-                  attachments={attachments}
-                  setAttachments={setAttachments}
-                  messages={messages}
-                  setMessages={setMessages}
-                  append={append}
-                  selectedVisibilityType={visibilityType}
-                  session={session}
-                />
-              )}
+              <MultimodalInput
+                chatId={id}
+                input={input}
+                setInput={setInput}
+                handleSubmit={handleSubmit}
+                status={status}
+                stop={stop}
+                attachments={attachments}
+                setAttachments={setAttachments}
+                messages={messages}
+                setMessages={setMessages}
+                append={append}
+                selectedVisibilityType={visibilityType}
+                session={session}
+                isReadonly={isReadonly}
+              />
             </form>
           </>
         )}

@@ -50,7 +50,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from './ui/alert-dialog';
-import { updateChatVisibility } from '@/app/(chat)/actions';
+import { updateChatVisibility, copyChatForUser } from '@/app/(chat)/actions';
 import { Loader2 } from 'lucide-react';
 
 function PureMultimodalInput({
@@ -68,6 +68,7 @@ function PureMultimodalInput({
   className,
   selectedVisibilityType,
   session,
+  isReadonly,
 }: {
   chatId: string;
   input: UseChatHelpers['input'];
@@ -83,6 +84,7 @@ function PureMultimodalInput({
   className?: string;
   selectedVisibilityType: VisibilityType;
   session: Session | null;
+  isReadonly?: boolean;
 }) {
   const { width } = useWindowSize();
   const router = useRouter();
@@ -174,6 +176,33 @@ function PureMultimodalInput({
       return; // Don't send the message, show email setup first
     }
 
+    // Check if this is a readonly chat (viewing someone else's chat)
+    if (isReadonly) {
+      toast.info('Creating a copy of this conversation for you...');
+
+      try {
+        const result = await copyChatForUser(chatId);
+        if (result.success && result.newChatId) {
+          // Navigate to the new chat
+          router.push(`/chat/${result.newChatId}`);
+          
+          // Wait a bit for navigation to complete before sending the message
+          setTimeout(() => {
+            // The message will be sent in the new chat after navigation
+            setInput(message);
+          }, 500);
+          return;
+        } else {
+          toast.error('Failed to create a copy of the conversation');
+          return;
+        }
+      } catch (error) {
+        console.error('Error copying chat:', error);
+        toast.error('Failed to create a copy of the conversation');
+        return;
+      }
+    }
+
     window.history.replaceState({}, '', `/chat/${chatId}`);
 
     // Handle file uploads if any
@@ -242,6 +271,8 @@ function PureMultimodalInput({
     chatId,
     setInput,
     session?.user?.email,
+    isReadonly,
+    router,
   ]);
 
   const { isAtBottom, scrollToBottom } = useScrollToBottom();
