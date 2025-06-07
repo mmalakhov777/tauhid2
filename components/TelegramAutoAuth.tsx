@@ -3,7 +3,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useTelegram } from '@/hooks/useTelegram';
 import { telegramAuth } from '@/app/(auth)/actions';
-import { toast } from '@/components/toast';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { useTheme } from 'next-themes';
@@ -125,7 +124,7 @@ export const TelegramAutoAuth = () => {
           });
 
           if (result.status === 'success') {
-            toast({ type: 'success', description: `Welcome back, ${telegramUser.first_name}!` });
+            // Remove toast: toast({ type: 'success', description: `Welcome back, ${telegramUser.first_name}!` });
             updateSession();
             
             // Don't clear loading state here - let the chat component do it
@@ -166,10 +165,7 @@ export const TelegramAutoAuth = () => {
             });
 
             if (skipResult.status === 'success') {
-              toast({ 
-                type: 'success', 
-                description: `Welcome, ${telegramUser.first_name}! You can start chatting right away.` 
-              });
+              // Remove toast: toast({ type: 'success', description: `Welcome, ${telegramUser.first_name}! You can start chatting right away.` });
               updateSession();
               
               // Don't clear loading state here - let the chat component do it
