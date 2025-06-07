@@ -27,7 +27,6 @@ export async function generateTitleFromUserMessage({
   message: UIMessage;
 }) {
   try {
-    // Try primary model first
     const { text: title } = await generateText({
       model: myProvider.languageModel('title-model'),
       system: `\n
@@ -40,10 +39,10 @@ export async function generateTitleFromUserMessage({
 
     return title;
   } catch (error) {
-    console.error('Primary title model failed, trying fallback:', error);
+    console.log('[generateTitleFromUserMessage] Primary model failed, using fallback:', error);
     
     try {
-      // Fallback to OpenRouter model
+      // Use OpenRouter fallback model
       const { text: title } = await generateText({
         model: myProvider.languageModel('title-model-fallback'),
         system: `\n
@@ -56,20 +55,9 @@ export async function generateTitleFromUserMessage({
 
       return title;
     } catch (fallbackError) {
-      console.error('Fallback title model also failed:', fallbackError);
-      
-      // Last resort: generate a simple title from the message
-      const messageContent = typeof message.content === 'string' 
-        ? message.content 
-        : 'New conversation';
-      
-      // Take first 80 characters and clean up
-      const fallbackTitle = messageContent
-        .substring(0, 80)
-        .replace(/\n/g, ' ')
-        .trim();
-      
-      return fallbackTitle || 'New conversation';
+      console.error('[generateTitleFromUserMessage] Fallback model also failed:', fallbackError);
+      // Return a generic title if both models fail
+      return 'New Conversation';
     }
   }
 }

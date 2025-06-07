@@ -512,7 +512,93 @@ REMEMBER: More citations = Better answer. Use them ALL! Add [CIT] directly witho
           });
         } catch (error) {
           console.error('Error in streamText execution:', error);
-          throw error;
+          
+          // Try fallback model if primary fails
+          try {
+            console.log('[chat route] Primary model failed, trying OpenRouter fallback...');
+            
+            const fallbackResult = streamText({
+              model: myProvider.languageModel('chat-model-fallback'),
+              system: modifiedSystemPrompt,
+              messages: messages,
+              maxSteps: 5,
+              experimental_activeTools:
+                selectedChatModel === 'chat-model-reasoning'
+                  ? []
+                  : [
+                      'getWeather',
+                    ],
+              experimental_transform: smoothStream({ chunking: 'word' }),
+              experimental_generateMessageId: generateUUID,
+              tools: {
+                getWeather,
+              },
+              onFinish: async ({ response }) => {
+                // Same save logic as above
+                if (session.user?.id) {
+                  try {
+                    const assistantId = getTrailingMessageId({
+                      messages: response.messages.filter(
+                        (message) => message.role === 'assistant',
+                      ),
+                    });
+
+                    if (!assistantId) {
+                      console.error('No assistant message found in response');
+                      return;
+                    }
+
+                    const [, assistantMessage] = appendResponseMessages({
+                      messages: [message],
+                      responseMessages: response.messages,
+                    });
+
+                    await saveMessages({
+                      messages: [
+                        {
+                          id: assistantId,
+                          chatId: id,
+                          role: assistantMessage.role,
+                          parts: assistantMessage.parts,
+                          attachments:
+                            assistantMessage.experimental_attachments ?? [],
+                          createdAt: new Date(),
+                        },
+                      ],
+                    });
+                    
+                    const vectorSearchData = (globalThis as any).__vectorSearchDataToSave;
+                    if (vectorSearchData) {
+                      try {
+                        await saveVectorSearchResult({
+                          messageId: assistantId,
+                          ...vectorSearchData,
+                        });
+                        delete (globalThis as any).__vectorSearchDataToSave;
+                      } catch (error) {
+                        console.error('Failed to save vector search results:', error);
+                      }
+                    }
+                  } catch (error) {
+                    console.error('Failed to save assistant message:', error);
+                  }
+                }
+              },
+              experimental_telemetry: {
+                isEnabled: isProductionEnvironment,
+                functionId: 'stream-text-fallback',
+              },
+            });
+
+            fallbackResult.consumeStream();
+
+            fallbackResult.mergeIntoDataStream(buffer, {
+              sendReasoning: true,
+            });
+          } catch (fallbackError) {
+            console.error('Fallback model also failed:', fallbackError);
+            throw fallbackError;
+          }
         }
       },
       onError: (error) => {
