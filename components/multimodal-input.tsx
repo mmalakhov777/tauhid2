@@ -363,7 +363,7 @@ function PureMultimodalInput({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
             transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-            className="absolute bottom-44 left-[45%] -translate-x-1/2 z-50 flex justify-center items-center"
+            className="absolute bottom-36 left-[45%] -translate-x-1/2 z-50 flex justify-center items-center"
           >
             <Button
               data-testid="scroll-to-bottom-button"
@@ -388,7 +388,7 @@ function PureMultimodalInput({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
             transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-            className="absolute bottom-44 left-0 right-0 z-50 flex justify-center items-center gap-3"
+            className="absolute bottom-36 left-0 right-0 z-50 flex justify-center items-center gap-3"
           >
             <Button
               data-testid="new-chat-button"
