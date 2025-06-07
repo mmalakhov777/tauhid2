@@ -3,6 +3,8 @@ import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { ThemeProvider } from '@/components/theme-provider';
 import { TelegramAutoAuth } from '@/components/TelegramAutoAuth';
+import TelegramDebug from '@/components/TelegramDebug';
+import { TelegramStartHandler } from '@/components/TelegramStartHandler';
 import Script from 'next/script';
 
 import './globals.css';
@@ -85,6 +87,8 @@ export default async function RootLayout({
         >
           <Toaster position="top-center" />
           <SessionProvider>
+            <TelegramDebug />
+            <TelegramStartHandler />
             <TelegramAutoAuth />
             {children}
           </SessionProvider>

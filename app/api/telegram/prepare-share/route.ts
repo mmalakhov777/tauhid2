@@ -34,6 +34,15 @@ export async function POST(request: NextRequest) {
     console.log('[prepare-share] User email:', session.user.email);
     console.log('[prepare-share] Telegram User ID:', dbUser.telegramId);
 
+    // Get the bot username from environment or use a default
+    const botUsername = process.env.TELEGRAM_BOT_USERNAME || 'your_bot_username';
+    
+    // Create Mini App deep link
+    // Format: https://t.me/botusername/appname?startapp=parameter
+    const miniAppUrl = `https://t.me/${botUsername}/app?startapp=chat_${chatId}`;
+    
+    console.log('[prepare-share] Mini App URL:', miniAppUrl);
+
     // Prepare the inline query result
     const inlineQueryResult = {
       type: 'article',
@@ -41,14 +50,14 @@ export async function POST(request: NextRequest) {
       title: 'Share Chat',
       description: 'Share this conversation',
       input_message_content: {
-        message_text: `Check out this interesting conversation: ${chatUrl}`,
+        message_text: `Check out this interesting conversation!`,
         parse_mode: 'HTML',
       },
       reply_markup: {
         inline_keyboard: [[
           {
-            text: 'Open Chat',
-            url: chatUrl
+            text: '📱 Open in App',
+            url: miniAppUrl
           }
         ]]
       }
