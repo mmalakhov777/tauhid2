@@ -39,23 +39,9 @@ export function useTelegramHaptics() {
     }
   }, []);
 
-  const shareMessage = useCallback((messageId: string, callback?: (success: boolean) => void) => {
-    try {
-      if ((window as any).Telegram?.WebApp?.shareMessage) {
-        (window as any).Telegram.WebApp.shareMessage(messageId, callback);
-        return true;
-      }
-      return false;
-    } catch (error) {
-      console.error('Failed to share message:', error);
-      return false;
-    }
-  }, []);
-
   return {
     impactOccurred,
     notificationOccurred,
     selectionChanged,
-    shareMessage,
   };
 } 

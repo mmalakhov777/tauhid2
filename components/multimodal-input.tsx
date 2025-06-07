@@ -69,7 +69,7 @@ function PureMultimodalInput({
   const router = useRouter();
   const { webApp } = useTelegram();
   const [_, copyToClipboard] = useCopyToClipboard();
-  const { shareMessage, impactOccurred, notificationOccurred } = useTelegramHaptics();
+  const { impactOccurred, notificationOccurred } = useTelegramHaptics();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isInputActive, setIsInputActive] = useState(false);
 
@@ -235,75 +235,95 @@ function PureMultimodalInput({
     // Get the current URL
     const currentUrl = window.location.href;
     
-    if (webApp) {
-      // For Telegram users, try to use native shareMessage if available
+    console.log('[handleShare] Starting share process...');
+    console.log('[handleShare] Current URL:', currentUrl);
+    console.log('[handleShare] WebApp available:', !!webApp);
+    console.log('[handleShare] Telegram WebApp object:', (window as any).Telegram?.WebApp);
+    
+    // Haptic feedback when share is initiated
+    impactOccurred('light');
+    
+    if (webApp && (window as any).Telegram?.WebApp?.shareMessage) {
+      console.log('[handleShare] Using Telegram shareMessage API');
+      
       try {
-        // Get the last assistant message for sharing
-        const lastAssistantMessage = messages
-          .filter(msg => msg.role === 'assistant')
-          .pop();
+        // First, prepare the message via our API
+        console.log('[handleShare] Preparing message via API...');
+        const prepareResponse = await fetch('/api/telegram/prepare-share', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            chatId,
+            chatUrl: currentUrl,
+          }),
+        });
+
+        const prepareData = await prepareResponse.json();
+        console.log('[handleShare] Prepare API response:', prepareData);
+
+        if (!prepareResponse.ok) {
+          console.error('[handleShare] Failed to prepare message:', prepareData);
+          notificationOccurred('error');
+          toast.error(`Failed to prepare share: ${prepareData.details || prepareData.error}`);
+          
+          // Fallback to copying link
+          await copyToClipboard(currentUrl);
+          toast.success('Chat link copied to clipboard!');
+          return;
+        }
+
+        // Now use the prepared message ID with shareMessage
+        console.log('[handleShare] Calling Telegram shareMessage with ID:', prepareData.preparedMessageId);
         
-        if (lastAssistantMessage) {
-          // Prepare the message for sharing via our API
-          const response = await fetch('/api/share/prepare', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              chatId,
-              messageText: lastAssistantMessage.parts
-                ?.filter(part => part.type === 'text')
-                .map(part => part.text)
-                .join('') || 'Check out this conversation',
-              chatTitle: 'AI Chat Conversation',
-            }),
-          });
-
-          if (response.ok) {
-            const { messageId } = await response.json();
-            
-            // Use Telegram's native share dialog
-            const shareSuccess = shareMessage(messageId, (success) => {
-              if (success) {
-                notificationOccurred('success');
-                toast.success('Message shared successfully!');
-              } else {
-                notificationOccurred('warning');
-                toast.error('Share was cancelled');
-              }
-            });
-
-            if (shareSuccess) {
-              impactOccurred('light');
-              return; // Exit early if native sharing worked
+        (window as any).Telegram.WebApp.shareMessage(
+          prepareData.preparedMessageId,
+          (success: boolean) => {
+            console.log('[handleShare] Share callback - Success:', success);
+            if (success) {
+              notificationOccurred('success');
+              toast.success('Chat shared successfully!');
+            } else {
+              notificationOccurred('warning');
+              toast.error('Share was cancelled');
             }
           }
-        }
-        
-        // Fallback to copying link if native sharing fails
-        await copyToClipboard(currentUrl);
-        toast.success('Chat link copied to clipboard!');
-        impactOccurred('light');
+        );
         
       } catch (error) {
-        console.error('Share error:', error);
+        console.error('[handleShare] Error during share process:', error);
+        notificationOccurred('error');
+        toast.error('Failed to share chat');
+        
         // Fallback to copying link
         try {
           await copyToClipboard(currentUrl);
-          toast.success('Chat link copied to clipboard!');
-          impactOccurred('light');
+          toast.success('Chat link copied to clipboard instead!');
         } catch (copyError) {
-          notificationOccurred('error');
-          toast.error('Failed to share chat');
+          console.error('[handleShare] Failed to copy as fallback:', copyError);
         }
       }
     } else {
-      // For non-Telegram users, just copy the link
+      // For non-Telegram users or if shareMessage is not available
+      console.log('[handleShare] Telegram shareMessage not available, using fallback');
+      console.log('[handleShare] WebApp methods available:', webApp ? Object.keys(webApp) : 'No WebApp');
+      
       try {
         await copyToClipboard(currentUrl);
+        notificationOccurred('success');
         toast.success('Chat link copied to clipboard!');
+        
+        // If we have openTelegramLink, use the share URL as additional option
+        if (webApp?.openTelegramLink) {
+          console.log('[handleShare] Opening Telegram share link as fallback');
+          const shareText = `Check out this chat: ${currentUrl}`;
+          const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(currentUrl)}&text=${encodeURIComponent(shareText)}`;
+          webApp.openTelegramLink(telegramShareUrl);
+        }
       } catch (error) {
+        console.error('[handleShare] Failed to copy link:', error);
+        notificationOccurred('error');
         toast.error('Failed to copy link');
       }
     }
