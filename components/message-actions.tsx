@@ -55,18 +55,59 @@ export function PureMessageActions({
         await copyToClipboard(textFromParts);
         
         // Check if we have the shareMessage method (Bot API 8.0+)
-        if (webApp.shareMessage) {
-          // Note: This would require a PreparedInlineMessage ID from the backend
-          // For now, we'll show a message explaining this
-          toast.info('Direct message sharing requires bot integration. Message copied to clipboard!');
+        if (webApp.shareMessage && webApp.isVersionAtLeast('8.0')) {
+          // Use the proper Bot API 8.0+ shareMessage method
+          toast.loading('Preparing message for sharing...');
+          
+          try {
+            // Call our backend API to prepare the inline message
+            const prepareResponse = await fetch('/api/telegram/prepare-message', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                messageContent: textFromParts
+              }),
+            });
+
+            if (!prepareResponse.ok) {
+              throw new Error('Failed to prepare message');
+            }
+
+            const { preparedMessageId } = await prepareResponse.json();
+            
+            // Use Telegram's shareMessage with the prepared message ID
+            webApp.shareMessage(preparedMessageId, (success: boolean) => {
+              if (success) {
+                toast.success('Message shared successfully!');
+              } else {
+                toast.error('Failed to share message');
+              }
+            });
+            
+            // Dismiss the loading toast
+            toast.dismiss();
+            
+          } catch (error) {
+            console.error('Error preparing message:', error);
+            toast.error('Failed to prepare message for sharing');
+            
+            // Fallback to URL sharing
+            const shareText = textFromParts.length > 4000 
+              ? textFromParts.substring(0, 3997) + '...' 
+              : textFromParts;
+            
+            const telegramShareUrl = `https://t.me/share/url?text=${encodeURIComponent(shareText)}`;
+            webApp.openTelegramLink?.(telegramShareUrl);
+            toast.success('Opening Telegram share dialog...');
+          }
         } else if (webApp.openTelegramLink) {
-          // Use Telegram's share dialog with the message content
-          // We can share text without a URL by using the text parameter
+          // Fallback to URL sharing for older versions
           const shareText = textFromParts.length > 4000 
             ? textFromParts.substring(0, 3997) + '...' 
             : textFromParts;
           
-          // Create a share link with just the text (no URL required)
           const telegramShareUrl = `https://t.me/share/url?text=${encodeURIComponent(shareText)}`;
           webApp.openTelegramLink(telegramShareUrl);
           
