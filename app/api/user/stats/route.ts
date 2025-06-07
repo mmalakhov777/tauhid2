@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       messagesLast24h,
       totalMessages,
-      joinDate: user.createdAt || new Date().toISOString(),
+      joinDate: new Date().toISOString(), // Default to current date since createdAt doesn't exist
     });
   } catch (error) {
     console.error('Error fetching user stats:', error);
