@@ -1,6 +1,6 @@
 import type { UIMessage } from 'ai';
 import { PreviewMessage, ThinkingMessage } from './message';
-import { memo, useState, useEffect } from 'react';
+import { memo, useState, useEffect, type RefObject, useRef } from 'react';
 import type { Vote } from '@/lib/db/schema';
 import equal from 'fast-deep-equal';
 import type { UseChatHelpers } from '@ai-sdk/react';
@@ -19,6 +19,7 @@ interface MessagesProps {
   vectorSearchProgress?: any;
   vectorSearchData?: any;
   dbOperationsComplete: boolean;
+  messagesContainerRef?: RefObject<HTMLDivElement>;
 }
 
 function PureMessages({
@@ -32,9 +33,9 @@ function PureMessages({
   vectorSearchProgress,
   vectorSearchData,
   dbOperationsComplete,
+  messagesContainerRef,
 }: MessagesProps) {
   const {
-    containerRef: messagesContainerRef,
     endRef: messagesEndRef,
     onViewportEnter,
     onViewportLeave,
@@ -48,6 +49,10 @@ function PureMessages({
 
   const [messageVectorData, setMessageVectorData] = useState<Record<string, any>>({});
   const [previousStatus, setPreviousStatus] = useState(status);
+  
+  // Use provided ref or create a local one
+  const localContainerRef = useRef<HTMLDivElement>(null);
+  const containerRef = messagesContainerRef || localContainerRef;
 
   // Haptic feedback for status changes
   useEffect(() => {
@@ -137,7 +142,7 @@ function PureMessages({
 
   return (
     <div
-      ref={messagesContainerRef}
+      ref={containerRef}
       className="flex flex-col min-w-0 gap-6 flex-1 overflow-y-scroll pt-4 relative bg-background text-foreground"
       style={{
         scrollbarWidth: 'thin',

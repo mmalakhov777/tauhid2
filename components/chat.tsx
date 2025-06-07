@@ -2,7 +2,7 @@
 
 import type { Attachment, UIMessage } from 'ai';
 import { useChat } from '@ai-sdk/react';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 // import { ChatHeader } from '@/components/chat-header';
 import type { Vote } from '@/lib/db/schema';
@@ -43,6 +43,7 @@ export function Chat({
   const [dbOperationsComplete, setDbOperationsComplete] = useState(true); // Track when DB operations are done
   const { setIsAuthLoading } = useAuthLoading();
   const [isChatReady, setIsChatReady] = useState(false);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
 
   const { visibilityType } = useChatVisibility({
     chatId: id,
@@ -254,6 +255,19 @@ export function Chat({
     setIsChatReady(true);
   }, []);
 
+  // Scroll to top when opening existing chat
+  useEffect(() => {
+    if (initialMessages.length > 0 && messagesContainerRef.current) {
+      // Small delay to ensure DOM is ready
+      setTimeout(() => {
+        messagesContainerRef.current?.scrollTo({
+          top: 0,
+          behavior: 'instant'
+        });
+      }, 50);
+    }
+  }, [initialMessages.length]);
+
   // Clear auth loading when chat is ready
   useEffect(() => {
     if (!isChatReady) return;
@@ -347,6 +361,7 @@ export function Chat({
               vectorSearchProgress={vectorSearchProgress}
               vectorSearchData={vectorSearchData}
               dbOperationsComplete={dbOperationsComplete}
+              messagesContainerRef={messagesContainerRef}
             />
 
             <form className="flex mx-auto px-2 gap-2 w-full md:max-w-3xl">
