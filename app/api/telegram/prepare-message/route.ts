@@ -19,7 +19,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Prepare the inline message using Telegram Bot API
+    // Truncate message content for sharing (Telegram has limits)
+    const truncatedContent = messageContent.length > 4000 
+      ? messageContent.substring(0, 3997) + '...' 
+      : messageContent;
+
+    // Prepare the inline message using Telegram Bot API 8.0
     const prepareResponse = await fetch(
       `https://api.telegram.org/bot${botToken}/savePreparedInlineMessage`,
       {
@@ -28,14 +33,13 @@ export async function POST(request: NextRequest) {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          user_id: null, // Will be set by Telegram when sharing
           result: {
             type: 'article',
-            id: 'shared_message',
-            title: 'Shared AI Response',
-            description: messageContent.substring(0, 100) + (messageContent.length > 100 ? '...' : ''),
+            id: `shared_${Date.now()}`,
+            title: 'AI Chat Response',
+            description: truncatedContent.substring(0, 100) + (truncatedContent.length > 100 ? '...' : ''),
             input_message_content: {
-              message_text: messageContent,
+              message_text: truncatedContent,
               parse_mode: 'Markdown'
             }
           },
