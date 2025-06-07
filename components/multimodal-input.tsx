@@ -22,6 +22,9 @@ import { useTelegramHaptics } from '@/hooks/use-telegram-haptics';
 import { useSWRConfig } from 'swr';
 import { unstable_serialize } from 'swr/infinite';
 import { getChatHistoryPaginationKey } from '@/components/sidebar-history';
+import { createPortal } from 'react-dom';
+import { TelegramEmailForm } from './TelegramEmailForm';
+import { useSession } from 'next-auth/react';
 
 import { ArrowUpIcon, PaperclipIcon, StopIcon, PlusIcon, ShareIcon, MenuIcon } from './icons';
 import { PreviewAttachment } from './preview-attachment';
@@ -94,6 +97,9 @@ function PureMultimodalInput({
   const [showShareModal, setShowShareModal] = useState(false);
   const [isMakingPublic, setIsMakingPublic] = useState(false);
   const [shareButtonText, setShareButtonText] = useState('Share');
+  const [showEmailSetupForm, setShowEmailSetupForm] = useState(false);
+
+  const { update: updateSession } = useSession();
 
   const [localStorageInput, setLocalStorageInput] = useLocalStorage(
     'input',
@@ -160,6 +166,14 @@ function PureMultimodalInput({
   );
 
   const handleSend = useCallback(async (message: string, files?: File[]) => {
+    // Check if user needs email setup before sending
+    const needsEmailSetup = session?.user?.email?.startsWith('telegram_') && session?.user?.email?.endsWith('@telegram.local');
+    
+    if (needsEmailSetup) {
+      setShowEmailSetupForm(true);
+      return; // Don't send the message, show email setup first
+    }
+
     window.history.replaceState({}, '', `/chat/${chatId}`);
 
     // Handle file uploads if any
@@ -227,6 +241,7 @@ function PureMultimodalInput({
     width,
     chatId,
     setInput,
+    session?.user?.email,
   ]);
 
   const { isAtBottom, scrollToBottom } = useScrollToBottom();
@@ -438,6 +453,16 @@ function PureMultimodalInput({
     }
   };
 
+  const handleEmailFormComplete = () => {
+    setShowEmailSetupForm(false);
+    toast.success('Email setup completed! You can now send messages.');
+    updateSession();
+  };
+
+  const handleEmailFormSkip = () => {
+    setShowEmailSetupForm(false);
+  };
+
   return (
     <div className="relative w-full flex flex-col gap-1">
       <AnimatePresence>
@@ -619,6 +644,24 @@ function PureMultimodalInput({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Email Setup Form Modal */}
+      {showEmailSetupForm && session?.user && typeof document !== 'undefined' && 
+        createPortal(
+          <TelegramEmailForm 
+            telegramUser={{
+              id: parseInt(session.user.id || '0'),
+              first_name: session.user.name?.split(' ')[0] || 'User',
+              last_name: session.user.name?.split(' ').slice(1).join(' '),
+              username: session.user.email?.split('@')[0],
+              photo_url: session.user.image || undefined,
+            }}
+            onComplete={handleEmailFormComplete}
+            onSkip={handleEmailFormSkip}
+          />,
+          document.body
+        )
+      }
     </div>
   );
 }
