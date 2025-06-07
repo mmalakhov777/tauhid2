@@ -100,6 +100,7 @@ function PureMultimodalInput({
   const [isMakingPublic, setIsMakingPublic] = useState(false);
   const [shareButtonText, setShareButtonText] = useState('Share');
   const [showEmailSetupForm, setShowEmailSetupForm] = useState(false);
+  const [preservedMessage, setPreservedMessage] = useState('');
 
   const { update: updateSession } = useSession();
 
@@ -172,6 +173,7 @@ function PureMultimodalInput({
     const needsEmailSetup = session?.user?.email?.startsWith('telegram_') && session?.user?.email?.endsWith('@telegram.local');
     
     if (needsEmailSetup) {
+      setPreservedMessage(message);
       setShowEmailSetupForm(true);
       return; // Don't send the message, show email setup first
     }
@@ -488,10 +490,18 @@ function PureMultimodalInput({
     setShowEmailSetupForm(false);
     toast.success('Email setup completed! You can now send messages.');
     updateSession();
+    if (preservedMessage) {
+      setInput(preservedMessage);
+      setPreservedMessage('');
+    }
   };
 
   const handleEmailFormSkip = () => {
     setShowEmailSetupForm(false);
+    if (preservedMessage) {
+      setInput(preservedMessage);
+      setPreservedMessage('');
+    }
   };
 
   return (

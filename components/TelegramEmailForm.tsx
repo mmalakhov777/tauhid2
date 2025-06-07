@@ -29,6 +29,7 @@ export const TelegramEmailForm = ({ telegramUser, onComplete, onSkip }: Telegram
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSkipping, setIsSkipping] = useState(false);
+  const [isAnyInputActive, setIsAnyInputActive] = useState(false);
   const [errors, setErrors] = useState<{
     email?: string;
     password?: string;
@@ -156,7 +157,7 @@ export const TelegramEmailForm = ({ telegramUser, onComplete, onSkip }: Telegram
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999999] min-h-screen w-full">
-      <div className="bg-white dark:bg-zinc-900 rounded-lg w-full h-full md:w-full md:h-full lg:w-[90%] lg:h-[90%] xl:w-[80%] xl:h-[80%] 2xl:w-[70%] 2xl:h-[70%] lg:rounded-xl flex flex-col overflow-hidden">
+      <div className="bg-white dark:bg-zinc-900 w-full h-full md:w-full md:h-full lg:w-[90%] lg:h-[90%] xl:w-[80%] xl:h-[80%] 2xl:w-[70%] 2xl:h-[70%] flex flex-col overflow-hidden">
         {/* Header Section */}
         <div className="flex-shrink-0 p-6 md:p-8 border-b border-gray-200 dark:border-zinc-700">
           <div className="flex items-center gap-4">
@@ -178,6 +179,21 @@ export const TelegramEmailForm = ({ telegramUser, onComplete, onSkip }: Telegram
           </div>
         </div>
 
+        {/* Description Section - Hidden when inputs are active */}
+        {!isAnyInputActive && (
+          <div className="flex-shrink-0 p-6 md:p-8 border-b border-gray-200 dark:border-zinc-700 bg-blue-50 dark:bg-blue-900/20">
+            <div className="max-w-md mx-auto">
+              <h4 className="text-lg font-medium text-blue-900 dark:text-blue-100 mb-2">
+                Why do we need this?
+              </h4>
+              <p className="text-sm md:text-base text-blue-700 dark:text-blue-300 leading-relaxed">
+                To access your account on the web app (outside Telegram), we need an email and password. 
+                This allows you to continue conversations on any device and ensures your chat history is always available.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Form Section */}
         <div className="flex-1 overflow-y-auto p-6 md:p-8">
           <form onSubmit={handleSubmit} className="space-y-6 max-w-md mx-auto">
@@ -195,6 +211,7 @@ export const TelegramEmailForm = ({ telegramUser, onComplete, onSkip }: Telegram
                     setErrors({ ...errors, email: '' });
                   }
                 }}
+                onFocus={() => setIsAnyInputActive(true)}
                 required
                 disabled={isSubmitting}
                 className={`w-full px-4 py-3 md:py-4 text-base border rounded-lg focus:outline-none focus:ring-2 dark:bg-zinc-800 dark:text-zinc-100 disabled:opacity-50 disabled:cursor-not-allowed ${
@@ -223,6 +240,7 @@ export const TelegramEmailForm = ({ telegramUser, onComplete, onSkip }: Telegram
                     setErrors({ ...errors, password: '' });
                   }
                 }}
+                onFocus={() => setIsAnyInputActive(true)}
                 required
                 minLength={6}
                 disabled={isSubmitting}
@@ -252,6 +270,7 @@ export const TelegramEmailForm = ({ telegramUser, onComplete, onSkip }: Telegram
                     setErrors({ ...errors, confirmPassword: '' });
                   }
                 }}
+                onFocus={() => setIsAnyInputActive(true)}
                 required
                 minLength={6}
                 disabled={isSubmitting}
