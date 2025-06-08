@@ -349,7 +349,17 @@ export async function POST(request: Request) {
     modifiedSystemPrompt = modifiedSystemPrompt + languageInstruction;
 
     // Automatically perform vector search if enabled and no messageId provided
+    console.log('[chat route] 🔍 Vector search check:', {
+      isVectorSearchEnabled,
+      hasMessageId: !!messageId,
+      shouldPerformVectorSearch: isVectorSearchEnabled && !messageId,
+      environment: process.env.NODE_ENV,
+      enableVectorSearchEnv: process.env.ENABLE_VECTOR_SEARCH
+    });
+    
     if (isVectorSearchEnabled && !messageId) {
+      console.log('[chat route] 🚀 Starting automatic vector search execution');
+      
       const conversationHistory = buildConversationHistory(messages);
       // Extract text content from message parts
       let userMessageContent = '';
@@ -436,6 +446,11 @@ export async function POST(request: Request) {
           citations: filteredCitations // Use filtered citations
         });
       } catch (error) {
+        console.error('[chat route] ❌ Automatic vector search failed:', {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          timestamp: new Date().toISOString()
+        });
         console.error('Automatic vector search failed:', error);
         // Continue without vector search on error
       }
@@ -533,10 +548,10 @@ REMEMBER: More citations = Better answer. Use them ALL! Add [CIT] directly witho
       }
     } else {
       console.log('[chat route] No messageId or messageContextMap entry found:', {
-        messageId,
-        hasMessageId: !!messageId,
-        hasContextMapEntry: messageId ? messageContextMap.has(messageId) : false,
-        contextMapSize: messageContextMap.size
+        messageId: undefined,
+        hasMessageId: false,
+        hasContextMapEntry: false,
+        contextMapSize: 0
       });
       // No vector search context available - use general knowledge prompt
       const noCitationsPrompt = `
