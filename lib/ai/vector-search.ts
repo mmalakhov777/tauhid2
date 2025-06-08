@@ -5,6 +5,14 @@ import { v4 as uuidv4 } from 'uuid';
 const PINECONE_API_KEY = process.env.PINECONE_API_KEY || '';
 const RAILWAY_EMBEDDING_SERVICE_URL = process.env.RAILWAY_EMBEDDING_SERVICE_URL || 'http://localhost:3001';
 
+// Add validation for production
+if (process.env.NODE_ENV === 'production' && !process.env.RAILWAY_EMBEDDING_SERVICE_URL) {
+  console.error('RAILWAY_EMBEDDING_SERVICE_URL is required in production but not set');
+}
+
+// Log the service URL being used (without exposing sensitive info)
+console.log(`[vector-search] Using embedding service: ${RAILWAY_EMBEDDING_SERVICE_URL.includes('localhost') ? 'localhost' : 'external service'}`);
+
 // Index names
 const CLASSIC_INDEX_NAME = process.env.PINECONE_CLASSIC_INDEX || 'cls-books';
 const MODERN_INDEX_NAME = process.env.PINECONE_MODERN_INDEX || 'islamqadtaset';
@@ -54,6 +62,8 @@ export interface VectorSearchResult {
 // Railway embedding service functions
 async function getEmbedding(text: string): Promise<number[]> {
   try {
+    console.log(`[vector-search] Requesting embedding from: ${RAILWAY_EMBEDDING_SERVICE_URL}/embed`);
+    
     const response = await fetch(`${RAILWAY_EMBEDDING_SERVICE_URL}/embed`, {
       method: 'POST',
       headers: {
@@ -62,18 +72,26 @@ async function getEmbedding(text: string): Promise<number[]> {
       body: JSON.stringify({ text }),
     });
 
+    console.log(`[vector-search] Embedding service response status: ${response.status}`);
+
     if (!response.ok) {
-      throw new Error(`Embedding service error: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`[vector-search] Embedding service error: ${response.status} - ${errorText}`);
+      throw new Error(`Embedding service error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
     if (!data.success || !data.embedding) {
+      console.error('[vector-search] Invalid embedding response:', data);
       throw new Error('Invalid embedding response');
     }
 
+    console.log(`[vector-search] Successfully received embedding with ${data.embedding.length} dimensions`);
     return data.embedding;
   } catch (error) {
     console.error('Error getting embedding from Railway service:', error);
+    console.error('Service URL:', RAILWAY_EMBEDDING_SERVICE_URL);
+    console.error('Error details:', error instanceof Error ? error.message : String(error));
     throw error;
   }
 }
@@ -84,6 +102,8 @@ async function improveUserQueries(
   selectedChatModel: string
 ): Promise<string[]> {
   try {
+    console.log(`[vector-search] Requesting query improvement from: ${RAILWAY_EMBEDDING_SERVICE_URL}/improve-queries`);
+    
     const response = await fetch(`${RAILWAY_EMBEDDING_SERVICE_URL}/improve-queries`, {
       method: 'POST',
       headers: {
@@ -96,12 +116,17 @@ async function improveUserQueries(
       }),
     });
 
+    console.log(`[vector-search] Query improvement service response status: ${response.status}`);
+
     if (!response.ok) {
-      throw new Error(`Query improvement service error: ${response.status}`);
+      const errorText = await response.text();
+      console.error(`[vector-search] Query improvement service error: ${response.status} - ${errorText}`);
+      throw new Error(`Query improvement service error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
     if (!data.success || !data.improvedQueries) {
+      console.error('[vector-search] Invalid query improvement response:', data);
       throw new Error('Invalid query improvement response');
     }
 
@@ -114,6 +139,8 @@ async function improveUserQueries(
     return data.improvedQueries;
   } catch (error) {
     console.error('Error improving queries via Railway service:', error);
+    console.error('Service URL:', RAILWAY_EMBEDDING_SERVICE_URL);
+    console.error('Falling back to original query repeated 3 times');
     return [query, query, query]; // fallback to 3x original
   }
 }
