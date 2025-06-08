@@ -403,6 +403,14 @@ export async function POST(request: Request) {
           return true;
         });
         
+        // IMPORTANT: Store the filtered citations in messageContextMap for later use
+        console.log('[chat route] Storing filtered citations in messageContextMap:', {
+          messageId,
+          originalCitationsCount: searchResults.citations.length,
+          filteredCitationsCount: filteredCitations.length
+        });
+        messageContextMap.set(messageId, filteredCitations);
+        
         // Store search results for later saving to database
         const searchResultCounts = {
           classic: filteredCitations.filter((c: any) => c.metadata?.type === 'classic' || c.metadata?.type === 'CLS' || (!c.metadata?.type && !c.namespace)).length,
@@ -436,6 +444,12 @@ export async function POST(request: Request) {
     if (messageId && messageContextMap.has(messageId)) {
       // Build context block from stored citations
       const allContexts = getContextByMessageId(messageId);
+      console.log('[chat route] Found citations in messageContextMap:', {
+        messageId,
+        totalContexts: allContexts.length,
+        contextTypes: allContexts.map(c => c.metadata?.type || 'unknown')
+      });
+      
       const classicContexts = allContexts.filter((ctx: any) => ctx.metadata?.type === 'classic' || ctx.metadata?.type === 'CLS' || (!ctx.metadata?.type && !ctx.namespace));
       const modernContexts = allContexts.filter((ctx: any) => ctx.metadata?.type === 'modern' || ctx.metadata?.type === 'MOD');
       const risaleContexts = allContexts.filter((ctx: any) => ctx.metadata?.type === 'risale' || ctx.metadata?.type === 'RIS' || (ctx.namespace && ['Sozler-Bediuzzaman_Said_Nursi', 'Mektubat-Bediuzzaman_Said_Nursi', 'lemalar-bediuzzaman_said_nursi', 'Hasir_Risalesi-Bediuzzaman_Said_Nursi', 'Otuz_Uc_Pencere-Bediuzzaman_Said_Nursi', 'Hastalar_Risalesi-Bediuzzaman_Said_Nursi', 'ihlas_risaleleri-bediuzzaman_said_nursi', 'enne_ve_zerre_risalesi-bediuzzaman_said_nursi', 'tabiat_risalesi-bediuzzaman_said_nursi', 'kader_risalesi-bediuzzaman_said_nursi'].includes(ctx.namespace)));
@@ -443,7 +457,16 @@ export async function POST(request: Request) {
       
       const totalCitations = classicContexts.length + modernContexts.length + risaleContexts.length + youtubeContexts.length;
       
+      console.log('[chat route] Citation breakdown:', {
+        classic: classicContexts.length,
+        modern: modernContexts.length,
+        risale: risaleContexts.length,
+        youtube: youtubeContexts.length,
+        total: totalCitations
+      });
+      
       if (totalCitations === 0) {
+        console.log('[chat route] No citations found, using no-citations prompt');
         // Use completely different prompt for zero citations
         const noCitationsPrompt = `
 
@@ -475,6 +498,7 @@ Remember: Honesty about limitations is more valuable than false confidence. Guid
         // Use the no-citations prompt instead of the regular context
         modifiedSystemPrompt = modifiedSystemPrompt + noCitationsPrompt;
       } else {
+        console.log('[chat route] Using citations-based prompt with', totalCitations, 'citations');
         // Use the existing citation-based prompt
         contextBlock = buildContextBlock(classicContexts, modernContexts, risaleContexts, youtubeContexts);
 
@@ -508,6 +532,12 @@ REMEMBER: More citations = Better answer. Use them ALL! Add [CIT] directly witho
         modifiedSystemPrompt = modifiedSystemPrompt + '\n\n' + contextBlock + citationEmphasis;
       }
     } else {
+      console.log('[chat route] No messageId or messageContextMap entry found:', {
+        messageId,
+        hasMessageId: !!messageId,
+        hasContextMapEntry: messageId ? messageContextMap.has(messageId) : false,
+        contextMapSize: messageContextMap.size
+      });
       // No vector search context available - use general knowledge prompt
       const noCitationsPrompt = `
 
