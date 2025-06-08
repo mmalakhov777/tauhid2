@@ -13,7 +13,7 @@ export const guestRegex = /^guest-\d+$/;
 export const DUMMY_PASSWORD = generateDummyPassword();
 
 // Vector Search Configuration
-export const isVectorSearchEnabled = process.env.ENABLE_VECTOR_SEARCH === 'true';
+export const isVectorSearchEnabled = process.env.ENABLE_VECTOR_SEARCH?.trim() === 'true';
 export const vectorSearchConfig = {
   enabled: isVectorSearchEnabled,
   pineconeApiKey: process.env.PINECONE_API_KEY,
