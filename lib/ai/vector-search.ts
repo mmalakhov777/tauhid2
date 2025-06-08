@@ -150,11 +150,24 @@ async function getTopKContext(
   query: string, 
   k = 2
 ): Promise<VectorSearchResult[]> {
+  console.log(`[vector-search] 🔍 Starting search in index: ${indexName}`, {
+    query: query.substring(0, 100) + '...',
+    k,
+    timestamp: new Date().toISOString()
+  });
+
   try {
     // Get embedding for the query using Railway service
+    console.log(`[vector-search] 🧮 Getting embedding for query in ${indexName}`);
     const queryEmbedding = await getEmbedding(query);
+    
+    console.log(`[vector-search] ✅ Embedding received for ${indexName}:`, {
+      embeddingLength: queryEmbedding.length,
+      embeddingPreview: queryEmbedding.slice(0, 5)
+    });
 
     // Query Pinecone
+    console.log(`[vector-search] 📊 Querying Pinecone index: ${indexName}`);
     const index = pinecone.index(indexName);
     const searchResponse = await index.query({
       vector: queryEmbedding,
@@ -163,8 +176,13 @@ async function getTopKContext(
       includeValues: false,
     });
 
+    console.log(`[vector-search] ✅ Pinecone query completed for ${indexName}:`, {
+      matchesCount: searchResponse.matches?.length || 0,
+      topScores: searchResponse.matches?.slice(0, 3).map(m => m.score) || []
+    });
+
     // Extract and filter results
-    return (searchResponse.matches || [])
+    const mappedResults = (searchResponse.matches || [])
       .map((m: any, i: number) => {
         let fullMetadata = { ...(m.metadata || {}) };
         let textContent = fullMetadata.text || "";
@@ -200,7 +218,11 @@ async function getTopKContext(
           score: m.score,
           query: query
         };
-      })
+      });
+
+    console.log(`[vector-search] 🔄 Mapped ${mappedResults.length} results for ${indexName}`);
+
+    const filteredResults = mappedResults
       .filter((mappedMatch) => { // Filter for specific classic sources
         if (indexName === CLASSIC_INDEX_NAME && mappedMatch.metadata) {
           const metadataKeys = Object.keys(mappedMatch.metadata);
@@ -222,8 +244,25 @@ async function getTopKContext(
         return m.text && m.score && m.score >= scoreThreshold;
       })
       .slice(0, k);
+
+    console.log(`[vector-search] ✅ Search completed for ${indexName}:`, {
+      initialMatches: searchResponse.matches?.length || 0,
+      afterMapping: mappedResults.length,
+      afterFiltering: filteredResults.length,
+      finalResults: filteredResults.length,
+      scoreRange: filteredResults.length > 0 ? 
+        `${Math.min(...filteredResults.map(r => r.score || 0)).toFixed(3)} - ${Math.max(...filteredResults.map(r => r.score || 0)).toFixed(3)}` : 
+        'N/A'
+    });
+
+    return filteredResults;
   } catch (error) {
-    console.error(`Error querying index ${indexName}:`, error);
+    console.error(`[vector-search] ❌ Error querying index ${indexName}:`, {
+      error: error instanceof Error ? error.message : String(error),
+      query: query.substring(0, 100),
+      k,
+      timestamp: new Date().toISOString()
+    });
     return [];
   }
 }
@@ -234,38 +273,95 @@ async function getTopKContextAllNamespaces(
   query: string, 
   k = 2
 ): Promise<VectorSearchResult[]> {
+  console.log(`[vector-search] 🔍 Starting namespace search in index: ${indexName}`, {
+    query: query.substring(0, 100) + '...',
+    namespacesCount: namespaces.length,
+    namespaces: namespaces.slice(0, 3), // Show first 3 namespaces
+    k,
+    timestamp: new Date().toISOString()
+  });
+
   try {
+    console.log(`[vector-search] 🧮 Getting embedding for namespace search in ${indexName}`);
     const queryEmbedding = await getEmbedding(query);
+    
+    console.log(`[vector-search] ✅ Embedding received for namespace search:`, {
+      embeddingLength: queryEmbedding.length,
+      indexName
+    });
 
     // Run queries in parallel for all namespaces
+    console.log(`[vector-search] ⚡ Running parallel queries across ${namespaces.length} namespaces in ${indexName}`);
     const results = await Promise.all(
-      namespaces.map(async (namespace) => {
-        const index = pinecone.index(indexName).namespace(namespace);
-        const searchResponse = await index.query({
-          vector: queryEmbedding,
-          topK: k * 2,
-          includeMetadata: true,
-          includeValues: false,
-        });
-        return (searchResponse.matches || [])
-          .map((m: any, i: number) => ({
-            text: m.metadata?.text || '',
-            metadata: m.metadata,
-            id: m.id || `unknown-id-${i+1}`,
+      namespaces.map(async (namespace, i) => {
+        console.log(`[vector-search] 📋 Querying namespace ${i + 1}/${namespaces.length}: ${namespace} in ${indexName}`);
+        
+        try {
+          const index = pinecone.index(indexName).namespace(namespace);
+          const searchResponse = await index.query({
+            vector: queryEmbedding,
+            topK: k * 2,
+            includeMetadata: true,
+            includeValues: false,
+          });
+          
+          const namespaceResults = (searchResponse.matches || [])
+            .map((m: any, j: number) => ({
+              text: m.metadata?.text || '',
+              metadata: m.metadata,
+              id: m.id || `unknown-id-${j+1}`,
+              namespace,
+              score: m.score,
+              query: query
+            }))
+            .filter(m => m.text && m.score && m.score >= 0.4);
+          
+          console.log(`[vector-search] ✅ Namespace ${namespace} search completed:`, {
+            matches: searchResponse.matches?.length || 0,
+            filtered: namespaceResults.length,
+            topScore: namespaceResults.length > 0 ? namespaceResults[0].score?.toFixed(3) : 'N/A'
+          });
+          
+          return namespaceResults;
+        } catch (namespaceError) {
+          console.error(`[vector-search] ❌ Error in namespace ${namespace}:`, {
+            error: namespaceError instanceof Error ? namespaceError.message : String(namespaceError),
             namespace,
-            score: m.score,
-            query: query
-          }))
-          .filter(m => m.text && m.score && m.score >= 0.4);
+            indexName
+          });
+          return [];
+        }
       })
     );
+
+    console.log(`[vector-search] 📊 All namespace queries completed for ${indexName}:`, {
+      namespacesQueried: namespaces.length,
+      resultsPerNamespace: results.map(r => r.length),
+      totalResultsBeforeSort: results.flat().length
+    });
 
     // Flatten and sort by score
     const allMatches = results.flat();
     allMatches.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
-    return allMatches.slice(0, k);
+    const finalResults = allMatches.slice(0, k);
+    
+    console.log(`[vector-search] ✅ Namespace search completed for ${indexName}:`, {
+      totalMatches: allMatches.length,
+      finalResults: finalResults.length,
+      scoreRange: finalResults.length > 0 ? 
+        `${Math.min(...finalResults.map(r => r.score || 0)).toFixed(3)} - ${Math.max(...finalResults.map(r => r.score || 0)).toFixed(3)}` : 
+        'N/A',
+      namespacesWithResults: results.filter(r => r.length > 0).length
+    });
+    
+    return finalResults;
   } catch (error) {
-    console.error(`Error querying namespaces in ${indexName}:`, error);
+    console.error(`[vector-search] ❌ Error querying namespaces in ${indexName}:`, {
+      error: error instanceof Error ? error.message : String(error),
+      query: query.substring(0, 100),
+      namespacesCount: namespaces.length,
+      timestamp: new Date().toISOString()
+    });
     return [];
   }
 }
@@ -375,64 +471,152 @@ async function performAllVectorSearches(improvedQueries: string[]): Promise<{
   risaleContexts: VectorSearchResult[];
   youtubeContexts: VectorSearchResult[];
 }> {
-  // Create all search promises in parallel
-  const allSearchPromises = [
-    // Classic searches for all queries
-    ...improvedQueries.map(q => getTopKContext(CLASSIC_INDEX_NAME, q, 2)),
-    // Modern searches for all queries
-    ...improvedQueries.map(q => getTopKContext(MODERN_INDEX_NAME, q, 2)),
-    // Risale searches for all queries
-    ...improvedQueries.map(q => getTopKContextAllNamespaces(RISALENUR_INDEX_NAME, RISALENUR_NAMESPACES, q, 2)),
-    // YouTube searches for all queries
-    ...improvedQueries.map(q => getTopKContextAllNamespaces(YOUTUBE_INDEX_NAME, YOUTUBE_NAMESPACES, q, 2))
-  ];
+  console.log('[vector-search] 🔄 Starting parallel vector searches:', {
+    improvedQueriesCount: improvedQueries.length,
+    queries: improvedQueries.map(q => q.substring(0, 50) + '...'),
+    timestamp: new Date().toISOString()
+  });
 
-  // Execute all searches in parallel
-  const allResults = await Promise.all(allSearchPromises);
-  
-  // Split results back into categories
-  const numQueries = improvedQueries.length;
-  const classicResults = allResults.slice(0, numQueries);
-  const modernResults = allResults.slice(numQueries, numQueries * 2);
-  const risaleResults = allResults.slice(numQueries * 2, numQueries * 3);
-  const youtubeResults = allResults.slice(numQueries * 3, numQueries * 4);
+  try {
+    // Create all search promises in parallel
+    console.log('[vector-search] 📋 Creating search promises for all indexes and namespaces');
+    const allSearchPromises = [
+      // Classic searches for all queries
+      ...improvedQueries.map((q, i) => {
+        console.log(`[vector-search] 📚 Creating classic search promise ${i + 1}/${improvedQueries.length} for query: ${q.substring(0, 50)}...`);
+        return getTopKContext(CLASSIC_INDEX_NAME, q, 2);
+      }),
+      // Modern searches for all queries
+      ...improvedQueries.map((q, i) => {
+        console.log(`[vector-search] 🏛️ Creating modern search promise ${i + 1}/${improvedQueries.length} for query: ${q.substring(0, 50)}...`);
+        return getTopKContext(MODERN_INDEX_NAME, q, 2);
+      }),
+      // Risale searches for all queries
+      ...improvedQueries.map((q, i) => {
+        console.log(`[vector-search] 📖 Creating Risale search promise ${i + 1}/${improvedQueries.length} for query: ${q.substring(0, 50)}...`);
+        return getTopKContextAllNamespaces(RISALENUR_INDEX_NAME, RISALENUR_NAMESPACES, q, 2);
+      }),
+      // YouTube searches for all queries
+      ...improvedQueries.map((q, i) => {
+        console.log(`[vector-search] 🎥 Creating YouTube search promise ${i + 1}/${improvedQueries.length} for query: ${q.substring(0, 50)}...`);
+        return getTopKContextAllNamespaces(YOUTUBE_INDEX_NAME, YOUTUBE_NAMESPACES, q, 2);
+      })
+    ];
 
-  // Deduplicate by id
-  const dedup = (arr: VectorSearchResult[][], type: string): VectorSearchResult[] => {
-    const flattened = arr.flat();
-    const deduplicated = Object.values(
-      Object.fromEntries(
-        flattened.map((x: VectorSearchResult) => [x.id, x])
-      )
-    );
+    console.log('[vector-search] ⚡ Executing all searches in parallel:', {
+      totalPromises: allSearchPromises.length,
+      expectedResults: improvedQueries.length * 4,
+      timestamp: new Date().toISOString()
+    });
+
+    // Execute all searches in parallel
+    const allResults = await Promise.all(allSearchPromises);
     
-    // Apply the same filter for classic sources
-    if (type === 'Classic') {
-      return deduplicated.filter((citation) => {
-        if (citation.metadata) {
-          const metadataKeys = Object.keys(citation.metadata);
-          const specificKeys = ['answer', 'question', 'text'];
-          const hasExactlySpecificKeys =
-              metadataKeys.length === specificKeys.length &&
-              specificKeys.every(key => metadataKeys.includes(key));
-          
-          if (hasExactlySpecificKeys) {
-            return false;
-          }
-        }
-        return true;
+    console.log('[vector-search] ✅ All parallel searches completed:', {
+      totalResults: allResults.length,
+      resultLengths: allResults.map(r => r.length),
+      timestamp: new Date().toISOString()
+    });
+    
+    // Split results back into categories
+    const numQueries = improvedQueries.length;
+    console.log('[vector-search] 📊 Splitting results into categories:', {
+      numQueries,
+      totalResults: allResults.length
+    });
+    
+    const classicResults = allResults.slice(0, numQueries);
+    const modernResults = allResults.slice(numQueries, numQueries * 2);
+    const risaleResults = allResults.slice(numQueries * 2, numQueries * 3);
+    const youtubeResults = allResults.slice(numQueries * 3, numQueries * 4);
+
+    console.log('[vector-search] 📈 Results split by category:', {
+      classic: classicResults.length,
+      modern: modernResults.length,
+      risale: risaleResults.length,
+      youtube: youtubeResults.length
+    });
+
+    // Deduplicate by id
+    console.log('[vector-search] 🔄 Starting deduplication process');
+    const dedup = (arr: VectorSearchResult[][], type: string): VectorSearchResult[] => {
+      const flattened = arr.flat();
+      console.log(`[vector-search] 📋 Deduplicating ${type}:`, {
+        beforeFlattening: arr.length,
+        afterFlattening: flattened.length,
+        uniqueIds: new Set(flattened.map(x => x.id)).size
       });
-    }
-    
-    return deduplicated;
-  };
+      
+      const deduplicated = Object.values(
+        Object.fromEntries(
+          flattened.map((x: VectorSearchResult) => [x.id, x])
+        )
+      );
+      
+      console.log(`[vector-search] ✅ ${type} deduplication complete:`, {
+        before: flattened.length,
+        after: deduplicated.length,
+        removed: flattened.length - deduplicated.length
+      });
+      
+      // Apply the same filter for classic sources
+      if (type === 'Classic') {
+        const beforeFilter = deduplicated.length;
+        const filtered = deduplicated.filter((citation) => {
+          if (citation.metadata) {
+            const metadataKeys = Object.keys(citation.metadata);
+            const specificKeys = ['answer', 'question', 'text'];
+            const hasExactlySpecificKeys =
+                metadataKeys.length === specificKeys.length &&
+                specificKeys.every(key => metadataKeys.includes(key));
+            
+            if (hasExactlySpecificKeys) {
+              return false;
+            }
+          }
+          return true;
+        });
+        
+        console.log(`[vector-search] 🔍 Classic sources filtered:`, {
+          before: beforeFilter,
+          after: filtered.length,
+          filtered: beforeFilter - filtered.length
+        });
+        
+        return filtered;
+      }
+      
+      return deduplicated;
+    };
 
-  return {
-    classicContexts: dedup(classicResults, 'Classic'),
-    modernContexts: dedup(modernResults, 'Modern'),
-    risaleContexts: dedup(risaleResults, 'Risale'),
-    youtubeContexts: dedup(youtubeResults, 'YouTube')
-  };
+    const finalResults = {
+      classicContexts: dedup(classicResults, 'Classic'),
+      modernContexts: dedup(modernResults, 'Modern'),
+      risaleContexts: dedup(risaleResults, 'Risale'),
+      youtubeContexts: dedup(youtubeResults, 'YouTube')
+    };
+
+    console.log('[vector-search] 🎉 Parallel vector searches completed successfully:', {
+      classic: finalResults.classicContexts.length,
+      modern: finalResults.modernContexts.length,
+      risale: finalResults.risaleContexts.length,
+      youtube: finalResults.youtubeContexts.length,
+      total: finalResults.classicContexts.length + finalResults.modernContexts.length + 
+             finalResults.risaleContexts.length + finalResults.youtubeContexts.length,
+      timestamp: new Date().toISOString()
+    });
+
+    return finalResults;
+    
+  } catch (error) {
+    console.error('[vector-search] ❌ Error in parallel vector searches:', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      improvedQueriesCount: improvedQueries.length,
+      timestamp: new Date().toISOString()
+    });
+    throw error;
+  }
 }
 
 export async function performVectorSearchWithProgress(
@@ -446,72 +630,138 @@ export async function performVectorSearchWithProgress(
   improvedQueries: string[];
   contextBlock: string;
 }> {
+  console.log('[vector-search] 🚀 Starting vector search with progress:', {
+    userMessage: userMessage.substring(0, 100) + '...',
+    conversationHistoryLength: conversationHistory.length,
+    selectedChatModel,
+    hasProgressCallback: !!onProgress,
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV,
+    railwayServiceUrl: RAILWAY_EMBEDDING_SERVICE_URL
+  });
+
   // Step 1: Query improvement and vector searches in parallel
+  console.log('[vector-search] 📝 Step 1: Starting query improvement');
   if (onProgress) {
+    console.log('[vector-search] 📡 Sending progress update - Step 1');
     onProgress({ step: 1 });
   }
   
-  // Run query improvement and vector searches in parallel
-  const [improvedQueries, searchResults] = await Promise.all([
-    improveUserQueries(userMessage, conversationHistory, selectedChatModel),
-    // We'll run the searches after we get the improved queries, but we can prepare the embedding
-    Promise.resolve(null)
-  ]);
-  
-  if (onProgress) {
-    onProgress({ step: 1, improvedQueries });
-  }
-  
-  // Step 2: Vector searches with improved queries
-  if (onProgress) {
-    onProgress({ step: 2, improvedQueries });
-  }
-  
-  const { classicContexts, modernContexts, risaleContexts, youtubeContexts } = 
-    await performAllVectorSearches(improvedQueries);
-  
-  // Send search results count
-  if (onProgress) {
-    onProgress({
-      step: 2,
-      improvedQueries,
-      searchResults: {
-        classic: classicContexts.length,
-        modern: modernContexts.length,
-        risale: risaleContexts.length,
-        youtube: youtubeContexts.length
-      }
+  try {
+    // Run query improvement and vector searches in parallel
+    console.log('[vector-search] 🔄 Running query improvement in parallel');
+    const [improvedQueries, searchResults] = await Promise.all([
+      improveUserQueries(userMessage, conversationHistory, selectedChatModel),
+      // We'll run the searches after we get the improved queries, but we can prepare the embedding
+      Promise.resolve(null)
+    ]);
+    
+    console.log('[vector-search] ✅ Query improvement completed:', {
+      originalQuery: userMessage.substring(0, 50) + '...',
+      improvedQueriesCount: improvedQueries.length,
+      improvedQueries: improvedQueries.map(q => q.substring(0, 50) + '...')
     });
-  }
-
-  // Generate messageId and store context
-  const messageId = uuidv4();
-  const allContexts = [...classicContexts, ...modernContexts, ...risaleContexts, ...youtubeContexts];
-  messageContextMap.set(messageId, allContexts);
-
-  // Build context block
-  const contextBlock = buildContextBlock(classicContexts, modernContexts, risaleContexts, youtubeContexts);
-
-  // Step 3: Ready to generate response
-  if (onProgress) {
-    onProgress({
-      step: 3,
-      improvedQueries,
-      searchResults: {
-        classic: classicContexts.length,
-        modern: modernContexts.length,
-        risale: risaleContexts.length,
-        youtube: youtubeContexts.length
-      }
+    
+    if (onProgress) {
+      console.log('[vector-search] 📡 Sending progress update - Step 1 with improved queries');
+      onProgress({ step: 1, improvedQueries });
+    }
+    
+    // Step 2: Vector searches with improved queries
+    console.log('[vector-search] 🔍 Step 2: Starting vector searches');
+    if (onProgress) {
+      console.log('[vector-search] 📡 Sending progress update - Step 2');
+      onProgress({ step: 2, improvedQueries });
+    }
+    
+    console.log('[vector-search] 🔄 Performing all vector searches in parallel');
+    const { classicContexts, modernContexts, risaleContexts, youtubeContexts } = 
+      await performAllVectorSearches(improvedQueries);
+    
+    console.log('[vector-search] ✅ Vector searches completed:', {
+      classicCount: classicContexts.length,
+      modernCount: modernContexts.length,
+      risaleCount: risaleContexts.length,
+      youtubeCount: youtubeContexts.length,
+      totalResults: classicContexts.length + modernContexts.length + risaleContexts.length + youtubeContexts.length
     });
-  }
+    
+    // Send search results count
+    const searchResultsCount = {
+      classic: classicContexts.length,
+      modern: modernContexts.length,
+      risale: risaleContexts.length,
+      youtube: youtubeContexts.length
+    };
+    
+    if (onProgress) {
+      console.log('[vector-search] 📡 Sending progress update - Step 2 with search results');
+      onProgress({
+        step: 2,
+        improvedQueries,
+        searchResults: searchResultsCount
+      });
+    }
 
-  return {
-    messageId,
-    citations: allContexts,
-    improvedQueries,
-    contextBlock
-  };
+    // Generate messageId and store context
+    console.log('[vector-search] 🆔 Generating message ID and storing context');
+    const messageId = uuidv4();
+    const allContexts = [...classicContexts, ...modernContexts, ...risaleContexts, ...youtubeContexts];
+    messageContextMap.set(messageId, allContexts);
+    
+    console.log('[vector-search] 💾 Context stored:', {
+      messageId,
+      totalContexts: allContexts.length,
+      contextMapSize: messageContextMap.size
+    });
+
+    // Build context block
+    console.log('[vector-search] 🏗️ Building context block');
+    const contextBlock = buildContextBlock(classicContexts, modernContexts, risaleContexts, youtubeContexts);
+    
+    console.log('[vector-search] ✅ Context block built:', {
+      contextBlockLength: contextBlock.length,
+      contextBlockPreview: contextBlock.substring(0, 200) + '...'
+    });
+
+    // Step 3: Ready to generate response
+    console.log('[vector-search] ⚡ Step 3: Ready to generate response');
+    if (onProgress) {
+      console.log('[vector-search] 📡 Sending progress update - Step 3');
+      onProgress({
+        step: 3,
+        improvedQueries,
+        searchResults: searchResultsCount
+      });
+    }
+
+    const result = {
+      messageId,
+      citations: allContexts,
+      improvedQueries,
+      contextBlock
+    };
+    
+    console.log('[vector-search] 🎉 Vector search completed successfully:', {
+      messageId,
+      citationsCount: allContexts.length,
+      improvedQueriesCount: improvedQueries.length,
+      contextBlockLength: contextBlock.length,
+      timestamp: new Date().toISOString()
+    });
+
+    return result;
+    
+  } catch (error) {
+    console.error('[vector-search] ❌ Error in vector search process:', {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      userMessage: userMessage.substring(0, 100),
+      selectedChatModel,
+      timestamp: new Date().toISOString()
+    });
+    throw error;
+  }
 }
 
 export async function performVectorSearch(
