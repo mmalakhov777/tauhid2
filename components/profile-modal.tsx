@@ -67,7 +67,7 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
 
   // Fetch user statistics
   useEffect(() => {
-    if (open && user?.id && !isGuest) {
+    if (open && user?.id) {
       setLoading(true);
       
       fetch('/api/user/stats')
@@ -88,7 +88,7 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
           setLoading(false);
         });
     }
-  }, [open, user?.id, isGuest]);
+  }, [open, user?.id]);
 
   const usagePercentage = userStats 
     ? Math.min((userStats.messagesLast24h / entitlements.maxMessagesPerDay) * 100, 100)
@@ -216,50 +216,48 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
           </Card>
 
           {/* Usage Statistics */}
-          {!isGuest && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Activity className="h-5 w-5" />
-                  Usage Statistics
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {loading ? (
-                  <div className="text-center text-muted-foreground">Loading statistics...</div>
-                ) : userStats ? (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="text-center p-4 bg-muted/50 rounded-lg">
-                      <div className="text-2xl font-bold text-primary">{userStats.messagesLast24h}</div>
-                      <div className="text-sm text-muted-foreground">Messages (24h)</div>
-                    </div>
-                    <div className="text-center p-4 bg-muted/50 rounded-lg">
-                      <div className="text-2xl font-bold text-primary">{userStats.totalMessages}</div>
-                      <div className="text-sm text-muted-foreground">Total Messages</div>
-                    </div>
-                    <div className="text-center p-4 bg-muted/50 rounded-lg">
-                      <div className="text-2xl font-bold text-primary">
-                        {Math.floor((Date.now() - new Date(userStats.joinDate).getTime()) / (1000 * 60 * 60 * 24))}
-                      </div>
-                      <div className="text-sm text-muted-foreground">Days Active</div>
-                    </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Activity className="h-5 w-5" />
+                Usage Statistics
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {loading ? (
+                <div className="text-center text-muted-foreground">Loading statistics...</div>
+              ) : userStats ? (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="text-center p-4 bg-muted/50 rounded-lg">
+                    <div className="text-2xl font-bold text-primary">{userStats.messagesLast24h}</div>
+                    <div className="text-sm text-muted-foreground">Messages (24h)</div>
                   </div>
-                ) : (
-                  <div className="text-center text-muted-foreground">No statistics available</div>
-                )}
-                
-                {userStats && (
-                  <>
-                    <Separator />
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Calendar className="h-4 w-4" />
-                      <span>Member since: {new Date(userStats.joinDate).toLocaleDateString()}</span>
+                  <div className="text-center p-4 bg-muted/50 rounded-lg">
+                    <div className="text-2xl font-bold text-primary">{userStats.totalMessages}</div>
+                    <div className="text-sm text-muted-foreground">Total Messages</div>
+                  </div>
+                  <div className="text-center p-4 bg-muted/50 rounded-lg">
+                    <div className="text-2xl font-bold text-primary">
+                      {Math.floor((Date.now() - new Date(userStats.joinDate).getTime()) / (1000 * 60 * 60 * 24))}
                     </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-          )}
+                    <div className="text-sm text-muted-foreground">Days Active</div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center text-muted-foreground">No statistics available</div>
+              )}
+              
+              {userStats && (
+                <>
+                  <Separator />
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Calendar className="h-4 w-4" />
+                    <span>Member since: {new Date(userStats.joinDate).toLocaleDateString()}</span>
+                  </div>
+                </>
+              )}
+            </CardContent>
+          </Card>
 
           {/* Guest User Info */}
           {isGuest && (
