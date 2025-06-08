@@ -41,9 +41,9 @@ import { ChatSDKError } from '../errors';
 
 // Configure PostgreSQL client with connection pooling and retry logic
 const client = postgres(process.env.POSTGRES_URL!, {
-  max: 10, // Maximum number of connections in the pool
+  max: 1, // Reduce max connections for serverless
   idle_timeout: 20, // Close idle connections after 20 seconds
-  connect_timeout: 10, // Connection timeout in seconds
+  connect_timeout: 30, // Increase connection timeout for serverless
   onnotice: () => {}, // Suppress notices
   onparameter: () => {}, // Suppress parameter status messages
   connection: {
@@ -52,6 +52,10 @@ const client = postgres(process.env.POSTGRES_URL!, {
   // Add retry logic for connection errors
   fetch_types: false, // Disable type fetching to reduce connection overhead
   prepare: false, // Disable prepared statements to reduce connection state
+  ssl: process.env.NODE_ENV === 'production' ? 'require' : false, // Require SSL in production
+  transform: {
+    undefined: null, // Transform undefined to null for PostgreSQL
+  },
 });
 
 const db = drizzle(client);
@@ -98,7 +102,11 @@ export async function testDatabaseConnection() {
       error,
       errorMessage: error instanceof Error ? error.message : 'Unknown error',
       errorCode: (error as any)?.code,
-      postgresUrl: process.env.POSTGRES_URL ? 'Set (hidden)' : 'Not set'
+      errorDetail: (error as any)?.detail,
+      errorHint: (error as any)?.hint,
+      postgresUrl: process.env.POSTGRES_URL ? 'Set (hidden)' : 'Not set',
+      nodeEnv: process.env.NODE_ENV,
+      isProduction: process.env.NODE_ENV === 'production'
     });
     return false;
   }
@@ -245,6 +253,11 @@ export async function saveChat({
           throw new ChatSDKError('forbidden:chat', 'Chat belongs to another user');
         }
         return existingChat;
+      }
+
+      // Validate input data before insert
+      if (!id || !userId || !title || !visibility) {
+        throw new Error(`Invalid input data: id=${id}, userId=${userId}, title=${title}, visibility=${visibility}`);
       }
 
       const result = await db.insert(chat).values({

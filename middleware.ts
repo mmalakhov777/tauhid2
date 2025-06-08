@@ -14,8 +14,13 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Allow health checks and other essential API routes to be public
-  if (pathname.startsWith('/ping') || pathname.startsWith('/api/health')) {
+  if (pathname.startsWith('/ping')) {
     return new Response('pong', { status: 200 });
+  }
+  
+  // Let health endpoint handle its own logic
+  if (pathname.startsWith('/api/health')) {
+    return NextResponse.next();
   }
 
   // Let NextAuth handle its own API routes
