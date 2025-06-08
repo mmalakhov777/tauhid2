@@ -38,6 +38,19 @@ export function Chat({
   session: Session | null;
   autoResume: boolean;
 }) {
+  console.log('[chat.tsx] 🚀 Chat component initialized:', {
+    chatId: id,
+    initialMessagesCount: initialMessages.length,
+    initialVisibilityType,
+    isReadonly,
+    userType: session?.user?.type || 'no-session',
+    userId: session?.user?.id || 'no-user-id',
+    autoResume,
+    timestamp: new Date().toISOString(),
+    environment: typeof window !== 'undefined' ? 'client' : 'server',
+    userAgent: typeof window !== 'undefined' ? window.navigator.userAgent.substring(0, 100) : 'server'
+  });
+
   const { mutate } = useSWRConfig();
   const [vectorSearchProgress, setVectorSearchProgress] = useState<any>(null);
   const [vectorSearchData, setVectorSearchData] = useState<any>(null);
@@ -70,25 +83,53 @@ export function Chat({
     sendExtraMessageFields: true,
     generateId: generateUUID,
     fetch: fetchWithErrorHandlers,
-    experimental_prepareRequestBody: (body) => ({
-      id,
-      message: body.messages.at(-1),
-      selectedChatModel: DEFAULT_CHAT_MODEL,
-      selectedVisibilityType: visibilityType,
-      selectedLanguage: (body as any).data?.selectedLanguage || 'en',
-    }),
+    experimental_prepareRequestBody: (body) => {
+      const requestBody = {
+        id,
+        message: body.messages.at(-1),
+        selectedChatModel: DEFAULT_CHAT_MODEL,
+        selectedVisibilityType: visibilityType,
+        selectedLanguage: (body as any).data?.selectedLanguage || 'en',
+      };
+      
+      console.log('[chat.tsx] 🚀 Preparing request body:', {
+        chatId: id,
+        messageContent: requestBody.message?.content?.substring(0, 100) + '...',
+        chatModel: requestBody.selectedChatModel,
+        visibilityType: requestBody.selectedVisibilityType,
+        language: requestBody.selectedLanguage,
+        timestamp: new Date().toISOString()
+      });
+      
+      return requestBody;
+    },
     onFinish: () => {
+      console.log('[chat.tsx] ✅ Chat finished, mutating cache and resetting progress');
       mutate(unstable_serialize(getChatHistoryPaginationKey));
       setVectorSearchProgress(null); // Reset progress when finished
       // Add a delay to ensure database operations are complete
       setTimeout(() => {
         setDbOperationsComplete(true);
+        console.log('[chat.tsx] 📝 Database operations marked as complete');
       }, 1000); // Increased to 1000ms delay to ensure DB operations are done
     },
     onError: (error) => {
+      console.error('[chat.tsx] ❌ Chat error occurred:', {
+        error: error.message,
+        type: error.constructor.name,
+        timestamp: new Date().toISOString()
+      });
+      
       if (error instanceof ChatSDKError) {
+        console.log('[chat.tsx] 🔍 ChatSDKError details:', {
+          type: error.type,
+          surface: error.surface,
+          userType: session?.user?.type
+        });
+        
         // Check if it's a rate limit error for guest users
         if (error.type === 'rate_limit' && error.surface === 'chat' && session?.user?.type === 'guest') {
+          console.log('[chat.tsx] 🚫 Rate limit hit for guest user, redirecting to registration');
           toast({
             type: 'error',
             description: 'You have reached your daily message limit. Please create an account to continue chatting.',
@@ -113,28 +154,63 @@ export function Chat({
 
   // Track when streaming starts to mark DB operations as incomplete
   useEffect(() => {
+    console.log('[chat.tsx] 📊 Status changed to:', status);
+    
     if (status === 'streaming' || status === 'submitted') {
+      console.log('[chat.tsx] 🔄 Marking DB operations as incomplete due to status:', status);
       setDbOperationsComplete(false);
     }
   }, [status]);
 
   // Listen for vector search progress updates from the data stream
   useEffect(() => {
+    console.log('[chat.tsx] 📡 Data stream update received:', {
+      hasData: !!data,
+      dataLength: data?.length || 0,
+      dataTypes: data?.map((item, i) => `${i}: ${typeof item}`),
+      timestamp: new Date().toISOString()
+    });
+    
     if (data && Array.isArray(data) && data.length > 0) {
       let foundRealProgress = false;
       // Process all data items, not just the latest
       data.forEach((item, index) => {
+        console.log('[chat.tsx] 🔍 Processing data item', index, ':', {
+          type: typeof item,
+          hasType: item && typeof item === 'object' && 'type' in item,
+          hasAnnotations: item && typeof item === 'object' && 'annotations' in item,
+          itemPreview: typeof item === 'object' ? Object.keys(item || {}).slice(0, 5) : item
+        });
+        
         if (typeof item === 'object' && item !== null) {
           // Check for different possible data structures
           if ('type' in item && (item as any).type === 'vector-search-progress') {
+            console.log('[chat.tsx] 🎯 Found vector-search-progress in data item:', {
+              index,
+              progressData: (item as any).progress,
+              timestamp: new Date().toISOString()
+            });
+            
             try {
               const progressStr = (item as any).progress;
               const progress = typeof progressStr === 'string' ? JSON.parse(progressStr) : progressStr;
+              
+              console.log('[chat.tsx] 📈 Parsed vector search progress:', {
+                step: progress.step,
+                hasImprovedQueries: !!progress.improvedQueries,
+                hasSearchResults: !!progress.searchResults,
+                hasCitations: !!progress.citations,
+                improvedQueriesCount: progress.improvedQueries?.length || 0,
+                searchResultsKeys: progress.searchResults ? Object.keys(progress.searchResults) : [],
+                citationsCount: progress.citations?.length || 0
+              });
+              
               setVectorSearchProgress(progress);
               foundRealProgress = true;
               
               // Store the final data when we reach step 3
               if (progress.step === 3) {
+                console.log('[chat.tsx] 🎯 Step 3 reached, storing vector search data');
                 setVectorSearchData({
                   improvedQueries: progress.improvedQueries,
                   searchResults: progress.searchResults,
@@ -144,10 +220,15 @@ export function Chat({
               
               // Store the complete data when we reach step 4 (final)
               if (progress.step === 4 && progress.citations) {
+                console.log('[chat.tsx] 🏁 Step 4 reached with citations, storing complete data:', {
+                  citationsCount: progress.citations.length,
+                  citationTypes: progress.citations.map((c: any) => c.metadata?.type || 'unknown')
+                });
+                
                 // Log metadata keys for classical sources
-                progress.citations.forEach((c: any) => {
+                progress.citations.forEach((c: any, i: number) => {
                   if ((c.metadata?.type === 'classic' || c.metadata?.type === 'CLS' || (!c.metadata?.type && !c.namespace)) && c.metadata) {
-                    console.log(`[chat.tsx] Classic source metadata keys:`, Object.keys(c.metadata));
+                    console.log(`[chat.tsx] 📚 Classic source ${i} metadata keys:`, Object.keys(c.metadata));
                   }
                 });
                 
@@ -158,14 +239,25 @@ export function Chat({
                 });
               }
             } catch (e) {
-              console.error('Error parsing progress:', e);
+              console.error('[chat.tsx] ❌ Error parsing vector search progress:', e);
             }
           } else if ('annotations' in item) {
+            console.log('[chat.tsx] 📝 Found annotations in data item:', {
+              index,
+              annotationsCount: Array.isArray((item as any).annotations) ? (item as any).annotations.length : 0
+            });
+            
             // Check if it's in annotations
             const annotations = (item as any).annotations;
             if (Array.isArray(annotations)) {
-              annotations.forEach((annotation: any) => {
+              annotations.forEach((annotation: any, annotationIndex: number) => {
+                console.log('[chat.tsx] 🔍 Processing annotation', annotationIndex, ':', {
+                  type: annotation.type,
+                  hasData: !!annotation.data
+                });
+                
                 if (annotation.type === 'vector-search-progress') {
+                  console.log('[chat.tsx] 🎯 Found vector-search-progress in annotation:', annotation.data);
                   setVectorSearchProgress(annotation.data);
                 }
               });
@@ -173,14 +265,25 @@ export function Chat({
           }
         }
       });
+      
+      console.log('[chat.tsx] 📊 Data processing complete:', {
+        foundRealProgress,
+        totalItems: data.length,
+        timestamp: new Date().toISOString()
+      });
     }
   }, [data]);
 
   // Reset vector search progress when status changes to submitted
   useEffect(() => {
+    console.log('[chat.tsx] 🔄 Status change detected for vector search simulation:', status);
+    
     if (status === 'submitted') {
+      console.log('[chat.tsx] 🎬 Starting vector search progress simulation');
+      
       // Simulate progress updates to show what is happening
       const simulateProgress = async () => {
+        console.log('[chat.tsx] 📝 Simulating Step 1: Improving queries');
         // Step 1: Improving queries
         setVectorSearchProgress({ step: 1 });
         
@@ -209,18 +312,21 @@ export function Chat({
           youtube: 4
         };
         
+        console.log('[chat.tsx] 🔍 Simulating Step 2: Searching with results:', simulatedResults);
         setVectorSearchProgress({ 
           step: 2,
           searchResults: simulatedResults
         });
         
         // Step 3: Generating
+        console.log('[chat.tsx] ⚡ Simulating Step 3: Generating response');
         setVectorSearchProgress({ 
           step: 3,
           searchResults: simulatedResults
         });
         
         // Store simulated data for display (without sample citations)
+        console.log('[chat.tsx] 💾 Storing simulated vector search data');
         setVectorSearchData({
           improvedQueries: [], // Empty array instead of simulated queries
           searchResults: simulatedResults,
@@ -240,7 +346,14 @@ export function Chat({
   const [hasAppendedMessage, setHasAppendedMessage] = useState(false);
 
   useEffect(() => {
+    console.log('[chat.tsx] 🔍 Query parameter check:', {
+      query,
+      hasAppendedQuery,
+      chatId: id
+    });
+    
     if (query && !hasAppendedQuery) {
+      console.log('[chat.tsx] 📤 Appending query from URL parameter:', query);
       append({
         role: 'user',
         content: query,
@@ -248,13 +361,21 @@ export function Chat({
 
       setHasAppendedQuery(true);
       window.history.replaceState({}, '', `/chat/${id}`);
+      console.log('[chat.tsx] 🔄 URL cleaned and query appended');
     }
   }, [query, append, hasAppendedQuery, id]);
 
   // Handle message parameter (for copied chats)
   useEffect(() => {
+    console.log('[chat.tsx] 💬 Message parameter check:', {
+      messageParam,
+      hasAppendedMessage,
+      hasAppendedQuery,
+      chatId: id
+    });
+    
     if (messageParam && !hasAppendedMessage && !hasAppendedQuery) {
-      console.log('[chat] Message parameter detected, sending message:', messageParam);
+      console.log('[chat.tsx] 📤 Message parameter detected, sending message:', messageParam);
       append({
         role: 'user',
         content: messageParam,
@@ -272,6 +393,8 @@ export function Chat({
           });
         }
       }, 100);
+      
+      console.log('[chat.tsx] 🔄 Message appended and scroll scheduled');
     }
   }, [messageParam, append, hasAppendedMessage, hasAppendedQuery, id]);
 
@@ -292,32 +415,50 @@ export function Chat({
 
   // Mark chat as ready after initial render
   useEffect(() => {
+    console.log('[chat.tsx] ✅ Chat marked as ready');
     setIsChatReady(true);
   }, []);
 
   // Scroll to top when opening existing chat
   useEffect(() => {
+    console.log('[chat.tsx] 📜 Scroll effect triggered:', {
+      initialMessagesLength: initialMessages.length,
+      hasMessagesContainer: !!messagesContainerRef.current
+    });
+    
     if (initialMessages.length > 0 && messagesContainerRef.current) {
+      console.log('[chat.tsx] ⬆️ Scrolling to top for existing chat');
       // Small delay to ensure DOM is ready
       setTimeout(() => {
         messagesContainerRef.current?.scrollTo({
           top: 0,
           behavior: 'instant'
         });
+        console.log('[chat.tsx] 📍 Scroll to top completed');
       }, 50);
     }
   }, [initialMessages.length]);
 
   // Clear auth loading when chat is ready
   useEffect(() => {
+    console.log('[chat.tsx] 🔄 Auth loading effect triggered:', {
+      isChatReady,
+      timestamp: new Date().toISOString()
+    });
+    
     if (!isChatReady) return;
+    
+    console.log('[chat.tsx] 🎨 Starting auth loading clear sequence');
     
     // Use requestAnimationFrame to ensure the chat is painted before hiding loader
     const rafId = requestAnimationFrame(() => {
+      console.log('[chat.tsx] 🖼️ First animation frame');
       // Additional frame to ensure everything is rendered
       requestAnimationFrame(() => {
+        console.log('[chat.tsx] 🖼️ Second animation frame');
         // Small delay for smooth transition after paint
         setTimeout(() => {
+          console.log('[chat.tsx] 🚫 Clearing auth loading state');
           setIsAuthLoading(false);
         }, 100);
       });
@@ -325,6 +466,7 @@ export function Chat({
 
     return () => {
       if (rafId) {
+        console.log('[chat.tsx] 🗑️ Cleaning up animation frame');
         cancelAnimationFrame(rafId);
       }
     };
