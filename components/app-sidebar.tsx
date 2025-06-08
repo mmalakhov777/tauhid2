@@ -9,6 +9,7 @@ import { PlusIcon, GlobeIcon } from '@/components/icons';
 import { SidebarHistory } from '@/components/sidebar-history';
 import { SidebarUserNav } from '@/components/sidebar-user-nav';
 import { EmailSetupBanner } from '@/components/EmailSetupBanner';
+import { GuestRegistrationBanner } from '@/components/GuestRegistrationBanner';
 import { Button } from '@/components/ui/button';
 import {
   Sidebar,
@@ -125,6 +126,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
             <SidebarContent>
               {user && <EmailSetupBanner user={user} />}
               <SidebarHistory user={user} />
+              <GuestRegistrationBanner />
             </SidebarContent>
             <SidebarFooter>
               <div className="flex flex-row items-center gap-2 pb-2.5">
@@ -201,6 +203,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
       <SidebarContent>
         {user && <EmailSetupBanner user={user} />}
         <SidebarHistory user={user} />
+        <GuestRegistrationBanner />
       </SidebarContent>
       <SidebarFooter>
         <div className="flex flex-row items-center gap-2 pb-2.5">

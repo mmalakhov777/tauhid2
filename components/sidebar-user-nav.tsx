@@ -97,7 +97,7 @@ export function SidebarUserNav({ user }: { user: User }) {
             <DropdownMenuContent
               data-testid="user-nav-menu"
               side="top"
-              className="w-[--radix-popper-anchor-width]"
+              className="w-[--radix-popper-anchor-width] text-left"
             >
               {telegramUser && isTelegramUser && (
                 <>
@@ -134,7 +134,7 @@ export function SidebarUserNav({ user }: { user: User }) {
               )}
               <DropdownMenuItem
                 data-testid="user-nav-item-profile"
-                className="cursor-pointer"
+                className="cursor-pointer text-left"
                 onSelect={() => setShowProfileModal(true)}
               >
                 Profile
@@ -142,7 +142,7 @@ export function SidebarUserNav({ user }: { user: User }) {
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 data-testid="user-nav-item-theme"
-                className="cursor-pointer"
+                className="cursor-pointer text-left"
                 onSelect={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               >
                 {`Toggle ${theme === 'light' ? 'dark' : 'light'} mode`}
@@ -151,7 +151,7 @@ export function SidebarUserNav({ user }: { user: User }) {
               <DropdownMenuItem asChild data-testid="user-nav-item-auth">
                 <button
                   type="button"
-                  className="w-full cursor-pointer"
+                  className="w-full cursor-pointer text-left"
                   onClick={() => {
                     if (status === 'loading') {
                       toast({

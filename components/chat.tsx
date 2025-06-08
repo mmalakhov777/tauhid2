@@ -10,6 +10,7 @@ import { fetcher, fetchWithErrorHandlers, generateUUID } from '@/lib/utils';
 import { MultimodalInput } from './multimodal-input';
 import { Messages } from './messages';
 import { SuggestedActions } from './suggested-actions';
+import { AppFooter } from './app-footer';
 import type { VisibilityType } from './visibility-selector';
 import { unstable_serialize } from 'swr/infinite';
 import { getChatHistoryPaginationKey } from './sidebar-history';
@@ -86,10 +87,23 @@ export function Chat({
     },
     onError: (error) => {
       if (error instanceof ChatSDKError) {
+        // Check if it's a rate limit error for guest users
+        if (error.type === 'rate_limit' && error.surface === 'chat' && session?.user?.type === 'guest') {
+          toast({
+            type: 'error',
+            description: 'You have reached your daily message limit. Please create an account to continue chatting.',
+          });
+          
+          // Redirect to registration page after a short delay
+          setTimeout(() => {
+            window.location.href = '/register';
+          }, 2000);
+        } else {
         toast({
           type: 'error',
           description: error.message,
         });
+        }
       }
       setVectorSearchProgress(null); // Reset progress on error
       setVectorSearchData(null); // Reset data on error
@@ -329,50 +343,60 @@ export function Chat({
 
         {/* Conditional layout based on whether there are messages */}
         {messages.length === 0 ? (
-          // Centered layout for empty state with greeting and input together
-          <div className="flex-1 flex flex-col items-center justify-center px-2 sm:px-3 md:px-4 w-full max-w-3xl mx-auto overflow-hidden">
-            {/* Greeting section */}
-            <div className="mb-6 sm:mb-8 w-full max-w-full">
-              <div className="text-3xl sm:text-2xl md:text-3xl font-semibold mb-2 text-left break-words">
-                Assalamu Alaikum!
+          // Layout for empty state with footer at bottom
+          <>
+            {/* Main content area - centered */}
+            <div className="flex-1 flex flex-col items-center justify-center px-2 sm:px-3 md:px-4 w-full max-w-3xl mx-auto overflow-hidden">
+              {/* Greeting section */}
+              <div className="mb-6 sm:mb-8 w-full max-w-full">
+                <div className="text-3xl sm:text-2xl md:text-3xl font-semibold mb-2 text-left break-words">
+                  Assalamu Alaikum!
+                </div>
+                <div className="text-2xl sm:text-xl md:text-2xl text-zinc-500 text-left break-words">
+                  How can I assist you with Islamic knowledge today?
+                </div>
               </div>
-              <div className="text-2xl sm:text-xl md:text-2xl text-zinc-500 text-left break-words">
-                How can I assist you with Islamic knowledge today?
+              
+              {/* Input section right below greeting */}
+              <div className="w-full max-w-full mb-4 sm:mb-6">
+                  <MultimodalInput
+                    chatId={id}
+                    input={input}
+                    setInput={setInput}
+                    handleSubmit={handleSubmit}
+                    status={status}
+                    stop={stop}
+                    attachments={attachments}
+                    setAttachments={setAttachments}
+                    messages={messages}
+                    setMessages={setMessages}
+                    append={append}
+                    selectedVisibilityType={visibilityType}
+                    session={session}
+                    isReadonly={isReadonly}
+                    hideSuggestedActionsText={!isReadonly && attachments.length === 0}
+                  />
               </div>
+              
+              {/* Show suggested actions below the input when no messages */}
+              {!isReadonly && attachments.length === 0 && (
+                <div className="w-full max-w-full">
+                  <SuggestedActions
+                    append={append}
+                    chatId={id}
+                    selectedVisibilityType={visibilityType}
+                  />
+                </div>
+              )}
             </div>
             
-            {/* Input section right below greeting */}
-            <div className="w-full max-w-full mb-4 sm:mb-6">
-                <MultimodalInput
-                  chatId={id}
-                  input={input}
-                  setInput={setInput}
-                  handleSubmit={handleSubmit}
-                  status={status}
-                  stop={stop}
-                  attachments={attachments}
-                  setAttachments={setAttachments}
-                  messages={messages}
-                  setMessages={setMessages}
-                  append={append}
-                  selectedVisibilityType={visibilityType}
-                  session={session}
-                  isReadonly={isReadonly}
-                  hideSuggestedActionsText={!isReadonly && attachments.length === 0}
-                />
-            </div>
-            
-            {/* Show suggested actions below the input when no messages */}
+            {/* Footer at bottom of page */}
             {!isReadonly && attachments.length === 0 && (
-              <div className="w-full max-w-full">
-                <SuggestedActions
-                  append={append}
-                  chatId={id}
-                  selectedVisibilityType={visibilityType}
-                />
+              <div className="w-full px-2 sm:px-3 md:px-4 pb-4 sm:pb-6">
+                <AppFooter />
               </div>
             )}
-          </div>
+          </>
         ) : (
           // Layout for when there are messages - Messages component and bottom input
           <>
