@@ -18,6 +18,7 @@ const CLASSIC_INDEX_NAME = process.env.PINECONE_CLASSIC_INDEX || 'cls-books';
 const MODERN_INDEX_NAME = process.env.PINECONE_MODERN_INDEX || 'islamqadtaset';
 const RISALENUR_INDEX_NAME = process.env.PINECONE_RISALE_INDEX || 'risale';
 const YOUTUBE_INDEX_NAME = process.env.PINECONE_YOUTUBE_INDEX || 'yt-db';
+const FATWA_INDEX_NAME = process.env.PINECONE_FATWA_INDEX || 'fatwa-sites';
 
 // Namespaces
 const RISALENUR_NAMESPACES = [
@@ -42,6 +43,10 @@ const YOUTUBE_NAMESPACES = [
   'MercifulServant',
   '1572',
   'Towards_Eternity'
+];
+
+const FATWA_NAMESPACES = [
+  'fatwa-collection'
 ];
 
 // Initialize clients
@@ -370,7 +375,8 @@ export function buildContextBlock(
   classic: VectorSearchResult[],
   modern: VectorSearchResult[],
   risale: VectorSearchResult[],
-  youtube: VectorSearchResult[]
+  youtube: VectorSearchResult[],
+  fatwa: VectorSearchResult[]
 ): string {
   // Filter classic citations one more time to be absolutely sure
   const filteredClassic = classic.filter((ctx) => {
@@ -393,10 +399,11 @@ export function buildContextBlock(
   const limitedRisale = risale.slice(0, 3);
   const limitedModern = modern.slice(0, 2);
   const limitedYoutube = youtube.slice(0, 2);
+  const limitedFatwa = fatwa.slice(0, 2);
   
   let contextBlock = 'IMPORTANT: Cite sources using [CITn] format. Use HTML output only.\n\n';
-  contextBlock += 'Context types: [CLS]=Classical, [RIS]=Risale-i Nur, [MOD]=Modern, [YT]=YouTube\n';
-  contextBlock += 'Priority: [CLS] > [RIS] > [MOD] > [YT]\n\n';
+  contextBlock += 'Context types: [CLS]=Classical, [RIS]=Risale-i Nur, [MOD]=Modern, [YT]=YouTube, [FAT]=Fatwa Sites\n';
+  contextBlock += 'Priority: [CLS] > [RIS] > [FAT] > [MOD] > [YT]\n\n';
   contextBlock += 'Context:\n\n';
   
   let i = 0;
@@ -408,6 +415,10 @@ export function buildContextBlock(
   limitedRisale.forEach((ctx) => {
     const text = ctx.text.length > 800 ? ctx.text.substring(0, 800) + '...' : ctx.text;
     contextBlock += `[CIT${++i}][RIS] ${text}\n\n`;
+  });
+  limitedFatwa.forEach((ctx) => {
+    const text = ctx.text.length > 600 ? ctx.text.substring(0, 600) + '...' : ctx.text;
+    contextBlock += `[CIT${++i}][FAT] ${text}\n\n`;
   });
   limitedModern.forEach((ctx) => {
     const text = ctx.text.length > 600 ? ctx.text.substring(0, 600) + '...' : ctx.text;
@@ -425,6 +436,9 @@ export function buildContextBlock(
     contextBlock += `[CIT${++i}] ${ctx.id}\n`;
   });
   limitedRisale.forEach((ctx) => {
+    contextBlock += `[CIT${++i}] ${ctx.id}\n`;
+  });
+  limitedFatwa.forEach((ctx) => {
     contextBlock += `[CIT${++i}] ${ctx.id}\n`;
   });
   limitedModern.forEach((ctx) => {
@@ -470,6 +484,7 @@ async function performAllVectorSearches(improvedQueries: string[]): Promise<{
   modernContexts: VectorSearchResult[];
   risaleContexts: VectorSearchResult[];
   youtubeContexts: VectorSearchResult[];
+  fatwaContexts: VectorSearchResult[];
 }> {
   console.log('[vector-search] 🔄 Starting parallel vector searches:', {
     improvedQueriesCount: improvedQueries.length,
@@ -500,12 +515,17 @@ async function performAllVectorSearches(improvedQueries: string[]): Promise<{
       ...improvedQueries.map((q, i) => {
         console.log(`[vector-search] 🎥 Creating YouTube search promise ${i + 1}/${improvedQueries.length} for query: ${q.substring(0, 50)}...`);
         return getTopKContextAllNamespaces(YOUTUBE_INDEX_NAME, YOUTUBE_NAMESPACES, q, 2);
+      }),
+      // Fatwa searches for all queries
+      ...improvedQueries.map((q, i) => {
+        console.log(`[vector-search] ⚖️ Creating Fatwa search promise ${i + 1}/${improvedQueries.length} for query: ${q.substring(0, 50)}...`);
+        return getTopKContextAllNamespaces(FATWA_INDEX_NAME, FATWA_NAMESPACES, q, 2);
       })
     ];
 
     console.log('[vector-search] ⚡ Executing all searches in parallel:', {
       totalPromises: allSearchPromises.length,
-      expectedResults: improvedQueries.length * 4,
+      expectedResults: improvedQueries.length * 5,
       timestamp: new Date().toISOString()
     });
 
@@ -529,12 +549,14 @@ async function performAllVectorSearches(improvedQueries: string[]): Promise<{
     const modernResults = allResults.slice(numQueries, numQueries * 2);
     const risaleResults = allResults.slice(numQueries * 2, numQueries * 3);
     const youtubeResults = allResults.slice(numQueries * 3, numQueries * 4);
+    const fatwaResults = allResults.slice(numQueries * 4, numQueries * 5);
 
     console.log('[vector-search] 📈 Results split by category:', {
       classic: classicResults.length,
       modern: modernResults.length,
       risale: risaleResults.length,
-      youtube: youtubeResults.length
+      youtube: youtubeResults.length,
+      fatwa: fatwaResults.length
     });
 
     // Deduplicate by id
@@ -593,7 +615,8 @@ async function performAllVectorSearches(improvedQueries: string[]): Promise<{
       classicContexts: dedup(classicResults, 'Classic'),
       modernContexts: dedup(modernResults, 'Modern'),
       risaleContexts: dedup(risaleResults, 'Risale'),
-      youtubeContexts: dedup(youtubeResults, 'YouTube')
+      youtubeContexts: dedup(youtubeResults, 'YouTube'),
+      fatwaContexts: dedup(fatwaResults, 'Fatwa')
     };
 
     console.log('[vector-search] 🎉 Parallel vector searches completed successfully:', {
@@ -601,8 +624,10 @@ async function performAllVectorSearches(improvedQueries: string[]): Promise<{
       modern: finalResults.modernContexts.length,
       risale: finalResults.risaleContexts.length,
       youtube: finalResults.youtubeContexts.length,
+      fatwa: finalResults.fatwaContexts.length,
       total: finalResults.classicContexts.length + finalResults.modernContexts.length + 
-             finalResults.risaleContexts.length + finalResults.youtubeContexts.length,
+             finalResults.risaleContexts.length + finalResults.youtubeContexts.length + 
+             finalResults.fatwaContexts.length,
       timestamp: new Date().toISOString()
     });
 
@@ -675,7 +700,7 @@ export async function performVectorSearchWithProgress(
     }
     
     console.log('[vector-search] 🔄 Performing all vector searches in parallel');
-    const { classicContexts, modernContexts, risaleContexts, youtubeContexts } = 
+    const { classicContexts, modernContexts, risaleContexts, youtubeContexts, fatwaContexts } = 
       await performAllVectorSearches(improvedQueries);
     
     console.log('[vector-search] ✅ Vector searches completed:', {
@@ -683,7 +708,8 @@ export async function performVectorSearchWithProgress(
       modernCount: modernContexts.length,
       risaleCount: risaleContexts.length,
       youtubeCount: youtubeContexts.length,
-      totalResults: classicContexts.length + modernContexts.length + risaleContexts.length + youtubeContexts.length
+      fatwaCount: fatwaContexts.length,
+      totalResults: classicContexts.length + modernContexts.length + risaleContexts.length + youtubeContexts.length + fatwaContexts.length
     });
     
     // Send search results count
@@ -691,7 +717,8 @@ export async function performVectorSearchWithProgress(
       classic: classicContexts.length,
       modern: modernContexts.length,
       risale: risaleContexts.length,
-      youtube: youtubeContexts.length
+      youtube: youtubeContexts.length,
+      fatwa: fatwaContexts.length
     };
     
     if (onProgress) {
@@ -706,7 +733,7 @@ export async function performVectorSearchWithProgress(
     // Generate messageId and store context
     console.log('[vector-search] 🆔 Generating message ID and storing context');
     const messageId = uuidv4();
-    const allContexts = [...classicContexts, ...modernContexts, ...risaleContexts, ...youtubeContexts];
+    const allContexts = [...classicContexts, ...modernContexts, ...risaleContexts, ...youtubeContexts, ...fatwaContexts];
     messageContextMap.set(messageId, allContexts);
     
     console.log('[vector-search] 💾 Context stored:', {
@@ -717,7 +744,7 @@ export async function performVectorSearchWithProgress(
 
     // Build context block
     console.log('[vector-search] 🏗️ Building context block');
-    const contextBlock = buildContextBlock(classicContexts, modernContexts, risaleContexts, youtubeContexts);
+    const contextBlock = buildContextBlock(classicContexts, modernContexts, risaleContexts, youtubeContexts, fatwaContexts);
     
     console.log('[vector-search] ✅ Context block built:', {
       contextBlockLength: contextBlock.length,

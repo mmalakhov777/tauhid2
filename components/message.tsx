@@ -53,6 +53,7 @@ const PurePreviewMessage = ({
   requiresScrollPadding,
   vectorSearchData,
   isFirstAssistantMessagePart,
+  allMessages,
 }: {
   chatId: string;
   message: UIMessage;
@@ -64,6 +65,7 @@ const PurePreviewMessage = ({
   requiresScrollPadding: boolean;
   vectorSearchData?: any;
   isFirstAssistantMessagePart: boolean;
+  allMessages?: UIMessage[];
 }) => {
   const [mode, setMode] = useState<'view' | 'edit'>('view');
   const [showRawData, setShowRawData] = useState(false);
@@ -472,6 +474,7 @@ const PurePreviewMessage = ({
           onClose={() => setModalCitation(null)}
           citation={modalCitation.citation}
           citationNumber={modalCitation.number}
+          allMessages={allMessages}
         />
       )}
     </AnimatePresence>
@@ -488,6 +491,7 @@ export const PreviewMessage = memo(
     if (!equal(prevProps.message.parts, nextProps.message.parts)) return false;
     if (!equal(prevProps.vote, nextProps.vote)) return false;
     if (!equal(prevProps.vectorSearchData, nextProps.vectorSearchData)) return false;
+    if (!equal(prevProps.allMessages, nextProps.allMessages)) return false;
 
     return true;
   },

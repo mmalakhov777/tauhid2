@@ -309,7 +309,8 @@ export function Chat({
           classic: 3,
           modern: 2,
           risale: 3,
-          youtube: 4
+          youtube: 4,
+          fatwa: 2
         };
         
         console.log('[chat.tsx] 🔍 Simulating Step 2: Searching with results:', simulatedResults);

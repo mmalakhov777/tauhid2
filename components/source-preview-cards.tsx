@@ -33,6 +33,7 @@ export function SourcePreviewCards({
         );
         const isRaddulMuhtar = type === 'CLS' && citation.metadata?.source_file?.startsWith('Rad-ul-Muhtar-Vol');
         const isBadaiAlSanai = type === 'CLS' && citation.metadata?.source_file?.match(/Badai-al-Sanai-Urdu-Vol-\d+_hocr_searchtext\.txt\.gz/);
+        const isSharhWiqayah = type === 'CLS' && citation.metadata?.source_file?.match(/SharhWiqayah\d+_hocr_searchtext\.txt\.gz/);
         const thumbnailUrl = citation.metadata?.thumbnail_url;
         
         return (
@@ -108,6 +109,12 @@ export function SourcePreviewCards({
                         alt="Badai-al-Sanai cover"
                         className="w-full h-full object-cover"
                       />
+                    ) : isSharhWiqayah ? (
+                      <img 
+                        src="/images/sharh-al-wiqayah.png" 
+                        alt="Sharh al-Wiqayah cover"
+                        className="w-full h-full object-cover"
+                      />
                     ) : (
                       <div className="w-full h-full bg-muted flex items-center justify-center">
                         <div className="text-xs text-muted-foreground">📚</div>
@@ -139,6 +146,9 @@ export function SourcePreviewCards({
                       <span className="truncate">Vol: {citation.metadata.volume}</span>
                     )}
                     {type === 'CLS' && isBadaiAlSanai && citation.metadata?.volume && (
+                      <span className="truncate">Vol: {citation.metadata.volume}</span>
+                    )}
+                    {type === 'CLS' && isSharhWiqayah && citation.metadata?.volume && (
                       <span className="truncate">Vol: {citation.metadata.volume}</span>
                     )}
                   </div>

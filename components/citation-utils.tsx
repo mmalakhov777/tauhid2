@@ -11,6 +11,10 @@ export const determineCitationType = (citation: any): string => {
     if (['youtube', 'yt'].includes(type)) return 'YT';
     return citation.metadata.type.toUpperCase();
   }
+  // Check for islamqa_fatwa content type
+  if (citation.metadata?.content_type === 'islamqa_fatwa') {
+    return 'islamqa_fatwa';
+  }
   if (citation.namespace) {
     if (RIS_NAMESPACES.includes(citation.namespace)) return 'RIS';
     if (YT_NAMESPACES.includes(citation.namespace)) return 'YT';
@@ -24,6 +28,8 @@ export const formatBookOrNamespace = (name: string): string => {
 };
 
 export const filterEligibleCitations = (citations: any[]) => {
+  const seenCitations = new Set<string>();
+  
   return citations
     .map((citation: any, i: number) => ({ citation, i }))
     .filter((item: {citation: any, i: number}) => {
@@ -36,7 +42,13 @@ export const filterEligibleCitations = (citations: any[]) => {
       }
 
       // Refined filter: Check for sources with only specific metadata and no namespace
+      // BUT allow islamqa_fatwa content_type to pass through
       if (!citation.namespace && citation.metadata) {
+        // Allow islamqa_fatwa content type to pass through
+        if (citation.metadata.content_type === 'islamqa_fatwa') {
+          return true;
+        }
+        
         const metadataKeys = Object.keys(citation.metadata);
         const specificKeys = ['answer', 'question', 'text'];
 
@@ -50,6 +62,24 @@ export const filterEligibleCitations = (citations: any[]) => {
           return false; // Filter out this citation
         }
       }
+
+      // Deduplicate citations based on text content and metadata
+      const citationKey = JSON.stringify({
+        text: citation.text?.slice(0, 100), // Use first 100 chars for comparison
+        source: citation.metadata?.source,
+        source_file: citation.metadata?.source_file,
+        namespace: citation.namespace,
+        book_name: citation.metadata?.book_name,
+        question: citation.metadata?.question,
+        answer: citation.metadata?.answer
+      });
+      
+      if (seenCitations.has(citationKey)) {
+        console.log('🗑️ Filtering out duplicate citation:', citation);
+        return false; // Filter out duplicate
+      }
+      
+      seenCitations.add(citationKey);
       return true; // Keep citation if no filter condition met
     });
 }; 

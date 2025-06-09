@@ -208,6 +208,7 @@ function PureMessages({
             }
             vectorSearchData={messageVectorDataAssigned}
             isFirstAssistantMessagePart={message.role === 'assistant' && index === messages.length - 1}
+            allMessages={messages}
           />
         </motion.div>
       );

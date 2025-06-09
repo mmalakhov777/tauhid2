@@ -75,7 +75,7 @@ export function GuestRegistrationBanner() {
       <div className="absolute top-0 right-0 w-20 h-20 bg-primary/5 rounded-full blur-xl animate-pulse" />
       <div className="absolute bottom-0 left-0 w-16 h-16 bg-primary/3 rounded-full blur-lg animate-pulse delay-1000" />
       
-            <CardContent className="px-4 py-5 relative z-10">
+            <CardContent className="px-4 py-3 relative z-10">
         <Button
           variant="ghost"
           size="sm"
@@ -85,7 +85,7 @@ export function GuestRegistrationBanner() {
           <X className="h-3 w-3" />
         </Button>
         
-        <div className="flex items-center gap-3 mb-8">
+        <div className="flex items-center gap-3">
           <div className="relative">
             <div className="p-2 bg-primary/10 rounded-xl border border-primary/20">
               <Sparkles className="h-4 w-4 text-primary" />

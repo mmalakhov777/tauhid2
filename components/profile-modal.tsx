@@ -96,7 +96,7 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto sm:rounded-lg sm:border rounded-none border-none w-full h-full sm:w-auto sm:h-auto sm:max-w-2xl sm:max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <User className="h-5 w-5" />
@@ -106,7 +106,7 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
 
         <div className="space-y-6">
           {/* User Info Section */}
-          <Card>
+          <Card className="sm:border sm:rounded-lg border-none rounded-none">
             <CardHeader>
               <CardTitle className="text-lg">User Information</CardTitle>
             </CardHeader>
@@ -169,7 +169,7 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
           </Card>
 
           {/* Account Type & Entitlements */}
-          <Card>
+          <Card className="sm:border sm:rounded-lg border-none rounded-none">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Star className="h-5 w-5" />
@@ -201,22 +201,12 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <span className="font-medium text-sm">Available Models:</span>
-                <div className="flex flex-wrap gap-2">
-                  {entitlements.availableChatModelIds.map((modelId) => (
-                    <Badge key={modelId} variant="outline" className="text-xs">
-                      <Bot className="h-3 w-3 mr-1" />
-                      {modelId === 'chat-model' ? 'Standard' : 'Reasoning'}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
+
             </CardContent>
           </Card>
 
           {/* Usage Statistics */}
-          <Card>
+          <Card className="sm:border sm:rounded-lg border-none rounded-none">
             <CardHeader>
               <CardTitle className="text-lg flex items-center gap-2">
                 <Activity className="h-5 w-5" />
@@ -261,7 +251,7 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
 
           {/* Guest User Info */}
           {isGuest && (
-            <Card className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20">
+            <Card className="border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20 sm:border sm:rounded-lg border-none rounded-none">
               <CardContent className="pt-6">
                 <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200">
                   <Clock className="h-5 w-5" />
