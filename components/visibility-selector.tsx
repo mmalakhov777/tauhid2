@@ -79,7 +79,7 @@ export function VisibilitySelector({
         </Button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="start" className="min-w-[300px]">
+      <DropdownMenuContent align="start" className="min-w-[300px] bg-white/10 backdrop-blur-md border border-white/20 shadow-lg rounded-xl p-2">
         {visibilities.map((visibility) => (
           <DropdownMenuItem
             data-testid={`visibility-selector-item-${visibility.id}`}

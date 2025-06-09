@@ -155,7 +155,7 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
     return (
       <>
         {/* Fixed New Chat Button */}
-        <div className="flex-shrink-0 p-2">
+        <div className="flex-shrink-0 pt-4 px-2 pb-2">
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton
@@ -164,7 +164,7 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
                   router.push('/');
                   router.refresh();
                 }}
-                className="w-full justify-start gap-2 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors duration-200"
+                size="lg" className="w-full justify-start gap-2 transition-all duration-300 bg-white/5 backdrop-blur-md border border-white/20 hover:bg-white/10 rounded-[100px]"
               >
                 <PlusIcon size={16} />
                 <span>New Chat</span>
@@ -191,7 +191,7 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
     return (
       <>
         {/* Fixed New Chat Button */}
-        <div className="flex-shrink-0 p-2">
+        <div className="flex-shrink-0 pt-4 px-2 pb-2">
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton
@@ -200,7 +200,7 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
                   router.push('/');
                   router.refresh();
                 }}
-                className="w-full justify-start gap-2 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors duration-200"
+                size="lg" className="w-full justify-start gap-2 transition-all duration-300 bg-white/5 backdrop-blur-md border border-white/20 hover:bg-white/10 rounded-[100px]"
               >
                 <PlusIcon size={16} />
                 <span>New Chat</span>
@@ -245,7 +245,7 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
     return (
       <>
         {/* Fixed New Chat Button */}
-        <div className="flex-shrink-0 p-2">
+        <div className="flex-shrink-0 pt-4 px-2 pb-2">
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton
@@ -254,7 +254,7 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
                   router.push('/');
                   router.refresh();
                 }}
-                className="w-full justify-start gap-2 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors duration-200"
+                size="lg" className="w-full justify-start gap-2 transition-all duration-300 bg-white/5 backdrop-blur-md border border-white/20 hover:bg-white/10 rounded-[100px]"
               >
                 <PlusIcon size={16} />
                 <span>New Chat</span>
@@ -280,7 +280,7 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
   return (
     <>
       {/* Fixed New Chat Button */}
-      <div className="flex-shrink-0 p-2">
+      <div className="flex-shrink-0 pt-4 px-2 pb-2">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
@@ -289,7 +289,7 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
                 router.push('/');
                 router.refresh();
               }}
-              className="w-full justify-start gap-2 bg-primary text-primary-foreground hover:bg-primary/90 transition-colors duration-200"
+              size="lg" className="w-full justify-start gap-2 transition-all duration-300 bg-white/5 backdrop-blur-md border border-white/20 hover:bg-white/10 rounded-[100px]"
             >
               <PlusIcon size={16} />
               <span>New Chat</span>
@@ -310,6 +310,7 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
                   );
 
                   const groupedChats = groupChatsByDate(chatsFromHistory);
+                  let globalIndex = 0;
 
                   return (
                     <div className="flex flex-col gap-6 mt-4">
@@ -328,6 +329,7 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
                                 setShowDeleteDialog(true);
                               }}
                               setOpenMobile={setOpenMobile}
+                              chatIndex={globalIndex++}
                             />
                           ))}
                         </div>
@@ -348,6 +350,7 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
                                 setShowDeleteDialog(true);
                               }}
                               setOpenMobile={setOpenMobile}
+                              chatIndex={globalIndex++}
                             />
                           ))}
                         </div>
@@ -368,6 +371,7 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
                                 setShowDeleteDialog(true);
                               }}
                               setOpenMobile={setOpenMobile}
+                              chatIndex={globalIndex++}
                             />
                           ))}
                         </div>
@@ -388,6 +392,7 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
                                 setShowDeleteDialog(true);
                               }}
                               setOpenMobile={setOpenMobile}
+                              chatIndex={globalIndex++}
                             />
                           ))}
                         </div>
@@ -408,6 +413,7 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
                                 setShowDeleteDialog(true);
                               }}
                               setOpenMobile={setOpenMobile}
+                              chatIndex={globalIndex++}
                             />
                           ))}
                         </div>

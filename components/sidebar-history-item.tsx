@@ -32,11 +32,13 @@ const PureChatItem = ({
   isActive,
   onDelete,
   setOpenMobile,
+  chatIndex,
 }: {
   chat: Chat;
   isActive: boolean;
   onDelete: (chatId: string) => void;
   setOpenMobile: (open: boolean) => void;
+  chatIndex: number;
 }) => {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
@@ -70,6 +72,8 @@ const PureChatItem = ({
           onMouseEnter={handleMouseEnter}
           className="w-full text-left flex items-center gap-2"
           disabled={isLoading}
+          data-chat-item="true"
+          data-chat-index={chatIndex}
         >
           {isLoading && (
             <div className="animate-spin flex-shrink-0">

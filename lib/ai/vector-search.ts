@@ -479,49 +479,78 @@ export function buildConversationHistory(messages: any[]): string {
 }
 
 // Optimized function with parallel processing
-async function performAllVectorSearches(improvedQueries: string[]): Promise<{
+async function performAllVectorSearches(
+  improvedQueries: string[], 
+  selectedSources?: SourceSelection
+): Promise<{
   classicContexts: VectorSearchResult[];
   modernContexts: VectorSearchResult[];
   risaleContexts: VectorSearchResult[];
   youtubeContexts: VectorSearchResult[];
   fatwaContexts: VectorSearchResult[];
 }> {
+  // Default to all sources if not specified
+  const sources = selectedSources || {
+    classic: true,
+    modern: true,
+    risale: true,
+    youtube: true,
+    fatwa: true,
+  };
+
   console.log('[vector-search] 🔄 Starting parallel vector searches:', {
     improvedQueriesCount: improvedQueries.length,
     queries: improvedQueries.map(q => q.substring(0, 50) + '...'),
+    selectedSources: sources,
     timestamp: new Date().toISOString()
   });
 
   try {
-    // Create all search promises in parallel
-    console.log('[vector-search] 📋 Creating search promises for all indexes and namespaces');
-    const allSearchPromises = [
-      // Classic searches for all queries
-      ...improvedQueries.map((q, i) => {
-        console.log(`[vector-search] 📚 Creating classic search promise ${i + 1}/${improvedQueries.length} for query: ${q.substring(0, 50)}...`);
-        return getTopKContext(CLASSIC_INDEX_NAME, q, 2);
-      }),
-      // Modern searches for all queries
-      ...improvedQueries.map((q, i) => {
-        console.log(`[vector-search] 🏛️ Creating modern search promise ${i + 1}/${improvedQueries.length} for query: ${q.substring(0, 50)}...`);
-        return getTopKContext(MODERN_INDEX_NAME, q, 2);
-      }),
-      // Risale searches for all queries
-      ...improvedQueries.map((q, i) => {
-        console.log(`[vector-search] 📖 Creating Risale search promise ${i + 1}/${improvedQueries.length} for query: ${q.substring(0, 50)}...`);
-        return getTopKContextAllNamespaces(RISALENUR_INDEX_NAME, RISALENUR_NAMESPACES, q, 2);
-      }),
-      // YouTube searches for all queries
-      ...improvedQueries.map((q, i) => {
-        console.log(`[vector-search] 🎥 Creating YouTube search promise ${i + 1}/${improvedQueries.length} for query: ${q.substring(0, 50)}...`);
-        return getTopKContextAllNamespaces(YOUTUBE_INDEX_NAME, YOUTUBE_NAMESPACES, q, 2);
-      }),
-      // Fatwa searches for all queries
-      ...improvedQueries.map((q, i) => {
-        console.log(`[vector-search] ⚖️ Creating Fatwa search promise ${i + 1}/${improvedQueries.length} for query: ${q.substring(0, 50)}...`);
-        return getTopKContextAllNamespaces(FATWA_INDEX_NAME, FATWA_NAMESPACES, q, 2);
-      })
-    ];
+    // Create all search promises in parallel based on selected sources
+    console.log('[vector-search] 📋 Creating search promises for selected indexes and namespaces');
+    const allSearchPromises: Promise<VectorSearchResult[]>[] = [];
+
+    // Classic searches for all queries (if enabled)
+    if (sources.classic) {
+      allSearchPromises.push(
+        ...improvedQueries.map((q, i) => {
+          console.log(`[vector-search] 📚 Creating classic search promise ${i + 1}/${improvedQueries.length} for query: ${q.substring(0, 50)}...`);
+          return getTopKContext(CLASSIC_INDEX_NAME, q, 2);
+        })
+      );
+    }
+
+    // Modern searches removed - not needed
+
+    // Risale searches for all queries (if enabled)
+    if (sources.risale) {
+      allSearchPromises.push(
+        ...improvedQueries.map((q, i) => {
+          console.log(`[vector-search] 📖 Creating Risale search promise ${i + 1}/${improvedQueries.length} for query: ${q.substring(0, 50)}...`);
+          return getTopKContextAllNamespaces(RISALENUR_INDEX_NAME, RISALENUR_NAMESPACES, q, 2);
+        })
+      );
+    }
+
+    // YouTube searches for all queries (if enabled)
+    if (sources.youtube) {
+      allSearchPromises.push(
+        ...improvedQueries.map((q, i) => {
+          console.log(`[vector-search] 🎥 Creating YouTube search promise ${i + 1}/${improvedQueries.length} for query: ${q.substring(0, 50)}...`);
+          return getTopKContextAllNamespaces(YOUTUBE_INDEX_NAME, YOUTUBE_NAMESPACES, q, 2);
+        })
+      );
+    }
+
+    // Fatwa searches for all queries (if enabled)
+    if (sources.fatwa) {
+      allSearchPromises.push(
+        ...improvedQueries.map((q, i) => {
+          console.log(`[vector-search] ⚖️ Creating Fatwa search promise ${i + 1}/${improvedQueries.length} for query: ${q.substring(0, 50)}...`);
+          return getTopKContextAllNamespaces(FATWA_INDEX_NAME, FATWA_NAMESPACES, q, 2);
+        })
+      );
+    }
 
     console.log('[vector-search] ⚡ Executing all searches in parallel:', {
       totalPromises: allSearchPromises.length,
@@ -538,18 +567,20 @@ async function performAllVectorSearches(improvedQueries: string[]): Promise<{
       timestamp: new Date().toISOString()
     });
     
-    // Split results back into categories
+    // Split results back into categories based on enabled sources
     const numQueries = improvedQueries.length;
     console.log('[vector-search] 📊 Splitting results into categories:', {
       numQueries,
-      totalResults: allResults.length
+      totalResults: allResults.length,
+      enabledSources: Object.entries(sources).filter(([_, enabled]) => enabled).map(([name, _]) => name)
     });
     
-    const classicResults = allResults.slice(0, numQueries);
-    const modernResults = allResults.slice(numQueries, numQueries * 2);
-    const risaleResults = allResults.slice(numQueries * 2, numQueries * 3);
-    const youtubeResults = allResults.slice(numQueries * 3, numQueries * 4);
-    const fatwaResults = allResults.slice(numQueries * 4, numQueries * 5);
+    let resultIndex = 0;
+    const classicResults = sources.classic ? allResults.slice(resultIndex, resultIndex += numQueries) : [];
+    const modernResults: VectorSearchResult[][] = []; // Modern removed - empty array
+    const risaleResults = sources.risale ? allResults.slice(resultIndex, resultIndex += numQueries) : [];
+    const youtubeResults = sources.youtube ? allResults.slice(resultIndex, resultIndex += numQueries) : [];
+    const fatwaResults = sources.fatwa ? allResults.slice(resultIndex, resultIndex += numQueries) : [];
 
     console.log('[vector-search] 📈 Results split by category:', {
       classic: classicResults.length,
@@ -644,10 +675,18 @@ async function performAllVectorSearches(improvedQueries: string[]): Promise<{
   }
 }
 
+export interface SourceSelection {
+  classic: boolean;
+  risale: boolean;
+  youtube: boolean;
+  fatwa: boolean;
+}
+
 export async function performVectorSearchWithProgress(
   userMessage: string,
   conversationHistory: string,
   selectedChatModel: string,
+  selectedSources?: SourceSelection,
   onProgress?: (progress: any) => void
 ): Promise<{
   messageId: string;
@@ -659,6 +698,9 @@ export async function performVectorSearchWithProgress(
     userMessage: userMessage.substring(0, 100) + '...',
     conversationHistoryLength: conversationHistory.length,
     selectedChatModel,
+    selectedSources: selectedSources,
+    selectedSourcesType: typeof selectedSources,
+    selectedSourcesKeys: selectedSources ? Object.keys(selectedSources) : 'null',
     hasProgressCallback: !!onProgress,
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV,
@@ -701,7 +743,7 @@ export async function performVectorSearchWithProgress(
     
     console.log('[vector-search] 🔄 Performing all vector searches in parallel');
     const { classicContexts, modernContexts, risaleContexts, youtubeContexts, fatwaContexts } = 
-      await performAllVectorSearches(improvedQueries);
+      await performAllVectorSearches(improvedQueries, selectedSources);
     
     console.log('[vector-search] ✅ Vector searches completed:', {
       classicCount: classicContexts.length,
@@ -794,14 +836,15 @@ export async function performVectorSearchWithProgress(
 export async function performVectorSearch(
   userMessage: string,
   conversationHistory: string,
-  selectedChatModel: string
+  selectedChatModel: string,
+  selectedSources?: SourceSelection
 ): Promise<{
   messageId: string;
   citations: VectorSearchResult[];
   improvedQueries: string[];
   contextBlock: string;
 }> {
-  return performVectorSearchWithProgress(userMessage, conversationHistory, selectedChatModel);
+  return performVectorSearchWithProgress(userMessage, conversationHistory, selectedChatModel, selectedSources);
 }
 
 export function getContextByMessageId(messageId: string): any[] {

@@ -31,6 +31,43 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
   const [showExplanation, setShowExplanation] = useState(false);
   const { impactOccurred, notificationOccurred } = useTelegramHaptics();
   
+  // Add glass effect styles
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      .citation-modal-glass {
+        background: linear-gradient(135deg, 
+          rgba(255, 255, 255, 0.30) 0%, 
+          rgba(255, 255, 255, 0.16) 50%, 
+          rgba(255, 255, 255, 0.30) 100%) !important;
+        backdrop-filter: blur(30px) saturate(180%) contrast(100%) brightness(100%) !important;
+        -webkit-backdrop-filter: blur(30px) saturate(180%) contrast(100%) brightness(100%) !important;
+        border: none !important;
+        border-left: 2px solid rgba(255, 255, 255, 0.12) !important;
+        border-radius: 0 !important;
+        box-shadow: 
+          0 16px 50px 0 rgba(0, 0, 0, 0.03),
+          0 4px 25px 0 rgba(0, 0, 0, 0.015) !important;
+      }
+      .dark .citation-modal-glass {
+        background: linear-gradient(135deg, 
+          rgba(255, 255, 255, 0.001) 0%, 
+          rgba(255, 255, 255, 0.0005) 50%, 
+          rgba(255, 255, 255, 0.001) 100%) !important;
+        border: none !important;
+        border-left: 2px solid rgba(255, 255, 255, 0.08) !important;
+        box-shadow: 
+          0 16px 50px 0 rgba(0, 0, 0, 0.15),
+          0 4px 25px 0 rgba(0, 0, 0, 0.08) !important;
+      }
+    `;
+    document.head.appendChild(style);
+    
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
+  
   // Log what data is received by the modal
   console.log('🔧 CitationModal received - isOpen:', isOpen);
   console.log('🔧 CitationModal received - citationNumber:', citationNumber);
@@ -422,7 +459,7 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="fixed right-0 top-0 h-full w-full max-w-lg bg-background md:border-l shadow-xl z-[60] overflow-hidden"
+            className="fixed right-0 top-0 h-full w-full max-w-lg z-[60] overflow-hidden citation-modal-glass"
           >
             <div className="flex flex-col h-full">
               {/* Header */}
@@ -730,30 +767,21 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                               <Sparkles className="w-4 h-4 text-primary" />
                               AI Explanation
                             </h3>
-                            <div className="bg-gradient-to-br from-primary/5 to-primary/10 rounded-lg p-5 text-sm leading-relaxed border border-primary/20 shadow-sm">
-                              {isLoadingExplanation && !explanation ? (
-                                <div className="flex items-center justify-center py-8">
-                                  <div className="flex flex-col items-center gap-3">
-                                    <div className="relative">
-                                      <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary/20"></div>
-                                      <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent absolute inset-0"></div>
-                                    </div>
-                                    <span className="text-sm text-muted-foreground animate-pulse">Analyzing the connection...</span>
+                            {isLoadingExplanation && !explanation ? (
+                              <div className="flex items-center justify-center py-8">
+                                <div className="flex flex-col items-center gap-3">
+                                  <div className="relative">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary/20"></div>
+                                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent absolute inset-0"></div>
                                   </div>
+                                  <span className="text-sm text-muted-foreground animate-pulse">Analyzing the connection...</span>
                                 </div>
-                              ) : (
-                                <motion.div
-                                  initial={{ opacity: 0 }}
-                                  animate={{ opacity: 1 }}
-                                  transition={{ duration: 0.3 }}
-                                  className="prose prose-sm dark:prose-invert max-w-none prose-headings:text-foreground prose-p:text-foreground/90 prose-strong:text-foreground prose-ul:text-foreground/90 prose-ol:text-foreground/90 prose-li:text-foreground/90 prose-blockquote:text-foreground/80 prose-blockquote:border-primary/30 prose-code:text-primary prose-code:bg-primary/10 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-muted prose-pre:border prose-pre:border-border"
-                                >
-                                  <Markdown>
-                                    {explanation}
-                                  </Markdown>
-                                </motion.div>
-                              )}
-                            </div>
+                              </div>
+                            ) : (
+                              <Markdown>
+                                {explanation}
+                              </Markdown>
+                            )}
                           </motion.div>
                         )}
                       </>
@@ -841,30 +869,21 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                               <Sparkles className="w-4 h-4 text-primary" />
                               AI Explanation
                             </h3>
-                            <div className="bg-gradient-to-br from-primary/5 to-primary/10 rounded-lg p-5 text-sm leading-relaxed border border-primary/20 shadow-sm">
-                              {isLoadingExplanation && !explanation ? (
-                                <div className="flex items-center justify-center py-8">
-                                  <div className="flex flex-col items-center gap-3">
-                                    <div className="relative">
-                                      <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary/20"></div>
-                                      <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent absolute inset-0"></div>
-                                    </div>
-                                    <span className="text-sm text-muted-foreground animate-pulse">Analyzing the connection...</span>
+                            {isLoadingExplanation && !explanation ? (
+                              <div className="flex items-center justify-center py-8">
+                                <div className="flex flex-col items-center gap-3">
+                                  <div className="relative">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary/20"></div>
+                                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent absolute inset-0"></div>
                                   </div>
+                                  <span className="text-sm text-muted-foreground animate-pulse">Analyzing the connection...</span>
                                 </div>
-                              ) : (
-                                <motion.div
-                                  initial={{ opacity: 0 }}
-                                  animate={{ opacity: 1 }}
-                                  transition={{ duration: 0.3 }}
-                                  className="prose prose-sm dark:prose-invert max-w-none prose-headings:text-foreground prose-p:text-foreground/90 prose-strong:text-foreground prose-ul:text-foreground/90 prose-ol:text-foreground/90 prose-li:text-foreground/90 prose-blockquote:text-foreground/80 prose-blockquote:border-primary/30 prose-code:text-primary prose-code:bg-primary/10 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-muted prose-pre:border prose-pre:border-border"
-                                >
-                                  <Markdown>
-                                    {explanation}
-                                  </Markdown>
-                                </motion.div>
-                              )}
-                            </div>
+                              </div>
+                            ) : (
+                              <Markdown>
+                                {explanation}
+                              </Markdown>
+                            )}
                           </motion.div>
                         )}
                       </>
@@ -1016,30 +1035,21 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                               <Sparkles className="w-4 h-4 text-primary" />
                               AI Explanation
                             </h3>
-                            <div className="bg-gradient-to-br from-primary/5 to-primary/10 rounded-lg p-5 text-sm leading-relaxed border border-primary/20 shadow-sm">
-                              {isLoadingExplanation && !explanation ? (
-                                <div className="flex items-center justify-center py-8">
-                                  <div className="flex flex-col items-center gap-3">
-                                    <div className="relative">
-                                      <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary/20"></div>
-                                      <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent absolute inset-0"></div>
-                                    </div>
-                                    <span className="text-sm text-muted-foreground animate-pulse">Analyzing the connection...</span>
+                            {isLoadingExplanation && !explanation ? (
+                              <div className="flex items-center justify-center py-8">
+                                <div className="flex flex-col items-center gap-3">
+                                  <div className="relative">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary/20"></div>
+                                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent absolute inset-0"></div>
                                   </div>
+                                  <span className="text-sm text-muted-foreground animate-pulse">Analyzing the connection...</span>
                                 </div>
-                              ) : (
-                                <motion.div
-                                  initial={{ opacity: 0 }}
-                                  animate={{ opacity: 1 }}
-                                  transition={{ duration: 0.3 }}
-                                  className="prose prose-sm dark:prose-invert max-w-none prose-headings:text-foreground prose-p:text-foreground/90 prose-strong:text-foreground prose-ul:text-foreground/90 prose-ol:text-foreground/90 prose-li:text-foreground/90 prose-blockquote:text-foreground/80 prose-blockquote:border-primary/30 prose-code:text-primary prose-code:bg-primary/10 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-muted prose-pre:border prose-pre:border-border"
-                                >
-                                  <Markdown>
-                                    {explanation}
-                                  </Markdown>
-                                </motion.div>
-                              )}
-                            </div>
+                              </div>
+                            ) : (
+                              <Markdown>
+                                {explanation}
+                              </Markdown>
+                            )}
                           </motion.div>
                         )}
                       </div>
@@ -1095,30 +1105,21 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                               <Sparkles className="w-4 h-4 text-primary" />
                               AI Explanation
                             </h3>
-                            <div className="bg-gradient-to-br from-primary/5 to-primary/10 rounded-lg p-5 text-sm leading-relaxed border border-primary/20 shadow-sm">
-                              {isLoadingExplanation && !explanation ? (
-                                <div className="flex items-center justify-center py-8">
-                                  <div className="flex flex-col items-center gap-3">
-                                    <div className="relative">
-                                      <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary/20"></div>
-                                      <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent absolute inset-0"></div>
-                                    </div>
-                                    <span className="text-sm text-muted-foreground animate-pulse">Analyzing the connection...</span>
+                            {isLoadingExplanation && !explanation ? (
+                              <div className="flex items-center justify-center py-8">
+                                <div className="flex flex-col items-center gap-3">
+                                  <div className="relative">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary/20"></div>
+                                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent absolute inset-0"></div>
                                   </div>
+                                  <span className="text-sm text-muted-foreground animate-pulse">Analyzing the connection...</span>
                                 </div>
-                              ) : (
-                                <motion.div
-                                  initial={{ opacity: 0 }}
-                                  animate={{ opacity: 1 }}
-                                  transition={{ duration: 0.3 }}
-                                  className="prose prose-sm dark:prose-invert max-w-none prose-headings:text-foreground prose-p:text-foreground/90 prose-strong:text-foreground prose-ul:text-foreground/90 prose-ol:text-foreground/90 prose-li:text-foreground/90 prose-blockquote:text-foreground/80 prose-blockquote:border-primary/30 prose-code:text-primary prose-code:bg-primary/10 prose-code:px-1 prose-code:py-0.5 prose-code:rounded prose-pre:bg-muted prose-pre:border prose-pre:border-border"
-                                >
-                                  <Markdown>
-                                    {explanation}
-                                  </Markdown>
-                                </motion.div>
-                              )}
-                            </div>
+                              </div>
+                            ) : (
+                              <Markdown>
+                                {explanation}
+                              </Markdown>
+                            )}
                           </motion.div>
                         )}
                       </>

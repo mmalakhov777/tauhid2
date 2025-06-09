@@ -3,7 +3,7 @@
 import type { User } from 'next-auth';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 
 import { PlusIcon, GlobeIcon } from '@/components/icons';
 import { SidebarHistory } from '@/components/sidebar-history';
@@ -36,6 +36,236 @@ export function AppSidebar({ user }: { user: User | undefined }) {
   const router = useRouter();
   const { setOpenMobile, openMobile } = useSidebar();
   const [selectedLanguage, setSelectedLanguage] = useState('en');
+  
+  // Add custom styles for ultra-transparent glass effect
+  React.useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      [data-sidebar="sidebar"] {
+        background: linear-gradient(135deg, 
+          rgba(255, 255, 255, 0.30) 0%, 
+          rgba(255, 255, 255, 0.16) 50%, 
+          rgba(255, 255, 255, 0.30) 100%) !important;
+        backdrop-filter: blur(30px) saturate(180%) contrast(100%) brightness(100%) !important;
+        -webkit-backdrop-filter: blur(30px) saturate(180%) contrast(100%) brightness(100%) !important;
+        border: none !important;
+        border-right: 2px solid rgba(255, 255, 255, 0.12) !important;
+        border-radius: 0 !important;
+        box-shadow: 
+          0 16px 50px 0 rgba(0, 0, 0, 0.03),
+          0 4px 25px 0 rgba(0, 0, 0, 0.015) !important;
+      }
+      .sidebar-transparent [data-sidebar="sidebar"] {
+        background: linear-gradient(135deg, 
+          rgba(255, 255, 255, 0.30) 0%, 
+          rgba(255, 255, 255, 0.16) 50%, 
+          rgba(255, 255, 255, 0.30) 100%) !important;
+        backdrop-filter: blur(30px) saturate(180%) contrast(100%) brightness(100%) !important;
+        -webkit-backdrop-filter: blur(30px) saturate(180%) contrast(100%) brightness(100%) !important;
+        border: none !important;
+        border-right: 2px solid rgba(255, 255, 255, 0.12) !important;
+        border-radius: 0 !important;
+        box-shadow: 
+          0 16px 50px 0 rgba(0, 0, 0, 0.03),
+          0 4px 25px 0 rgba(0, 0, 0, 0.015) !important;
+      }
+      .dark [data-sidebar="sidebar"] {
+        background: linear-gradient(135deg, 
+          rgba(255, 255, 255, 0.001) 0%, 
+          rgba(255, 255, 255, 0.0005) 50%, 
+          rgba(255, 255, 255, 0.001) 100%) !important;
+        border: none !important;
+        border-right: 2px solid rgba(255, 255, 255, 0.08) !important;
+        box-shadow: 
+          0 16px 50px 0 rgba(0, 0, 0, 0.15),
+          0 4px 25px 0 rgba(0, 0, 0, 0.08) !important;
+      }
+      // NEW CHAT BUTTON GLASS EFFECT
+      [data-new-chat="true"],
+      [data-new-chat="true"].rounded-md {
+        background: linear-gradient(180deg, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0.25) 100%) !important;
+        backdrop-filter: blur(24px) saturate(160%) !important;
+        -webkit-backdrop-filter: blur(24px) saturate(160%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.35) !important;
+        box-shadow: 
+          inset 0 0 0 1px rgba(255,255,255,0.7), 
+          0 4px 16px rgba(0,0,0,0.12),
+          0 2px 6px rgba(0,0,0,0.08) !important;
+        border-radius: 100px !important;
+        color: var(--sidebar-foreground) !important;
+        transform: translateY(-0.5px) !important;
+      }
+      [data-new-chat="true"]:hover,
+      [data-new-chat="true"].rounded-md:hover {
+        background: linear-gradient(180deg, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0.25) 100%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.35) !important;
+        border-radius: 100px !important;
+        box-shadow: 
+          inset 0 0 0 1px rgba(255,255,255,0.7), 
+          0 4px 16px rgba(0,0,0,0.12),
+          0 2px 6px rgba(0,0,0,0.08) !important;
+        transform: translateY(-0.5px) !important;
+      }
+      .dark [data-new-chat="true"],
+      .dark [data-new-chat="true"].rounded-md {
+        background: linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.06) 100%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.18) !important;
+        border-radius: 100px !important;
+        box-shadow: inset 0 0 0 1px rgba(255,255,255,0.2), 0 4px 14px rgba(0,0,0,0.4) !important;
+      }
+      .dark [data-new-chat="true"]:hover,
+      .dark [data-new-chat="true"].rounded-md:hover {
+        background: linear-gradient(180deg, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0.10) 100%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.18) !important;
+        border-radius: 100px !important;
+        box-shadow: 
+          inset 0 0 0 1px rgba(255,255,255,0.25), 
+          0 4px 16px rgba(0,0,0,0.35),
+          0 2px 8px rgba(0,0,0,0.18) !important;
+        transform: translateY(-0.5px) !important;
+      }
+      
+      // CHAT HISTORY ITEM GLASS EFFECT
+      [data-chat-item="true"],
+      [data-chat-item="true"].rounded-md {
+        transition: all 0.3s ease !important;
+        border-radius: 100px !important;
+      }
+      
+      // PROGRESSIVE OPACITY EFFECT
+      [data-chat-item="true"][data-chat-index="0"] { opacity: 1.0 !important; }
+      [data-chat-item="true"][data-chat-index="1"] { opacity: 0.9 !important; }
+      [data-chat-item="true"][data-chat-index="2"] { opacity: 0.8 !important; }
+      [data-chat-item="true"][data-chat-index="3"] { opacity: 0.7 !important; }
+      [data-chat-item="true"][data-chat-index="4"] { opacity: 0.6 !important; }
+      [data-chat-item="true"][data-chat-index="5"] { opacity: 0.5 !important; }
+      [data-chat-item="true"][data-chat-index="6"] { opacity: 0.4 !important; }
+      [data-chat-item="true"][data-chat-index="7"] { opacity: 0.3 !important; }
+      [data-chat-item="true"]:not([data-chat-index="0"]):not([data-chat-index="1"]):not([data-chat-index="2"]):not([data-chat-index="3"]):not([data-chat-index="4"]):not([data-chat-index="5"]):not([data-chat-index="6"]):not([data-chat-index="7"]) { 
+        opacity: 0.2 !important; 
+      }
+      [data-chat-item="true"]:hover,
+      [data-chat-item="true"].rounded-md:hover {
+        opacity: 1.0 !important;
+        background: linear-gradient(180deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.12) 100%) !important;
+        backdrop-filter: blur(20px) saturate(150%) !important;
+        -webkit-backdrop-filter: blur(20px) saturate(150%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        border-radius: 100px !important;
+        box-shadow: 
+          inset 0 0 0 1px rgba(255,255,255,0.5), 
+          0 4px 12px rgba(0,0,0,0.1),
+          0 2px 6px rgba(0,0,0,0.05) !important;
+        transform: translateY(-0.5px) !important;
+      }
+      .dark [data-chat-item="true"]:hover,
+      .dark [data-chat-item="true"].rounded-md:hover {
+        opacity: 1.0 !important;
+        background: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0.08) 100%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        border-radius: 100px !important;
+        box-shadow: 
+          inset 0 0 0 1px rgba(255,255,255,0.3), 
+          0 4px 12px rgba(0,0,0,0.3),
+          0 2px 6px rgba(0,0,0,0.15) !important;
+        transform: translateY(-0.5px) !important;
+      }
+      
+      // USER NAV GLASS EFFECT
+      [data-user-nav="true"],
+      [data-user-nav="true"].rounded-md {
+        background: linear-gradient(180deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0.1) 100%) !important;
+        backdrop-filter: blur(16px) saturate(140%) !important;
+        -webkit-backdrop-filter: blur(16px) saturate(140%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.25) !important;
+        border-radius: 100px !important;
+        transition: all 0.3s ease !important;
+        box-shadow: 
+          inset 0 0 0 1px rgba(255,255,255,0.4), 
+          0 2px 8px rgba(0,0,0,0.08) !important;
+      }
+      [data-user-nav="true"]:hover,
+      [data-user-nav="true"].rounded-md:hover {
+        background: linear-gradient(180deg, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.20) 100%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.25) !important;
+        border-radius: 100px !important;
+        box-shadow: 
+          inset 0 0 0 1px rgba(255,255,255,0.6), 
+          0 4px 14px rgba(0,0,0,0.12),
+          0 2px 6px rgba(0,0,0,0.08) !important;
+        transform: translateY(-0.5px) !important;
+      }
+      .dark [data-user-nav="true"],
+      .dark [data-user-nav="true"].rounded-md {
+        background: linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.04) 100%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        border-radius: 100px !important;
+        box-shadow: 
+          inset 0 0 0 1px rgba(255,255,255,0.15), 
+          0 2px 8px rgba(0,0,0,0.4) !important;
+      }
+      .dark [data-user-nav="true"]:hover,
+      .dark [data-user-nav="true"].rounded-md:hover {
+        background: linear-gradient(180deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.08) 100%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        border-radius: 100px !important;
+        box-shadow: 
+          inset 0 0 0 1px rgba(255,255,255,0.22), 
+          0 4px 14px rgba(0,0,0,0.3),
+          0 2px 6px rgba(0,0,0,0.15) !important;
+        transform: translateY(-0.5px) !important;
+      }
+      
+      // SIDEBAR MENU ACTION (3-dot menu) GLASS EFFECT
+      .group:hover [data-sidebar="menu-action"],
+      [data-sidebar="menu-action"]:hover {
+        background: linear-gradient(180deg, rgba(255,255,255,0.25) 0%, rgba(255,255,255,0.12) 100%) !important;
+        backdrop-filter: blur(16px) saturate(140%) !important;
+        -webkit-backdrop-filter: blur(16px) saturate(140%) !important;
+        border-radius: 6px !important;
+        box-shadow: 
+          inset 0 0 0 1px rgba(255,255,255,0.4), 
+          0 2px 8px rgba(0,0,0,0.1) !important;
+        transition: all 0.2s ease !important;
+      }
+      .dark .group:hover [data-sidebar="menu-action"],
+      .dark [data-sidebar="menu-action"]:hover {
+        background: linear-gradient(180deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.06) 100%) !important;
+        box-shadow: 
+          inset 0 0 0 1px rgba(255,255,255,0.2), 
+          0 2px 8px rgba(0,0,0,0.3) !important;
+      }
+      
+      // DROPDOWN MENU GLASS EFFECT
+      [data-radix-popper-content-wrapper] [role="menu"] {
+        background: linear-gradient(135deg, 
+          rgba(255, 255, 255, 0.85) 0%, 
+          rgba(255, 255, 255, 0.75) 100%) !important;
+        backdrop-filter: blur(20px) saturate(150%) !important;
+        -webkit-backdrop-filter: blur(20px) saturate(150%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.4) !important;
+        box-shadow: 
+          0 8px 32px rgba(0, 0, 0, 0.12),
+          0 4px 16px rgba(0, 0, 0, 0.08),
+          inset 0 1px 0 rgba(255, 255, 255, 0.6) !important;
+      }
+      .dark [data-radix-popper-content-wrapper] [role="menu"] {
+        background: linear-gradient(135deg, 
+          rgba(0, 0, 0, 0.85) 0%, 
+          rgba(0, 0, 0, 0.75) 100%) !important;
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+        box-shadow: 
+          0 8px 32px rgba(0, 0, 0, 0.4),
+          0 4px 16px rgba(0, 0, 0, 0.25),
+          inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+      }
+    `;
+    document.head.appendChild(style);
+    
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
   
   // Check if we're on mobile
   const [isMobile, setIsMobile] = useState(false);
@@ -80,23 +310,37 @@ export function AppSidebar({ user }: { user: User | undefined }) {
   if (isMobile) {
     return (
       <>
-        {/* Overlay for mobile */}
+        {/* Blurred overlay for mobile */}
         <div
-          className={`fixed inset-0 bg-black/50 z-30 transition-opacity duration-300 ${
+          className={`fixed inset-0 z-30 transition-all duration-300 ${
             openMobile ? 'opacity-100 visible' : 'opacity-0 invisible'
           }`}
+          style={{
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+          }}
           onClick={() => setOpenMobile(false)}
         />
         
         {/* Mobile sidebar */}
         <div
-          className={`fixed left-0 z-40 w-72 bg-sidebar text-sidebar-foreground border-r border-border transition-transform duration-300 ${
+          className={`fixed left-0 z-40 w-72 text-sidebar-foreground transition-transform duration-300 ${
             openMobile ? 'translate-x-0' : '-translate-x-full'
           }`}
           style={{
+            background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.30) 0%, rgba(255, 255, 255, 0.16) 50%, rgba(255, 255, 255, 0.30) 100%)',
+            backdropFilter: 'blur(30px) saturate(180%) contrast(100%) brightness(100%)',
+            WebkitBackdropFilter: 'blur(30px) saturate(180%) contrast(100%) brightness(100%)',
+            border: 'none',
+            borderRight: '1px solid rgba(255, 255, 255, 0.35)',
+            borderRadius: '0',
+            boxShadow: `
+              0 8px 32px rgba(0,0,0,0.15),
+              0 4px 16px rgba(0,0,0,0.1)
+            `,
             top: '0',
-            bottom: '0', // Remove bottom spacing
-            height: '100vh' // Full height without spacing
+            bottom: '0',
+            height: '100vh'
           }}
         >
           <div className="flex h-full w-full flex-col pb-5">
@@ -112,7 +356,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                   >
                     <div className="rounded-md cursor-pointer flex items-center gap-3 transition-colors duration-200">
                       <Image
-                        src="/assets/conceptlogo2.webp"
+                        src="/images/glasslogo.png"
                         alt="Logo"
                         width={350}
                         height={150}
@@ -136,7 +380,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <SidebarMenuButton
-                            className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground h-10 w-fit px-2 bg-card border border-border hover:bg-card/80 transition-colors duration-200"
+                            className="data-[state=open]:bg-white/10 data-[state=open]:backdrop-blur-md data-[state=open]:text-sidebar-accent-foreground h-10 w-fit px-2 bg-white/5 backdrop-blur-md border border-white/20 hover:bg-white/10 transition-all duration-200 rounded-[100px]"
                           >
                             <GlobeIcon size={16} />
                             <span className="text-sm font-medium">
@@ -144,15 +388,15 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                             </span>
                           </SidebarMenuButton>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="w-[200px] bg-popover border border-border shadow-lg">
-                          <DropdownMenuLabel className="text-popover-foreground">Select Language</DropdownMenuLabel>
-                          <DropdownMenuSeparator className="bg-border" />
+                        <DropdownMenuContent align="start" className="w-[200px] bg-white/10 backdrop-blur-md border border-white/20 shadow-lg rounded-xl p-2">
+                          <DropdownMenuLabel className="text-foreground px-2 py-1.5">Select Language</DropdownMenuLabel>
+                          <DropdownMenuSeparator className="bg-white/20" />
                           {languages.map((lang) => (
                             <DropdownMenuItem
                               key={lang.code}
                               onClick={() => handleLanguageChange(lang.code)}
-                              className={`text-popover-foreground hover:bg-accent hover:text-accent-foreground transition-colors duration-200 ${
-                                selectedLanguage === lang.code ? 'bg-accent text-accent-foreground' : ''
+                              className={`cursor-pointer text-left bg-transparent border border-transparent hover:bg-white/15 hover:backdrop-blur-sm hover:text-accent-foreground transition-all duration-200 rounded-lg mx-1 hover:shadow-sm hover:border-white/30 ${
+                                selectedLanguage === lang.code ? 'bg-white/15 border-white/30 text-accent-foreground' : ''
                               }`}
                             >
                               {lang.name}
@@ -176,7 +420,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
 
   // Desktop sidebar - uses original Sidebar component
   return (
-    <Sidebar className="group-data-[side=left]:border-r border-border h-screen">
+    <Sidebar className="sidebar-transparent h-screen">
       <SidebarHeader>
         <SidebarMenu>
           <div className="flex flex-row justify-center items-center">
@@ -189,7 +433,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
             >
               <div className="rounded-md cursor-pointer flex items-center gap-3 transition-colors duration-200">
                 <Image
-                  src="/assets/conceptlogo2.webp"
+                  src="/images/glasslogo.png"
                   alt="Logo"
                   width={350}
                   height={150}
@@ -213,7 +457,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <SidebarMenuButton
-                      className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground h-10 w-fit px-2 bg-card border border-border hover:bg-card/80 transition-colors duration-200"
+                      className="data-[state=open]:bg-white/10 data-[state=open]:backdrop-blur-md data-[state=open]:text-sidebar-accent-foreground h-10 w-fit px-2 bg-white/5 backdrop-blur-md border border-white/20 hover:bg-white/10 transition-all duration-200 rounded-[100px]"
                     >
                       <GlobeIcon size={16} />
                       <span className="text-sm font-medium">
@@ -221,15 +465,15 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                       </span>
                     </SidebarMenuButton>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="w-[200px] bg-popover border border-border shadow-lg">
-                    <DropdownMenuLabel className="text-popover-foreground">Select Language</DropdownMenuLabel>
-                    <DropdownMenuSeparator className="bg-border" />
+                                            <DropdownMenuContent align="start" className="w-[200px] bg-white/10 backdrop-blur-md border border-white/20 shadow-lg rounded-xl p-2">
+                    <DropdownMenuLabel className="text-foreground px-2 py-1.5">Select Language</DropdownMenuLabel>
+                    <DropdownMenuSeparator className="bg-white/20" />
                     {languages.map((lang) => (
                       <DropdownMenuItem
                         key={lang.code}
                         onClick={() => handleLanguageChange(lang.code)}
-                        className={`text-popover-foreground hover:bg-accent hover:text-accent-foreground transition-colors duration-200 ${
-                          selectedLanguage === lang.code ? 'bg-accent text-accent-foreground' : ''
+                        className={`cursor-pointer text-left bg-transparent border border-transparent hover:bg-white/15 hover:backdrop-blur-sm hover:text-accent-foreground transition-all duration-200 rounded-lg mx-1 hover:shadow-sm hover:border-white/30 ${
+                          selectedLanguage === lang.code ? 'bg-white/15 border-white/30 text-accent-foreground' : ''
                         }`}
                       >
                         {lang.name}

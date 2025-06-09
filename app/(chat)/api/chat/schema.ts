@@ -5,6 +5,13 @@ const textPartSchema = z.object({
   type: z.enum(['text']),
 });
 
+const sourceSelectionSchema = z.object({
+  classic: z.boolean(),
+  risale: z.boolean(),
+  youtube: z.boolean(),
+  fatwa: z.boolean(),
+}).optional();
+
 export const postRequestBodySchema = z.object({
   id: z.string().uuid(),
   message: z.object({
@@ -26,6 +33,7 @@ export const postRequestBodySchema = z.object({
   selectedChatModel: z.enum(['chat-model', 'chat-model-reasoning']),
   selectedVisibilityType: z.enum(['public', 'private']),
   selectedLanguage: z.string().optional().default('en'),
+  selectedSources: sourceSelectionSchema,
   messageId: z.string().optional(),
 });
 

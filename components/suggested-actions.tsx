@@ -6,6 +6,8 @@ import { memo } from 'react';
 import type { UseChatHelpers } from '@ai-sdk/react';
 import type { VisibilityType } from './visibility-selector';
 import { Plus } from 'lucide-react';
+import { useLocalStorage } from 'usehooks-ts';
+import { type SourceSelection, DEFAULT_SOURCES } from './source-selector';
 
 interface SuggestedActionsProps {
   chatId: string;
@@ -18,6 +20,11 @@ function PureSuggestedActions({
   append,
   selectedVisibilityType,
 }: SuggestedActionsProps) {
+  const [selectedSources] = useLocalStorage<SourceSelection>(
+    'selectedSources',
+    DEFAULT_SOURCES
+  );
+
   const suggestedActions = [
     {
       title: 'What are the five pillars of Islam and their significance',
@@ -80,9 +87,18 @@ function PureSuggestedActions({
               onClick={async () => {
                 window.history.replaceState({}, '', `/chat/${chatId}`);
 
+                console.log('[suggested-actions] Sending message with selected sources:', {
+                  selectedSources,
+                  action: suggestedAction.action,
+                  timestamp: new Date().toISOString()
+                });
+
                 append({
                   role: 'user',
                   content: suggestedAction.action,
+                  data: {
+                    selectedSources: selectedSources as any,
+                  },
                 });
               }}
               className="w-full flex items-start justify-between text-left px-2 py-1 sm:py-1.5 min-h-[32px] sm:min-h-[36px] h-auto hover:bg-transparent active:bg-muted/50 border-b border-border/30 rounded-none last:border-b-0 group touch-manipulation"

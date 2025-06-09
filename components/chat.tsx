@@ -11,6 +11,7 @@ import { MultimodalInput } from './multimodal-input';
 import { Messages } from './messages';
 import { SuggestedActions } from './suggested-actions';
 import { AppFooter } from './app-footer';
+import { SubscriptionModal } from './subscription-modal';
 import type { VisibilityType } from './visibility-selector';
 import { unstable_serialize } from 'swr/infinite';
 import { getChatHistoryPaginationKey } from './sidebar-history';
@@ -22,6 +23,11 @@ import { useAutoResume } from '@/hooks/use-auto-resume';
 import { ChatSDKError } from '@/lib/errors';
 import { DEFAULT_CHAT_MODEL } from '@/lib/ai/models';
 import { useAuthLoading } from '@/contexts/AuthLoadingContext';
+import { MenuIcon } from './icons';
+import { Button } from './ui/button';
+import { useSidebar } from './ui/sidebar';
+import { useWindowSize } from 'usehooks-ts';
+import { entitlementsByUserType } from '@/lib/ai/entitlements';
 
 export function Chat({
   id,
@@ -58,6 +64,28 @@ export function Chat({
   const { setIsAuthLoading } = useAuthLoading();
   const [isChatReady, setIsChatReady] = useState(false);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const { setOpenMobile } = useSidebar();
+  const { width } = useWindowSize();
+  
+  // Subscription modal state
+  const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
+  const [userStats, setUserStats] = useState<{ messagesLast24h: number; totalMessages: number } | null>(null);
+
+  // Fetch user stats for subscription modal
+  useEffect(() => {
+    if (session?.user?.id) {
+      fetch('/api/user/stats')
+        .then(response => response.json())
+        .then(data => {
+          if (!data.error) {
+            setUserStats(data);
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching user stats:', error);
+        });
+    }
+  }, [session?.user?.id]);
 
   const { visibilityType } = useChatVisibility({
     chatId: id,
@@ -84,24 +112,53 @@ export function Chat({
     generateId: generateUUID,
     fetch: fetchWithErrorHandlers,
     experimental_prepareRequestBody: (body) => {
-      const requestBody = {
-        id,
-        message: body.messages.at(-1),
-        selectedChatModel: DEFAULT_CHAT_MODEL,
-        selectedVisibilityType: visibilityType,
-        selectedLanguage: (body as any).data?.selectedLanguage || 'en',
-      };
-      
-      console.log('[chat.tsx] 🚀 Preparing request body:', {
-        chatId: id,
-        messageContent: requestBody.message?.content?.substring(0, 100) + '...',
-        chatModel: requestBody.selectedChatModel,
-        visibilityType: requestBody.selectedVisibilityType,
-        language: requestBody.selectedLanguage,
-        timestamp: new Date().toISOString()
-      });
-      
-      return requestBody;
+      try {
+        const lastMessage = body?.messages?.at?.(-1);
+        const selectedSources = (lastMessage?.data as any)?.selectedSources;
+        
+        console.log('[chat.tsx] Preparing request with sources:', {
+          hasBody: !!body,
+          hasMessages: !!body?.messages,
+          messagesLength: body?.messages?.length || 0,
+          hasLastMessage: !!lastMessage,
+          hasData: !!(lastMessage?.data),
+          selectedSources,
+          messageId: lastMessage?.id,
+          timestamp: new Date().toISOString()
+        });
+        
+        const requestBody = {
+          id,
+          message: lastMessage,
+          selectedChatModel: DEFAULT_CHAT_MODEL,
+          selectedVisibilityType: visibilityType,
+          selectedLanguage: (body as any)?.data?.selectedLanguage || 'en',
+          selectedSources: selectedSources,
+        };
+        
+        console.log('[chat.tsx] 🚀 Preparing request body:', {
+          chatId: id,
+          messageContent: requestBody.message?.content?.substring?.(0, 100) + '...',
+          chatModel: requestBody.selectedChatModel,
+          visibilityType: requestBody.selectedVisibilityType,
+          language: requestBody.selectedLanguage,
+          selectedSources: requestBody.selectedSources,
+          timestamp: new Date().toISOString()
+        });
+        
+        return requestBody;
+      } catch (error) {
+        console.error('[chat.tsx] ❌ Error in experimental_prepareRequestBody:', error);
+        // Return a fallback request body
+        return {
+          id,
+          message: body?.messages?.at?.(-1),
+          selectedChatModel: DEFAULT_CHAT_MODEL,
+          selectedVisibilityType: visibilityType,
+          selectedLanguage: 'en',
+          selectedSources: undefined,
+        };
+      }
     },
     onFinish: () => {
       console.log('[chat.tsx] ✅ Chat finished, mutating cache and resetting progress');
@@ -115,8 +172,9 @@ export function Chat({
     },
     onError: (error) => {
       console.error('[chat.tsx] ❌ Chat error occurred:', {
-        error: error.message,
-        type: error.constructor.name,
+        error: error instanceof Error ? error.message : String(error),
+        type: error instanceof Error ? error.constructor.name : typeof error,
+        fullError: error,
         timestamp: new Date().toISOString()
       });
       
@@ -127,23 +185,22 @@ export function Chat({
           userType: session?.user?.type
         });
         
-        // Check if it's a rate limit error for guest users
-        if (error.type === 'rate_limit' && error.surface === 'chat' && session?.user?.type === 'guest') {
-          console.log('[chat.tsx] 🚫 Rate limit hit for guest user, redirecting to registration');
+        // Check if it's a rate limit error
+        if (error.type === 'rate_limit' && error.surface === 'chat') {
+          console.log('[chat.tsx] 🚫 Rate limit hit, showing subscription modal');
+          
+          // Show subscription modal instead of redirecting
+          setShowSubscriptionModal(true);
+          
           toast({
             type: 'error',
-            description: 'You have reached your daily message limit. Please create an account to continue chatting.',
+            description: 'You have reached your daily message limit. Please tell us more about your needs to continue.',
           });
-          
-          // Redirect to registration page after a short delay
-          setTimeout(() => {
-            window.location.href = '/register';
-          }, 2000);
         } else {
-        toast({
-          type: 'error',
-          description: error.message,
-        });
+          toast({
+            type: 'error',
+            description: error instanceof Error ? error.message : 'An error occurred',
+          });
         }
       }
       setVectorSearchProgress(null); // Reset progress on error
@@ -473,9 +530,53 @@ export function Chat({
     };
   }, [setIsAuthLoading, isChatReady]);
 
+  // Get user entitlements for subscription modal
+  const userType = session?.user?.type || 'guest';
+  const entitlements = entitlementsByUserType[userType];
+  const currentUsage = userStats?.messagesLast24h || 0;
+  const maxLimit = entitlements.maxMessagesPerDay;
+
   return (
     <>
-      <div className="flex flex-col min-w-0 h-dvh bg-background overflow-hidden pb-5 md:pb-0">
+      {/* Subscription Modal */}
+      <SubscriptionModal
+        open={showSubscriptionModal}
+        onOpenChange={setShowSubscriptionModal}
+        currentUsage={currentUsage}
+        maxLimit={maxLimit}
+      />
+
+      {/* Full page background image - only visible when no messages */}
+      {messages.length === 0 && (
+        <>
+          {/* Light theme background */}
+          <div 
+            className="fixed inset-0 z-0 dark:hidden"
+            style={{
+              backgroundImage: "url('/images/bacground_white.jpeg')",
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat',
+              opacity: 0.4,
+              filter: 'blur(0.5px)'
+            }}
+          />
+          {/* Dark theme background */}
+          <div 
+            className="fixed inset-0 z-0 hidden dark:block"
+            style={{
+              backgroundImage: "url('/images/bacground_night.jpeg')",
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundRepeat: 'no-repeat',
+              opacity: 0.4,
+              filter: 'blur(0.5px)'
+            }}
+          />
+        </>
+      )}
+      
+      <div className="flex flex-col min-w-0 h-dvh bg-transparent overflow-hidden pb-5 md:pb-0 relative z-10">
         {/* ChatHeader commented out - replaced by floating New Chat button
         <ChatHeader
           chatId={id}
@@ -489,48 +590,69 @@ export function Chat({
           // Layout for empty state with footer at bottom
           <>
             {/* Main content area - centered */}
-            <div className="flex-1 flex flex-col items-center justify-center px-2 sm:px-3 md:px-4 w-full max-w-3xl mx-auto overflow-hidden">
-              {/* Greeting section */}
-              <div className="mb-6 sm:mb-8 w-full max-w-full">
-                <div className="text-3xl sm:text-2xl md:text-3xl font-semibold mb-2 text-left break-words">
-                  Assalamu Alaikum!
+            <div className="flex-1 flex flex-col items-center justify-center px-2 sm:px-3 md:px-4 w-full max-w-3xl mx-auto overflow-hidden relative">
+              {/* Content - no longer needs overlay wrapper */}
+              <div className="w-full max-w-full flex flex-col items-center justify-center">
+                {/* Mobile sidebar toggle button */}
+                {width && width <= 768 && (
+                  <div className="w-full flex justify-start mb-4">
+                    <Button
+                      data-testid="mobile-sidebar-toggle"
+                      className="bg-white/5 backdrop-blur-md border border-white/20 hover:bg-white/10 transition-all duration-200 rounded-full shadow-lg"
+                      size="icon"
+                      variant="outline"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        setOpenMobile(true);
+                      }}
+                    >
+                      <MenuIcon />
+                    </Button>
+                  </div>
+                )}
+                
+                {/* Greeting section */}
+                <div className="mb-6 sm:mb-8 w-full max-w-full">
+                  <div className="text-2xl sm:text-3xl md:text-4xl font-semibold mb-3 text-left break-words text-foreground">
+                    Assalamu Alaikum!
+                  </div>
+                  <div className="text-lg sm:text-xl md:text-2xl text-muted-foreground text-left break-words">
+                    How can I assist you with Islamic knowledge today?
+                  </div>
                 </div>
-                <div className="text-2xl sm:text-xl md:text-2xl text-zinc-500 text-left break-words">
-                  How can I assist you with Islamic knowledge today?
+                
+                {/* Input section right below greeting */}
+                <div className="w-full max-w-full mb-4 sm:mb-6">
+                    <MultimodalInput
+                      chatId={id}
+                      input={input}
+                      setInput={setInput}
+                      handleSubmit={handleSubmit}
+                      status={status}
+                      stop={stop}
+                      attachments={attachments}
+                      setAttachments={setAttachments}
+                      messages={messages}
+                      setMessages={setMessages}
+                      append={append}
+                      selectedVisibilityType={visibilityType}
+                      session={session}
+                      isReadonly={isReadonly}
+                      hideSuggestedActionsText={!isReadonly && attachments.length === 0}
+                    />
                 </div>
+                
+                {/* Show suggested actions below the input when no messages */}
+                {!isReadonly && attachments.length === 0 && (
+                  <div className="w-full max-w-full">
+                    <SuggestedActions
+                      append={append}
+                      chatId={id}
+                      selectedVisibilityType={visibilityType}
+                    />
+                  </div>
+                )}
               </div>
-              
-              {/* Input section right below greeting */}
-              <div className="w-full max-w-full mb-4 sm:mb-6">
-                  <MultimodalInput
-                    chatId={id}
-                    input={input}
-                    setInput={setInput}
-                    handleSubmit={handleSubmit}
-                    status={status}
-                    stop={stop}
-                    attachments={attachments}
-                    setAttachments={setAttachments}
-                    messages={messages}
-                    setMessages={setMessages}
-                    append={append}
-                    selectedVisibilityType={visibilityType}
-                    session={session}
-                    isReadonly={isReadonly}
-                    hideSuggestedActionsText={!isReadonly && attachments.length === 0}
-                  />
-              </div>
-              
-              {/* Show suggested actions below the input when no messages */}
-              {!isReadonly && attachments.length === 0 && (
-                <div className="w-full max-w-full">
-                  <SuggestedActions
-                    append={append}
-                    chatId={id}
-                    selectedVisibilityType={visibilityType}
-                  />
-                </div>
-              )}
             </div>
             
             {/* Footer at bottom of page */}

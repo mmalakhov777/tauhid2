@@ -64,8 +64,8 @@ export function GuestRegistrationBanner() {
   const usagePercentage = (messagesUsed / guestLimit) * 100;
 
   return (
-    <Card 
-      className="mx-3 mb-4 relative overflow-hidden border-border/50 bg-gradient-to-br from-card via-card to-muted/30 backdrop-blur-sm cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg active:scale-[0.98]"
+    <div 
+      className="mx-3 mb-4 relative overflow-hidden cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] bg-white/10 backdrop-blur-md border border-white/20 hover:bg-white/15 hover:backdrop-blur-sm hover:border-white/30 rounded-xl p-4"
       onClick={handleRegister}
     >
       {/* Subtle gradient overlay */}
@@ -75,11 +75,11 @@ export function GuestRegistrationBanner() {
       <div className="absolute top-0 right-0 w-20 h-20 bg-primary/5 rounded-full blur-xl animate-pulse" />
       <div className="absolute bottom-0 left-0 w-16 h-16 bg-primary/3 rounded-full blur-lg animate-pulse delay-1000" />
       
-            <CardContent className="px-4 py-3 relative z-10">
+      <div className="relative z-10">
         <Button
           variant="ghost"
           size="sm"
-          className="absolute top-2 right-2 h-6 w-6 p-0 text-muted-foreground hover:text-foreground transition-colors"
+          className="absolute top-0 right-0 h-6 w-6 p-0 text-muted-foreground hover:text-foreground transition-colors bg-transparent hover:bg-white/20"
           onClick={handleDismiss}
         >
           <X className="h-3 w-3" />
@@ -101,7 +101,7 @@ export function GuestRegistrationBanner() {
             </p>
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 } 

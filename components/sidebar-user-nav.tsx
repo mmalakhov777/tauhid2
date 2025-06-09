@@ -58,7 +58,7 @@ export function SidebarUserNav({ user }: { user: User }) {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               {status === 'loading' ? (
-                <SidebarMenuButton className="data-[state=open]:bg-sidebar-accent bg-card border border-border hover:bg-card/80 data-[state=open]:text-sidebar-accent-foreground h-10 justify-between transition-colors duration-200">
+                <SidebarMenuButton className="data-[state=open]:bg-white/10 data-[state=open]:backdrop-blur-md bg-white/5 backdrop-blur-md border border-white/20 hover:bg-white/10 data-[state=open]:text-sidebar-accent-foreground h-10 justify-between transition-all duration-200 rounded-[100px]">
                   <div className="flex flex-row gap-2 items-center">
                     <SkeletonWave className="size-6 rounded-full" delay={0} />
                     <SkeletonWave className="h-4 w-32 rounded-md" delay={0.1} />
@@ -70,7 +70,7 @@ export function SidebarUserNav({ user }: { user: User }) {
               ) : (
                 <SidebarMenuButton
                   data-testid="user-nav-button"
-                  className="data-[state=open]:bg-sidebar-accent bg-card border border-border hover:bg-card/80 data-[state=open]:text-sidebar-accent-foreground h-10 transition-colors duration-200"
+                  className="data-[state=open]:bg-white/10 data-[state=open]:backdrop-blur-md data-[state=open]:text-sidebar-accent-foreground h-10 bg-white/5 backdrop-blur-md border border-white/20 hover:bg-white/10 transition-all duration-200 rounded-[100px]"
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <Image
@@ -97,7 +97,7 @@ export function SidebarUserNav({ user }: { user: User }) {
             <DropdownMenuContent
               data-testid="user-nav-menu"
               side="top"
-              className="w-[--radix-popper-anchor-width] text-left"
+              className="w-[--radix-popper-anchor-width] text-left bg-white/10 backdrop-blur-md border border-white/20 shadow-lg rounded-xl p-2"
             >
               {telegramUser && isTelegramUser && (
                 <>
@@ -129,29 +129,29 @@ export function SidebarUserNav({ user }: { user: User }) {
                       </div>
                     </div>
                   </div>
-                  <DropdownMenuSeparator />
+                  <DropdownMenuSeparator className="bg-white/20" />
                 </>
               )}
               <DropdownMenuItem
                 data-testid="user-nav-item-profile"
-                className="cursor-pointer text-left"
+                className="cursor-pointer text-left bg-transparent border border-transparent hover:bg-white/15 hover:backdrop-blur-sm hover:text-accent-foreground transition-all duration-200 rounded-lg mx-1 hover:shadow-sm hover:border-white/30"
                 onSelect={() => setShowProfileModal(true)}
               >
                 Profile
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
+              <DropdownMenuSeparator className="bg-white/20" />
               <DropdownMenuItem
                 data-testid="user-nav-item-theme"
-                className="cursor-pointer text-left"
+                className="cursor-pointer text-left bg-transparent border border-transparent hover:bg-white/15 hover:backdrop-blur-sm hover:text-accent-foreground transition-all duration-200 rounded-lg mx-1 hover:shadow-sm hover:border-white/30"
                 onSelect={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               >
                 {`Toggle ${theme === 'light' ? 'dark' : 'light'} mode`}
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
+              <DropdownMenuSeparator className="bg-white/20" />
               <DropdownMenuItem asChild data-testid="user-nav-item-auth">
                 <button
                   type="button"
-                  className="w-full cursor-pointer text-left"
+                  className="w-full cursor-pointer text-left bg-transparent border border-transparent hover:bg-white/15 hover:backdrop-blur-sm hover:text-accent-foreground transition-all duration-200 rounded-lg mx-1 hover:shadow-sm hover:border-white/30"
                   onClick={() => {
                     if (status === 'loading') {
                       toast({

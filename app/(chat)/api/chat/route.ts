@@ -91,13 +91,28 @@ export async function POST(request: Request) {
 
   try {
     const json = await request.json();
+    console.log('[chat route] 🔍 Request body received:', {
+      hasId: !!json.id,
+      hasMessage: !!json.message,
+      hasSelectedSources: !!json.selectedSources,
+      selectedSources: json.selectedSources,
+      messageId: json.message?.id,
+      messageContent: json.message?.content?.substring(0, 100) + '...',
+      timestamp: new Date().toISOString()
+    });
     requestBody = postRequestBodySchema.parse(json);
+    console.log('[chat route] ✅ Schema validation passed');
   } catch (error) {
+    console.error('[chat route] ❌ Schema validation failed:', {
+      error: error instanceof Error ? error.message : String(error),
+      errorDetails: error,
+      timestamp: new Date().toISOString()
+    });
     return new ChatSDKError('bad_request:api').toResponse();
   }
 
   try {
-    const { id, message, selectedChatModel, selectedVisibilityType, selectedLanguage } =
+    const { id, message, selectedChatModel, selectedVisibilityType, selectedLanguage, selectedSources } =
       requestBody;
 
     // Validate UUID format
@@ -186,6 +201,7 @@ export async function POST(request: Request) {
       selectedLanguage,
       selectedChatModel,
       selectedVisibilityType,
+      selectedSources,
     });
 
     // Extract and log user message content
@@ -262,7 +278,8 @@ export async function POST(request: Request) {
       const searchResults = await performVectorSearch(
         userMessageContent,
         conversationHistory,
-        selectedChatModel
+        selectedChatModel,
+        selectedSources
       );
 
       // Filter out citations with minimal metadata before sending to frontend
@@ -377,16 +394,21 @@ export async function POST(request: Request) {
         messagesCount: messages.length,
         historyLength: conversationHistory.length,
         userMessageLength: userMessageContent.length,
-        historyPreview: conversationHistory.substring(0, 200) + '...'
+        historyPreview: conversationHistory.substring(0, 200) + '...',
+        selectedSources: selectedSources,
+        selectedSourcesType: typeof selectedSources,
+        selectedSourcesKeys: selectedSources ? Object.keys(selectedSources) : 'null'
       });
       
       const searchStartTime = Date.now();
       
       try {
+        console.log('[chat route] 🔍 Calling performVectorSearchWithProgress with selectedSources:', selectedSources);
         const searchResults = await performVectorSearchWithProgress(
           userMessageContent,
           conversationHistory,
           selectedChatModel,
+          selectedSources,
           (progress) => {
             vectorSearchProgressUpdates.push(progress);
           }

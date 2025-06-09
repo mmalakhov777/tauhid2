@@ -39,6 +39,7 @@ import { ArrowDown } from 'lucide-react';
 import { useScrollToBottom } from '@/hooks/use-scroll-to-bottom';
 import type { VisibilityType } from './visibility-selector';
 import { VisibilitySelector } from './visibility-selector';
+import { SourceSelector, type SourceSelection, DEFAULT_SOURCES } from './source-selector';
 import type { Session } from 'next-auth';
 import { useSidebar } from './ui/sidebar';
 import {
@@ -106,6 +107,19 @@ function PureMultimodalInput({
   const [preservedMessage, setPreservedMessage] = useState('');
   const [shouldSendAfterEmailSetup, setShouldSendAfterEmailSetup] = useState(false);
   const [isCopyingChat, setIsCopyingChat] = useState(false);
+  const [selectedSources, setSelectedSources] = useLocalStorage<SourceSelection>(
+    'selectedSources',
+    DEFAULT_SOURCES
+  );
+
+  // Debug effect to track source changes
+  useEffect(() => {
+    console.log('[multimodal-input] Selected sources changed:', {
+      selectedSources,
+      selectedCount: Object.values(selectedSources).filter(Boolean).length,
+      timestamp: new Date().toISOString()
+    });
+  }, [selectedSources]);
 
   const { update: updateSession } = useSession();
 
@@ -277,11 +291,20 @@ function PureMultimodalInput({
       console.log('🔍 English selected, no language instruction added');
     }
 
-    // Use append to add the message with the language instruction
+    // Use append to add the message with the language instruction and selected sources
+    console.log('[multimodal-input] Sending message with selected sources:', {
+      selectedSources,
+      finalInput: finalInput.substring(0, 100) + '...',
+      timestamp: new Date().toISOString()
+    });
+    
     append({
       role: 'user',
       content: finalInput,
       experimental_attachments: [...attachments, ...uploadedAttachments],
+      data: {
+        selectedSources: selectedSources as any,
+      },
     });
 
     setAttachments([]);
@@ -302,6 +325,7 @@ function PureMultimodalInput({
     session?.user?.email,
     isReadonly,
     router,
+    selectedSources,
   ]);
 
   const { isAtBottom, scrollToBottom } = useScrollToBottom();
@@ -661,6 +685,8 @@ function PureMultimodalInput({
             'w-full',
             // Make input bigger when shown with suggested actions (empty state)
             messages.length === 0 && '[&_textarea]:min-h-[60px] [&_textarea]:text-lg',
+            // Apply glass styling when in empty state (with suggested actions)
+            messages.length === 0 && 'bg-white/10 backdrop-blur-md border-white/20 shadow-lg',
             className,
           )}
           onAttachmentClick={() => fileInputRef.current?.click()}
@@ -672,12 +698,17 @@ function PureMultimodalInput({
           }}
         />
 
-        {/* Visibility Selector - Bottom Left Inside */}
+        {/* Visibility Selector and Source Selector - Bottom Left Inside */}
         <div className="absolute bottom-3 left-3 flex flex-row gap-1 items-center">
           <VisibilitySelector
             chatId={chatId}
             selectedVisibilityType={selectedVisibilityType}
-            className="!h-8 !text-xs !px-2 !border-border !bg-background hover:!bg-accent !text-muted-foreground hover:!text-accent-foreground !rounded-full"
+            className="!h-8 !text-xs !px-2 !bg-white/5 !backdrop-blur-md !border !border-white/20 hover:!bg-white/10 !transition-all !duration-200 !rounded-full"
+          />
+          <SourceSelector
+            selectedSources={selectedSources}
+            onSourcesChange={setSelectedSources}
+            className="!h-8 !text-xs !px-2 !bg-white/5 !backdrop-blur-md !border !border-white/20 hover:!bg-white/10 !transition-all !duration-200 !rounded-full"
           />
         </div>
       </div>
