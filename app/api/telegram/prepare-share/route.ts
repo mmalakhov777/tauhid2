@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { chatId, chatUrl, previewText } = await request.json();
+    const { chatId, chatUrl, previewText, sourcesCount = 0, messageCount = 0 } = await request.json();
     
     if (!chatId || !chatUrl) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -32,6 +32,8 @@ export async function POST(request: NextRequest) {
     console.log('[prepare-share] Preparing message for chat:', chatId);
     console.log('[prepare-share] Chat URL:', chatUrl);
     console.log('[prepare-share] Preview text:', previewText);
+    console.log('[prepare-share] Sources count:', sourcesCount);
+    console.log('[prepare-share] Message count:', messageCount);
     console.log('[prepare-share] User email:', session.user.email);
     console.log('[prepare-share] Telegram User ID:', dbUser.telegramId);
 
@@ -44,20 +46,40 @@ export async function POST(request: NextRequest) {
     
     console.log('[prepare-share] Mini App URL:', miniAppUrl);
 
+    // Create enhanced message text
+    let messageText = previewText || 'Check out this interesting conversation!';
+    
+    // Add conversation stats
+    const stats = [];
+    if (messageCount > 0) {
+      stats.push(`💬 ${messageCount} messages`);
+    }
+    if (sourcesCount > 0) {
+      stats.push(`📚 ${sourcesCount} sources referenced`);
+    }
+    
+    if (stats.length > 0) {
+      messageText += `\n\n${stats.join(' • ')}`;
+    }
+    
+    messageText += `\n\n🔗 ${miniAppUrl}`;
+
     // Prepare the inline query result
     const inlineQueryResult = {
       type: 'article',
       id: chatId,
-      title: 'Share Chat',
-      description: previewText || 'Share this conversation',
+      title: 'Islamic Q&A Conversation',
+      description: sourcesCount > 0 
+        ? `Conversation with ${sourcesCount} Islamic sources referenced`
+        : 'Islamic Q&A conversation',
       input_message_content: {
-        message_text: `${previewText || 'Check out this interesting conversation!'}\n\n🔗 Debug: ${miniAppUrl}`,
+        message_text: messageText,
         parse_mode: 'HTML',
       },
       reply_markup: {
         inline_keyboard: [[
           {
-            text: '📱 Open in App',
+            text: '📱 Open Conversation',
             url: miniAppUrl
           }
         ]]

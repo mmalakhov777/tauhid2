@@ -48,9 +48,10 @@ export function AppSidebar({ user }: { user: User | undefined }) {
           rgba(255, 255, 255, 0.30) 100%) !important;
         backdrop-filter: blur(30px) saturate(180%) contrast(100%) brightness(100%) !important;
         -webkit-backdrop-filter: blur(30px) saturate(180%) contrast(100%) brightness(100%) !important;
-        border: none !important;
-        border-right: 2px solid rgba(255, 255, 255, 0.12) !important;
-        border-radius: 0 !important;
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        border-radius: 16px !important;
+        margin: 8px !important;
+        height: calc(100vh - 16px) !important;
         box-shadow: 
           0 16px 50px 0 rgba(0, 0, 0, 0.03),
           0 4px 25px 0 rgba(0, 0, 0, 0.015) !important;
@@ -62,9 +63,10 @@ export function AppSidebar({ user }: { user: User | undefined }) {
           rgba(255, 255, 255, 0.30) 100%) !important;
         backdrop-filter: blur(30px) saturate(180%) contrast(100%) brightness(100%) !important;
         -webkit-backdrop-filter: blur(30px) saturate(180%) contrast(100%) brightness(100%) !important;
-        border: none !important;
-        border-right: 2px solid rgba(255, 255, 255, 0.12) !important;
-        border-radius: 0 !important;
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        border-radius: 16px !important;
+        margin: 8px !important;
+        height: calc(100vh - 16px) !important;
         box-shadow: 
           0 16px 50px 0 rgba(0, 0, 0, 0.03),
           0 4px 25px 0 rgba(0, 0, 0, 0.015) !important;
@@ -74,8 +76,10 @@ export function AppSidebar({ user }: { user: User | undefined }) {
           rgba(255, 255, 255, 0.001) 0%, 
           rgba(255, 255, 255, 0.0005) 50%, 
           rgba(255, 255, 255, 0.001) 100%) !important;
-        border: none !important;
-        border-right: 2px solid rgba(255, 255, 255, 0.08) !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        border-radius: 16px !important;
+        margin: 8px !important;
+        height: calc(100vh - 16px) !important;
         box-shadow: 
           0 16px 50px 0 rgba(0, 0, 0, 0.15),
           0 4px 25px 0 rgba(0, 0, 0, 0.08) !important;
@@ -324,23 +328,27 @@ export function AppSidebar({ user }: { user: User | undefined }) {
         
         {/* Mobile sidebar */}
         <div
-          className={`fixed left-0 z-40 w-72 text-sidebar-foreground transition-transform duration-300 ${
-            openMobile ? 'translate-x-0' : '-translate-x-full'
+          className={`fixed z-40 w-72 text-sidebar-foreground transition-all duration-300 ${
+            openMobile ? 'translate-x-0 opacity-100' : '-translate-x-full opacity-0'
           }`}
           style={{
             background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.30) 0%, rgba(255, 255, 255, 0.16) 50%, rgba(255, 255, 255, 0.30) 100%)',
             backdropFilter: 'blur(30px) saturate(180%) contrast(100%) brightness(100%)',
             WebkitBackdropFilter: 'blur(30px) saturate(180%) contrast(100%) brightness(100%)',
-            border: 'none',
-            borderRight: '1px solid rgba(255, 255, 255, 0.35)',
-            borderRadius: '0',
+            border: '1px solid rgba(255, 255, 255, 0.12)',
+            borderRadius: '16px',
+            margin: '8px',
             boxShadow: `
               0 8px 32px rgba(0,0,0,0.15),
               0 4px 16px rgba(0,0,0,0.1)
             `,
             top: '0',
             bottom: '0',
-            height: '100vh'
+            left: '0',
+            height: 'calc(100vh - 16px)',
+            width: 'calc(288px - 16px)', // 288px is w-72, subtract margin
+            transform: openMobile ? 'translateX(0)' : 'translateX(-110%)', // Move further left
+            visibility: openMobile ? 'visible' : 'hidden'
           }}
         >
           <div className="flex h-full w-full flex-col pb-5">

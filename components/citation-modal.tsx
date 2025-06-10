@@ -42,9 +42,12 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
           rgba(255, 255, 255, 0.30) 100%) !important;
         backdrop-filter: blur(30px) saturate(180%) contrast(100%) brightness(100%) !important;
         -webkit-backdrop-filter: blur(30px) saturate(180%) contrast(100%) brightness(100%) !important;
-        border: none !important;
-        border-left: 2px solid rgba(255, 255, 255, 0.12) !important;
-        border-radius: 0 !important;
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        border-radius: 16px !important;
+        margin: 8px !important;
+        height: calc(100vh - 16px) !important;
+        width: calc(100% - 16px) !important;
+        max-width: calc(32rem - 16px) !important;
         box-shadow: 
           0 16px 50px 0 rgba(0, 0, 0, 0.03),
           0 4px 25px 0 rgba(0, 0, 0, 0.015) !important;
@@ -54,8 +57,12 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
           rgba(255, 255, 255, 0.001) 0%, 
           rgba(255, 255, 255, 0.0005) 50%, 
           rgba(255, 255, 255, 0.001) 100%) !important;
-        border: none !important;
-        border-left: 2px solid rgba(255, 255, 255, 0.08) !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        border-radius: 16px !important;
+        margin: 8px !important;
+        height: calc(100vh - 16px) !important;
+        width: calc(100% - 16px) !important;
+        max-width: calc(32rem - 16px) !important;
         box-shadow: 
           0 16px 50px 0 rgba(0, 0, 0, 0.15),
           0 4px 25px 0 rgba(0, 0, 0, 0.08) !important;

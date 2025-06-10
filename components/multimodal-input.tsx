@@ -352,7 +352,43 @@ function PureMultimodalInput({
     };
   }, []);
 
-  // Helper function to get first 10 words from first agent response
+  // Helper function to get enhanced conversation preview
+  const getConversationPreview = useCallback(() => {
+    const userMessage = messages.find(msg => msg.role === 'user');
+    const assistantMessage = messages.find(msg => msg.role === 'assistant');
+    
+    if (!userMessage || !assistantMessage) {
+      return {
+        preview: 'Check out this interesting conversation!',
+        sourcesCount: 0,
+        messageCount: messages.length
+      };
+    }
+    
+    // Get user question (first 15 words)
+    const userContent = typeof userMessage.content === 'string' ? userMessage.content : '';
+    const userWords = userContent.trim().split(/\s+/);
+    const userPreview = userWords.slice(0, 15).join(' ') + (userWords.length > 15 ? '...' : '');
+    
+    // Get assistant response (first 25 words)
+    const assistantContent = typeof assistantMessage.content === 'string' ? assistantMessage.content : '';
+    const assistantWords = assistantContent.trim().split(/\s+/);
+    const assistantPreview = assistantWords.slice(0, 25).join(' ') + (assistantWords.length > 25 ? '...' : '');
+    
+    // Count sources mentioned in the conversation
+    const sourcesCount = assistantContent.match(/\[(\d+)\]/g)?.length || 0;
+    
+    // Create enhanced preview
+    const preview = `Q: ${userPreview}\n\nA: ${assistantPreview}`;
+    
+    return {
+      preview,
+      sourcesCount,
+      messageCount: messages.length
+    };
+  }, [messages]);
+
+  // Helper function to get first 10 words from first agent response (legacy)
   const getFirstAgentResponsePreview = useCallback(() => {
     const firstAgentMessage = messages.find(msg => msg.role === 'assistant');
     if (!firstAgentMessage || typeof firstAgentMessage.content !== 'string') {
@@ -366,6 +402,7 @@ function PureMultimodalInput({
 
   const handleMakePublicAndShare = async () => {
     setIsMakingPublic(true);
+    setIsSharing(true); // Start loading state immediately
     
     try {
       await updateChatVisibility({
@@ -391,6 +428,7 @@ function PureMultimodalInput({
       console.error('Failed to make chat public:', error);
       toast.error('Failed to make chat public');
       setIsMakingPublic(false);
+      setIsSharing(false); // Reset loading state on error
     }
   };
 
@@ -402,14 +440,13 @@ function PureMultimodalInput({
     }
     
     // If public, proceed with sharing
+    setIsSharing(true); // Start loading state
     handleShareInternal();
   };
 
   const handleShareInternal = async () => {
     // Prevent multiple simultaneous shares
-    if (isSharing) return;
-    
-    setIsSharing(true);
+    if (isSharing && shareButtonText !== 'Share') return;
     
     // Get the current URL
     const currentUrl = window.location.href;
@@ -426,8 +463,8 @@ function PureMultimodalInput({
       console.log('[handleShare] Using Telegram shareMessage API');
       
       try {
-        // Get preview text from first agent response
-        const previewText = getFirstAgentResponsePreview();
+        // Get enhanced conversation preview
+        const conversationData = getConversationPreview();
         
         // First, prepare the message via our API
         console.log('[handleShare] Preparing message via API...');
@@ -439,7 +476,9 @@ function PureMultimodalInput({
           body: JSON.stringify({
             chatId,
             chatUrl: currentUrl,
-            previewText,
+            previewText: conversationData.preview,
+            sourcesCount: conversationData.sourcesCount,
+            messageCount: conversationData.messageCount,
           }),
         });
 
@@ -464,6 +503,9 @@ function PureMultimodalInput({
           return;
         }
 
+        // Add small delay for better UX (show preparation state)
+        await new Promise(resolve => setTimeout(resolve, 800));
+
         // Now use the prepared message ID with shareMessage
         console.log('[handleShare] Calling Telegram shareMessage with ID:', prepareData.preparedMessageId);
         
@@ -478,7 +520,10 @@ function PureMultimodalInput({
               notificationOccurred('warning');
               toast.error('Share was cancelled');
             }
-            setIsSharing(false);
+            // Add small delay before resetting
+            setTimeout(() => {
+              setIsSharing(false);
+            }, 300);
           }
         );
         
@@ -510,6 +555,9 @@ function PureMultimodalInput({
       console.log('[handleShare] WebApp methods available:', webApp ? Object.keys(webApp) : 'No WebApp');
       
       try {
+        // Add small delay for preparation feel
+        await new Promise(resolve => setTimeout(resolve, 600));
+        
         await copyToClipboard(currentUrl);
         setShareButtonText('Link Copied');
         notificationOccurred('success');
@@ -644,8 +692,14 @@ function PureMultimodalInput({
                 handleShare();
               }}
             >
-              <ShareIcon />
-              <span className="ml-2">{shareButtonText}</span>
+              {isSharing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <ShareIcon />
+              )}
+              <span className="ml-2">
+                {isSharing ? 'Preparing...' : shareButtonText}
+              </span>
             </Button>
           </motion.div>
         )}
@@ -689,8 +743,6 @@ function PureMultimodalInput({
             messages.length === 0 && 'bg-white/10 backdrop-blur-md border-white/20 shadow-lg',
             className,
           )}
-          onAttachmentClick={() => fileInputRef.current?.click()}
-          attachmentCount={attachments.length}
           showStopButton={status === 'submitted' || status === 'streaming'}
           onStopClick={() => {
             stop();
