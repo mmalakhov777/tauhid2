@@ -101,12 +101,12 @@ function PureSuggestedActions({
                   },
                 });
               }}
-              className="w-full flex items-start justify-between text-left px-2 py-1 sm:py-1.5 min-h-[32px] sm:min-h-[36px] h-auto hover:bg-transparent active:bg-muted/50 border-b border-border/30 rounded-none last:border-b-0 group touch-manipulation"
+              className="w-full flex items-start justify-between text-left px-2 py-1 sm:py-1.5 min-h-[32px] sm:min-h-[36px] h-auto border-b border-border/30 rounded-none last:border-b-0 group touch-manipulation !bg-transparent hover:!bg-transparent active:!bg-transparent !backdrop-blur-none hover:!backdrop-blur-none !border-none hover:!border-none !shadow-none hover:!shadow-none !transform-none hover:!transform-none !scale-100 hover:!scale-100"
             >
-              <span className="text-sm sm:text-base font-normal mr-2 text-muted-foreground group-hover:text-foreground group-active:text-foreground transition-colors duration-200 leading-relaxed sm:leading-normal break-words whitespace-normal">
+              <span className="text-sm sm:text-base font-normal mr-2 text-muted-foreground group-hover:text-foreground leading-relaxed sm:leading-normal break-words whitespace-normal">
                 {suggestedAction.title}
               </span>
-              <Plus className="size-4 text-muted-foreground shrink-0 group-hover:text-foreground group-active:text-foreground transition-colors duration-200 ml-2 mt-0.5" />
+              <Plus className="size-4 text-muted-foreground shrink-0 group-hover:text-foreground ml-2 mt-0.5" />
             </Button>
           </motion.div>
         ))}

@@ -23,9 +23,7 @@ import { useTelegramHaptics } from '@/hooks/use-telegram-haptics';
 import { useSWRConfig } from 'swr';
 import { unstable_serialize } from 'swr/infinite';
 import { getChatHistoryPaginationKey } from '@/components/sidebar-history';
-import { createPortal } from 'react-dom';
-import { TelegramEmailForm } from './TelegramEmailForm';
-import { useSession } from 'next-auth/react';
+
 
 import { ArrowUpIcon, PaperclipIcon, StopIcon, PlusIcon, ShareIcon, MenuIcon } from './icons';
 import { PreviewAttachment } from './preview-attachment';
@@ -103,9 +101,6 @@ function PureMultimodalInput({
   const [showShareModal, setShowShareModal] = useState(false);
   const [isMakingPublic, setIsMakingPublic] = useState(false);
   const [shareButtonText, setShareButtonText] = useState('Share');
-  const [showEmailSetupForm, setShowEmailSetupForm] = useState(false);
-  const [preservedMessage, setPreservedMessage] = useState('');
-  const [shouldSendAfterEmailSetup, setShouldSendAfterEmailSetup] = useState(false);
   const [isCopyingChat, setIsCopyingChat] = useState(false);
   const [selectedSources, setSelectedSources] = useLocalStorage<SourceSelection>(
     'selectedSources',
@@ -121,8 +116,6 @@ function PureMultimodalInput({
     });
   }, [selectedSources]);
 
-  const { update: updateSession } = useSession();
-
   const [localStorageInput, setLocalStorageInput] = useLocalStorage(
     'input',
     '',
@@ -137,18 +130,6 @@ function PureMultimodalInput({
   useEffect(() => {
     setLocalStorageInput(input);
   }, [input, setLocalStorageInput]);
-
-  // Effect to send message after email setup is complete
-  useEffect(() => {
-    if (shouldSendAfterEmailSetup && preservedMessage && !session?.user?.email?.startsWith('telegram_')) {
-      // Reset the flag first
-      setShouldSendAfterEmailSetup(false);
-      
-      // Send the preserved message
-      handleSend(preservedMessage);
-      setPreservedMessage('');
-    }
-  }, [shouldSendAfterEmailSetup, preservedMessage, session?.user?.email]);
 
   const uploadFile = async (file: File) => {
     const formData = new FormData();
@@ -206,15 +187,6 @@ function PureMultimodalInput({
       sessionUserId: session?.user?.id,
       message: message.substring(0, 50) + '...'
     });
-
-    // Check if user needs email setup before sending
-    const needsEmailSetup = session?.user?.email?.startsWith('telegram_') && session?.user?.email?.endsWith('@telegram.local');
-    
-    if (needsEmailSetup) {
-      setPreservedMessage(message);
-      setShowEmailSetupForm(true);
-      return; // Don't send the message, show email setup first
-    }
 
     // Check if this is a readonly chat (viewing someone else's chat)
     if (isReadonly) {
@@ -322,7 +294,6 @@ function PureMultimodalInput({
     width,
     chatId,
     setInput,
-    session?.user?.email,
     isReadonly,
     router,
     selectedSources,
@@ -585,27 +556,6 @@ function PureMultimodalInput({
     }
   };
 
-  const handleEmailFormComplete = async () => {
-    setShowEmailSetupForm(false);
-    toast.success('Email setup completed! You can now send messages.');
-    
-    // Wait for session to update
-    await updateSession();
-    
-    // Set flag to trigger message send after session update
-    if (preservedMessage) {
-      setShouldSendAfterEmailSetup(true);
-    }
-  };
-
-  const handleEmailFormSkip = () => {
-    setShowEmailSetupForm(false);
-    if (preservedMessage) {
-      setInput(preservedMessage);
-      setPreservedMessage('');
-    }
-  };
-
   return (
     <div className="relative w-full flex flex-col gap-1">
       {/* Loading overlay while copying chat */}
@@ -817,27 +767,6 @@ function PureMultimodalInput({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      {/* Email Setup Form Modal */}
-      {showEmailSetupForm && session?.user && typeof document !== 'undefined' && 
-        createPortal(
-          <TelegramEmailForm 
-            telegramUser={{
-              id: telegramUser?.id || parseInt(session.user.id || '0'),
-              first_name: telegramUser?.first_name || session.user.name?.split(' ')[0] || 'User',
-              last_name: telegramUser?.last_name || session.user.name?.split(' ').slice(1).join(' ') || '',
-              username: telegramUser?.username || session.user.email?.split('@')[0],
-              photo_url: telegramUser?.photo_url || session.user.image || undefined,
-              language_code: telegramUser?.language_code,
-              is_premium: telegramUser?.is_premium,
-              allows_write_to_pm: telegramUser?.allows_write_to_pm,
-            }}
-            onComplete={handleEmailFormComplete}
-            onSkip={handleEmailFormSkip}
-          />,
-          document.body
-        )
-      }
     </div>
   );
 }
