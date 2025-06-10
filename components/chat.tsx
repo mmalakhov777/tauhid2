@@ -189,13 +189,8 @@ export function Chat({
         if (error.type === 'rate_limit' && error.surface === 'chat') {
           console.log('[chat.tsx] 🚫 Rate limit hit, showing subscription modal');
           
-          // Show subscription modal instead of redirecting
+          // Show subscription modal instead of toast
           setShowSubscriptionModal(true);
-          
-          toast({
-            type: 'error',
-            description: 'You have reached your daily message limit. Please tell us more about your needs to continue.',
-          });
         } else {
           toast({
             type: 'error',
@@ -545,7 +540,6 @@ export function Chat({
         currentUsage={currentUsage}
         maxLimit={maxLimit}
       />
-
       {/* Full page background image - only visible when no messages */}
       {messages.length === 0 && (
         <>
@@ -576,7 +570,7 @@ export function Chat({
         </>
       )}
       
-      <div className="flex flex-col min-w-0 h-dvh bg-transparent overflow-hidden pb-5 md:pb-0 relative z-10">
+      <div className="flex flex-col min-w-0 h-dvh bg-transparent overflow-hidden pb-5 md:pb-0 relative z-10 border-l-0">
         {/* ChatHeader commented out - replaced by floating New Chat button
         <ChatHeader
           chatId={id}

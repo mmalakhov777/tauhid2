@@ -204,3 +204,27 @@ export const vectorSearchResult = pgTable(
 );
 
 export type VectorSearchResult = InferSelectModel<typeof vectorSearchResult>;
+
+export const subscriptionResponse = pgTable('SubscriptionResponse', {
+  id: uuid('id').primaryKey().notNull().defaultRandom(),
+  userId: uuid('userId')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  purpose: text('purpose'),
+  name: varchar('name', { length: 255 }),
+  email: varchar('email', { length: 255 }),
+  organization: varchar('organization', { length: 255 }),
+  currentStep: varchar('currentStep', { 
+    enum: ['limit', 'purpose', 'info', 'beta'] 
+  }).notNull().default('limit'),
+  isCompleted: boolean('isCompleted').notNull().default(false),
+  isSubmitted: boolean('isSubmitted').notNull().default(false),
+  submittedAt: timestamp('submittedAt'),
+  createdAt: timestamp('createdAt').notNull().defaultNow(),
+  updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+}, (table) => ({
+  userIdIdx: index('idx_subscription_response_user_id').on(table.userId),
+  createdAtIdx: index('idx_subscription_response_created_at').on(table.createdAt),
+}));
+
+export type SubscriptionResponse = InferSelectModel<typeof subscriptionResponse>;

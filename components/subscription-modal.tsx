@@ -4,17 +4,6 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useTelegram } from '@/hooks/useTelegram';
 import { guestRegex } from '@/lib/constants';
-import { entitlementsByUserType } from '@/lib/ai/entitlements';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Progress } from '@/components/ui/progress';
 import { 
   Sparkles,
   ArrowRight,
@@ -23,10 +12,11 @@ import {
   Mail,
   User,
   Building2,
-  MessageSquare
+  MessageSquare,
+  X,
+  Check
 } from 'lucide-react';
 import React from 'react';
-import { cn } from '@/lib/utils';
 
 interface SubscriptionModalProps {
   open: boolean;
@@ -36,13 +26,180 @@ interface SubscriptionModalProps {
 }
 
 interface FormData {
-  purpose: string;
+  purposes: string[];
+  role: string;
   name: string;
   email: string;
   organization?: string;
 }
 
 type Step = 'limit' | 'purpose' | 'info' | 'beta';
+
+// Simple Button Component - Using design system colors
+const SimpleButton = ({ 
+  children, 
+  onClick, 
+  disabled = false, 
+  variant = 'primary',
+  size = 'default',
+  className = '',
+  ...props 
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+  disabled?: boolean;
+  variant?: 'primary' | 'secondary' | 'ghost';
+  size?: 'default' | 'sm' | 'lg';
+  className?: string;
+  [key: string]: any;
+}) => {
+  const variants = {
+    primary: 'bg-primary text-primary-foreground hover:bg-primary/90',
+    secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+    ghost: 'bg-transparent hover:bg-accent text-accent-foreground'
+  };
+
+  const sizes = {
+    default: 'h-10 px-4 py-2 text-sm',
+    sm: 'h-8 px-3 py-1.5 text-xs',
+    lg: 'h-12 px-6 py-3 text-base'
+  };
+
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`
+        inline-flex items-center justify-center gap-2 font-medium rounded-lg
+        transition-colors duration-200 cursor-pointer
+        focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2
+        disabled:opacity-50 disabled:cursor-not-allowed
+        ${variants[variant]} ${sizes[size]} ${className}
+      `}
+      {...props}
+    >
+      {children}
+    </button>
+  );
+};
+
+// Custom Input Component - Using design system colors
+const CustomInput = ({ 
+  placeholder, 
+  value, 
+  onChange, 
+  type = 'text',
+  className = '',
+  ...props 
+}: {
+  placeholder?: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  type?: string;
+  className?: string;
+  [key: string]: any;
+}) => {
+  return (
+    <input
+      type={type}
+      placeholder={placeholder}
+      value={value}
+      onChange={onChange}
+      className={`
+        w-full px-4 py-3 rounded-lg text-sm
+        bg-background border border-input text-foreground placeholder:text-muted-foreground
+        focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring
+        transition-colors duration-200
+        ${className}
+      `}
+      {...props}
+    />
+  );
+};
+
+// Custom Textarea Component - Using design system colors
+const CustomTextarea = ({ 
+  placeholder, 
+  value, 
+  onChange,
+  className = '',
+  ...props 
+}: {
+  placeholder?: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
+  className?: string;
+  [key: string]: any;
+}) => {
+  return (
+    <textarea
+      placeholder={placeholder}
+      value={value}
+      onChange={onChange}
+      className={`
+        w-full px-4 py-3 rounded-lg text-sm min-h-[120px] resize-none
+        bg-background border border-input text-foreground placeholder:text-muted-foreground
+        focus:outline-none focus:ring-2 focus:ring-ring focus:border-ring
+        transition-colors duration-200
+        ${className}
+      `}
+      {...props}
+    />
+  );
+};
+
+// Form Step Progress - Stepper style for form navigation
+const FormStepProgress = ({ value, className = '' }: { value: number; className?: string }) => {
+  const steps = 4; // Total number of steps
+  const currentStep = Math.ceil((value / 100) * steps);
+  
+  return (
+    <div className={`flex items-center gap-2 w-full ${className}`}>
+      {Array.from({ length: steps }, (_, index) => {
+        const stepNumber = index + 1;
+        const isCompleted = stepNumber <= currentStep;
+        const isActive = stepNumber === currentStep;
+        
+        return (
+          <div key={index} className="flex items-center flex-1">
+            {/* Step line */}
+            <div 
+              className={`h-0.5 flex-1 transition-all duration-300 ${
+                isCompleted 
+                  ? 'bg-primary' 
+                  : 'bg-border'
+              }`}
+            />
+            {/* Step dot (except for last step) */}
+            {index < steps - 1 && (
+              <div 
+                className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                  isCompleted 
+                    ? 'bg-primary' 
+                    : isActive 
+                    ? 'bg-primary/50' 
+                    : 'bg-border'
+                }`}
+              />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+// Message Usage Progress - Simple bar for message limits (UNTOUCHED)
+const MessageProgress = ({ value, className = '' }: { value: number; className?: string }) => {
+  return (
+    <div className={`w-full bg-secondary rounded-full h-1 overflow-hidden ${className}`}>
+      <div 
+        className="h-full bg-primary transition-all duration-300 ease-out"
+        style={{ width: `${Math.min(100, Math.max(0, value))}%` }}
+      />
+    </div>
+  );
+};
 
 export function SubscriptionModal({ 
   open, 
@@ -54,79 +211,13 @@ export function SubscriptionModal({
   const { user: telegramUser } = useTelegram();
   const [currentStep, setCurrentStep] = useState<Step>('limit');
   const [formData, setFormData] = useState<FormData>({
-    purpose: '',
+    purposes: [],
+    role: '',
     name: '',
     email: '',
     organization: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Minimalistic glassmorphism styles
-  React.useEffect(() => {
-    const style = document.createElement('style');
-    style.textContent = `
-      /* MINIMALISTIC GLASS EFFECTS */
-      [data-glass="true"] {
-        background: rgba(255, 255, 255, 0.02) !important;
-        backdrop-filter: blur(40px) saturate(150%) !important;
-        -webkit-backdrop-filter: blur(40px) saturate(150%) !important;
-        border: 1px solid rgba(255, 255, 255, 0.08) !important;
-        box-shadow: 
-          0 8px 32px rgba(0, 0, 0, 0.08),
-          inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
-      }
-      .dark [data-glass="true"] {
-        background: rgba(255, 255, 255, 0.01) !important;
-        border: 1px solid rgba(255, 255, 255, 0.06) !important;
-        box-shadow: 
-          0 8px 32px rgba(0, 0, 0, 0.3),
-          inset 0 1px 0 rgba(255, 255, 255, 0.02) !important;
-      }
-      
-      /* ACCENT GLASS */
-      [data-glass-accent="true"] {
-        background: linear-gradient(135deg, 
-          rgba(99, 102, 241, 0.08) 0%, 
-          rgba(99, 102, 241, 0.04) 100%) !important;
-        backdrop-filter: blur(40px) saturate(150%) !important;
-        -webkit-backdrop-filter: blur(40px) saturate(150%) !important;
-        border: 1px solid rgba(99, 102, 241, 0.15) !important;
-        box-shadow: 
-          0 8px 32px rgba(99, 102, 241, 0.1),
-          inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
-      }
-      .dark [data-glass-accent="true"] {
-        background: linear-gradient(135deg, 
-          rgba(99, 102, 241, 0.06) 0%, 
-          rgba(99, 102, 241, 0.02) 100%) !important;
-        border: 1px solid rgba(99, 102, 241, 0.1) !important;
-        box-shadow: 
-          0 8px 32px rgba(99, 102, 241, 0.08),
-          inset 0 1px 0 rgba(255, 255, 255, 0.02) !important;
-      }
-      
-      /* SMOOTH TRANSITIONS */
-      [data-glass="true"], [data-glass-accent="true"] {
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-      }
-      
-      /* HOVER EFFECTS */
-      [data-glass-hover="true"]:hover {
-        background: rgba(255, 255, 255, 0.04) !important;
-        border: 1px solid rgba(255, 255, 255, 0.12) !important;
-        transform: translateY(-1px) !important;
-      }
-      .dark [data-glass-hover="true"]:hover {
-        background: rgba(255, 255, 255, 0.02) !important;
-        border: 1px solid rgba(255, 255, 255, 0.08) !important;
-      }
-    `;
-    document.head.appendChild(style);
-    
-    return () => {
-      document.head.removeChild(style);
-    };
-  }, []);
 
   const user = session?.user;
   const isGuest = guestRegex.test(user?.email ?? '');
@@ -155,6 +246,11 @@ export function SubscriptionModal({
   useEffect(() => {
     if (open) {
       setCurrentStep('limit');
+      setFormData(prev => ({
+        ...prev,
+        purposes: [],
+        role: ''
+      }));
     }
   }, [open]);
 
@@ -179,9 +275,9 @@ export function SubscriptionModal({
   const canProceed = () => {
     switch (currentStep) {
       case 'purpose':
-        return formData.purpose.trim().length > 0;
+        return formData.purposes.length > 0;
       case 'info':
-        return formData.name.trim().length > 0 && formData.email.trim().length > 0;
+        return formData.role.trim().length > 0;
       default:
         return true;
     }
@@ -201,254 +297,275 @@ export function SubscriptionModal({
     }
   };
 
+  const togglePurpose = (purpose: string) => {
+    setFormData(prev => ({
+      ...prev,
+      purposes: prev.purposes.includes(purpose)
+        ? prev.purposes.filter(p => p !== purpose)
+        : [...prev.purposes, purpose]
+    }));
+  };
+
+  if (!open) return null;
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent 
-        data-glass="true"
-        className="max-w-md p-0 overflow-hidden border-0"
-      >
-        {/* Header */}
-        <div className="p-6 pb-0">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-normal tracking-tight">
-              Upgrade Your Experience
-            </DialogTitle>
-          </DialogHeader>
-          
-          {/* Progress */}
-          <div className="mt-6">
-            <Progress value={progress} className="h-1" />
+    <>
+      {/* Backdrop with blur */}
+      <div 
+        className="fixed inset-0 backdrop-blur-sm z-[9999] transition-all duration-300"
+        onClick={() => onOpenChange(false)}
+      />
+      
+      {/* Modal */}
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center">
+        <div 
+          className="
+            relative w-full max-w-md sm:max-w-lg
+            h-[90vh] sm:h-auto sm:max-h-[90vh]
+            m-4 sm:m-6
+            bg-card border border-border
+            rounded-2xl
+            shadow-xl
+            overflow-hidden
+            transform transition-all duration-300 scale-100 opacity-100
+          "
+          onClick={(e) => e.stopPropagation()}
+          >
+          {/* Close Button */}
+          <button
+            onClick={() => onOpenChange(false)}
+            className="
+              absolute top-4 right-4 z-10 p-2 rounded-full
+              bg-white/20 backdrop-blur-md border border-white/30 text-white
+              hover:bg-white/30 hover:border-white/40
+              transition-all duration-200
+            "
+          >
+            <X className="w-4 h-4" />
+          </button>
+
+          {/* Header Image - Full width, no padding - Hidden on purpose and info steps */}
+          {currentStep !== 'purpose' && currentStep !== 'info' && (
+            <div className="w-full">
+              <img 
+                src="/images/limitsreached_dark.png" 
+                alt="Limits reached" 
+                className="w-full h-64 object-cover rounded-t-2xl"
+              />
+            </div>
+          )}
+
+          {/* Content */}
+          <div className="flex flex-col" style={{ height: currentStep === 'purpose' || currentStep === 'info' ? '100%' : 'calc(100% - 256px)' }}>
+            <div className="flex-1 p-6 pt-8 overflow-hidden">
+              {/* Limit Step */}
+              {currentStep === 'limit' && (
+                <div className="space-y-6">
+                  <div className="text-center space-y-4">
+                    <div className="space-y-2">
+                      <h3 className="text-lg font-medium text-card-foreground">Daily Limit Reached</h3>
+                      <p className="text-sm text-muted-foreground">
+                        You've used {currentUsage} of your {maxLimit} daily messages
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Purpose Step - Multiple Choice */}
+              {currentStep === 'purpose' && (
+                <div className="h-full flex flex-col space-y-4">
+                  <div className="space-y-2 flex-shrink-0">
+                    <label className="text-sm font-medium text-card-foreground">
+                      What do you plan to use our Islamic AI for? (Select all that apply)
+                    </label>
+                    <p className="text-xs text-muted-foreground">
+                      Choose the areas where you need Islamic guidance
+                    </p>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto p-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {[
+                        'Quranic verses and interpretation',
+                        'Hadith research and authentication',
+                        'Islamic jurisprudence (Fiqh) questions',
+                        'Prayer and worship guidance',
+                        'Islamic history and biography',
+                        'Halal/Haram clarifications',
+                        'Islamic finance and business ethics',
+                        'Family and marriage guidance',
+                        'Academic research on Islam',
+                        'Converting to Islam guidance',
+                        'Daily Islamic living advice',
+                        'Comparative religion studies'
+                      ].map((purpose) => (
+                        <button
+                          key={purpose}
+                          onClick={() => togglePurpose(purpose)}
+                          className={`
+                            w-full px-3 py-2.5 text-sm text-left rounded-lg border transition-all duration-200
+                            flex items-center justify-between
+                            ${formData.purposes.includes(purpose)
+                              ? 'bg-primary/10 border-primary text-primary' 
+                              : 'bg-secondary border-border text-secondary-foreground hover:bg-secondary/80'
+                            }
+                          `}
+                        >
+                          <span className="flex-1 pr-2">{purpose}</span>
+                          {formData.purposes.includes(purpose) && (
+                            <Check className="w-4 h-4 text-primary flex-shrink-0" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Info Step - Role Selection */}
+              {currentStep === 'info' && (
+                <div className="h-full flex flex-col space-y-4">
+                  <div className="space-y-2 flex-shrink-0">
+                    <label className="text-sm font-medium text-card-foreground">
+                      What best describes your background?
+                    </label>
+                    <p className="text-xs text-muted-foreground">
+                      This helps us understand our user community
+                    </p>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto p-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {[
+                        'Muslim seeking guidance',
+                        'Islamic studies student', 
+                        'Islamic scholar/Teacher', 
+                        'Imam/Religious leader',
+                        'Academic researcher', 
+                        'New Muslim/Convert', 
+                        'Non-Muslim learning about Islam',
+                        'Islamic content creator',
+                        'Islamic finance professional',
+                        'Chaplain/Counselor',
+                        'Parent seeking Islamic guidance',
+                        'Other'
+                      ].map((role) => (
+                        <button
+                          key={role}
+                          onClick={() => setFormData(prev => ({ ...prev, role }))}
+                          className={`
+                            w-full px-3 py-2.5 text-sm text-left rounded-lg border transition-all duration-200
+                            flex items-center justify-between
+                            ${formData.role === role 
+                              ? 'bg-primary text-primary-foreground border-primary' 
+                              : 'bg-secondary border-border text-secondary-foreground hover:bg-secondary/80'
+                            }
+                          `}
+                        >
+                          <span className="flex-1 pr-2">{role}</span>
+                          {formData.role === role && (
+                            <Check className="w-4 h-4 text-primary flex-shrink-0" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Beta Step */}
+              {currentStep === 'beta' && (
+                <div className="space-y-4">
+                  <div className="text-center space-y-4">
+                    <div className="space-y-2">
+                      <h3 className="text-lg font-medium text-card-foreground">We're in Beta</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Thanks for your interest! We'll notify you when subscriptions are available.
+                      </p>
+                    </div>
+
+                    <div className="p-4 rounded-xl space-y-3 bg-muted border border-border">
+                      <div className="flex items-center justify-center gap-2">
+                        <Heart className="w-4 h-4 text-pink-500" />
+                        <span className="text-sm font-medium text-card-foreground">Support Our Project</span>
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <p className="text-xs font-medium text-card-foreground">USDT (TRC-20)</p>
+                        <div className="flex items-center gap-2 p-2 bg-background rounded border">
+                          <span className="text-xs font-mono text-muted-foreground flex-1 break-all">
+                            TXkGC7GzZBQQgqMVX4bhfQj1BAtLbg2Tgw
+                          </span>
+                          <button
+                            onClick={() => navigator.clipboard.writeText('TXkGC7GzZBQQgqMVX4bhfQj1BAtLbg2Tgw')}
+                            className="text-xs px-2 py-1 bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors"
+                          >
+                            Copy
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Fixed Bottom Buttons */}
+            <div className="p-6 pt-0 border-t border-border/50">
+              {currentStep === 'limit' && (
+                <SimpleButton 
+                  onClick={nextStep}
+                  variant="primary"
+                  size="lg"
+                  className="w-full"
+                >
+                  Continue
+                  <ArrowRight className="w-4 h-4" />
+                </SimpleButton>
+              )}
+
+              {currentStep === 'purpose' && (
+                <SimpleButton 
+                  onClick={nextStep}
+                  disabled={!canProceed()}
+                  variant="primary"
+                  size="lg"
+                  className="w-full"
+                >
+                  Next
+                  <ArrowRight className="w-4 h-4" />
+                </SimpleButton>
+              )}
+
+              {currentStep === 'info' && (
+                <SimpleButton 
+                  onClick={nextStep}
+                  disabled={!canProceed()}
+                  variant="primary"
+                  size="lg"
+                  className="w-full"
+                >
+                  Next
+                  <ArrowRight className="w-4 h-4" />
+                </SimpleButton>
+              )}
+
+              {currentStep === 'beta' && (
+                <SimpleButton 
+                  onClick={() => window.open('https://t.me/+joudeWBlIzIxOTdi', '_blank')}
+                  variant="primary"
+                  size="lg"
+                  className="w-full"
+                >
+                  <MessageSquare className="w-4 h-4" />
+                  Join our Telegram
+                </SimpleButton>
+              )}
+            </div>
           </div>
         </div>
-
-        {/* Content */}
-        <div className="p-6 pt-8">
-          {/* Limit Step */}
-          {currentStep === 'limit' && (
-            <div className="space-y-6 animate-in fade-in-0 slide-in-from-bottom-4 duration-300">
-              <div className="text-center space-y-4">
-                <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-red-500/20 to-orange-500/20 flex items-center justify-center">
-                  <Zap className="w-8 h-8 text-orange-500" />
-                </div>
-                
-                <div className="space-y-2">
-                  <h3 className="text-lg font-medium">Daily Limit Reached</h3>
-                  <p className="text-sm text-muted-foreground">
-                    You've used {currentUsage} of your {maxLimit} daily messages
-                  </p>
-                </div>
-
-                <div className="relative pt-2">
-                  <div className="flex justify-between text-xs text-muted-foreground mb-1">
-                    <span>{currentUsage} used</span>
-                    <span>{maxLimit - currentUsage} left</span>
-                  </div>
-                  <Progress value={(currentUsage / maxLimit) * 100} className="h-2" />
-                </div>
-              </div>
-
-              <Button 
-                onClick={nextStep}
-                className="w-full"
-                size="lg"
-              >
-                Continue
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            </div>
-          )}
-
-          {/* Purpose Step */}
-          {currentStep === 'purpose' && (
-            <div className="space-y-6 animate-in fade-in-0 slide-in-from-bottom-4 duration-300">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium">
-                    How will you use our service?
-                  </label>
-                  <Textarea
-                    placeholder="Tell us about your use case..."
-                    value={formData.purpose}
-                    onChange={(e) => setFormData(prev => ({ ...prev, purpose: e.target.value }))}
-                    className="min-h-[120px] resize-none bg-transparent"
-                    data-glass="true"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-2">
-                  {['Research', 'Business', 'Education', 'Personal'].map((tag) => (
-                    <button
-                      key={tag}
-                      onClick={() => setFormData(prev => ({ 
-                        ...prev, 
-                        purpose: prev.purpose ? `${prev.purpose} ${tag}` : tag 
-                      }))}
-                      className="px-3 py-1.5 text-xs rounded-full border border-border/50 hover:bg-accent/50 transition-colors"
-                      data-glass="true"
-                      data-glass-hover="true"
-                    >
-                      {tag}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex gap-3">
-                <Button 
-                  variant="ghost" 
-                  onClick={prevStep}
-                  className="flex-1"
-                >
-                  Back
-                </Button>
-                <Button 
-                  onClick={nextStep}
-                  disabled={!canProceed()}
-                  className="flex-1"
-                >
-                  Next
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Info Step */}
-          {currentStep === 'info' && (
-            <div className="space-y-6 animate-in fade-in-0 slide-in-from-bottom-4 duration-300">
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <label className="text-sm font-medium flex items-center gap-2">
-                    <User className="w-4 h-4" />
-                    Name
-                  </label>
-                  <Input
-                    placeholder="Your name"
-                    value={formData.name}
-                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                    className="bg-transparent"
-                    data-glass="true"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium flex items-center gap-2">
-                    <Mail className="w-4 h-4" />
-                    Email
-                  </label>
-                  <Input
-                    type="email"
-                    placeholder="your@email.com"
-                    value={formData.email}
-                    onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                    className="bg-transparent"
-                    data-glass="true"
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-medium flex items-center gap-2">
-                    <Building2 className="w-4 h-4" />
-                    Organization
-                    <span className="text-xs text-muted-foreground">(optional)</span>
-                  </label>
-                  <Input
-                    placeholder="Company or institution"
-                    value={formData.organization}
-                    onChange={(e) => setFormData(prev => ({ ...prev, organization: e.target.value }))}
-                    className="bg-transparent"
-                    data-glass="true"
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-3">
-                <Button 
-                  variant="ghost" 
-                  onClick={prevStep}
-                  className="flex-1"
-                >
-                  Back
-                </Button>
-                <Button 
-                  onClick={nextStep}
-                  disabled={!canProceed()}
-                  className="flex-1"
-                >
-                  Next
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Beta Step */}
-          {currentStep === 'beta' && (
-            <div className="space-y-6 animate-in fade-in-0 slide-in-from-bottom-4 duration-300">
-              <div className="text-center space-y-4">
-                <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center">
-                  <Sparkles className="w-8 h-8 text-indigo-500" />
-                </div>
-                
-                <div className="space-y-2">
-                  <h3 className="text-lg font-medium">We're in Beta</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Thanks for your interest! We'll notify you when subscriptions are available.
-                  </p>
-                </div>
-
-                <div 
-                  className="p-4 rounded-xl space-y-3"
-                  data-glass-accent="true"
-                >
-                  <div className="flex items-center justify-center gap-2">
-                    <Heart className="w-4 h-4 text-pink-500" />
-                    <span className="text-sm font-medium">Support Our Project</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Help us grow with crypto donations
-                  </p>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    className="w-full"
-                    onClick={() => console.log('Open donations')}
-                  >
-                    View Options
-                  </Button>
-                </div>
-              </div>
-
-              <div className="flex gap-3">
-                <Button 
-                  variant="ghost" 
-                  onClick={prevStep}
-                  className="flex-1"
-                >
-                  Back
-                </Button>
-                <Button 
-                  onClick={handleSubmit}
-                  disabled={isSubmitting}
-                  className="flex-1"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <div className="w-4 h-4 mr-2 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                      Submitting
-                    </>
-                  ) : (
-                    <>
-                      Submit
-                      <MessageSquare className="w-4 h-4 ml-2" />
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-          )}
-        </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+    </>
   );
 }

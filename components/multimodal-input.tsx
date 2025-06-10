@@ -336,9 +336,11 @@ function PureMultimodalInput({
       };
     }
     
-    // Get user question (first 15 words)
+    // Get user question (first 15 words) and clean language instructions
     const userContent = typeof userMessage.content === 'string' ? userMessage.content : '';
-    const userWords = userContent.trim().split(/\s+/);
+    // Remove language instruction pattern like [Answer in Russian], [Answer in Turkish], etc.
+    const cleanedUserContent = userContent.replace(/\n\n\[Answer in [^\]]+\]$/i, '').trim();
+    const userWords = cleanedUserContent.trim().split(/\s+/);
     const userPreview = userWords.slice(0, 15).join(' ') + (userWords.length > 15 ? '...' : '');
     
     // Get assistant response (first 25 words)
@@ -448,8 +450,6 @@ function PureMultimodalInput({
             chatId,
             chatUrl: currentUrl,
             previewText: conversationData.preview,
-            sourcesCount: conversationData.sourcesCount,
-            messageCount: conversationData.messageCount,
           }),
         });
 

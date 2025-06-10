@@ -29,6 +29,8 @@ import {
   stream,
   vectorSearchResult,
   type VectorSearchResult,
+  subscriptionResponse,
+  type SubscriptionResponse,
 } from './schema';
 import { generateUUID } from '../utils';
 import { generateHashedPassword } from './utils';
@@ -755,6 +757,175 @@ export async function getSuggestionsByDocumentId({
     throw new ChatSDKError(
       'bad_request:database',
       'Failed to get suggestions by document id',
+    );
+  }
+}
+
+// Subscription Response Functions
+export async function createSubscriptionResponse({
+  userId,
+  purpose,
+  name,
+  email,
+  organization,
+  currentStep = 'limit',
+}: {
+  userId: string;
+  purpose?: string;
+  name?: string;
+  email?: string;
+  organization?: string;
+  currentStep?: 'limit' | 'purpose' | 'info' | 'beta';
+}) {
+  try {
+    const [response] = await db
+      .insert(subscriptionResponse)
+      .values({
+        userId,
+        purpose,
+        name,
+        email,
+        organization,
+        currentStep,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+    return response;
+  } catch (error) {
+    throw new ChatSDKError(
+      'bad_request:database',
+      'Failed to create subscription response',
+    );
+  }
+}
+
+export async function updateSubscriptionResponse({
+  id,
+  purpose,
+  name,
+  email,
+  organization,
+  currentStep,
+  isCompleted,
+  isSubmitted,
+}: {
+  id: string;
+  purpose?: string;
+  name?: string;
+  email?: string;
+  organization?: string;
+  currentStep?: 'limit' | 'purpose' | 'info' | 'beta';
+  isCompleted?: boolean;
+  isSubmitted?: boolean;
+}) {
+  try {
+    const updateData: any = {
+      updatedAt: new Date(),
+    };
+
+    if (purpose !== undefined) updateData.purpose = purpose;
+    if (name !== undefined) updateData.name = name;
+    if (email !== undefined) updateData.email = email;
+    if (organization !== undefined) updateData.organization = organization;
+    if (currentStep !== undefined) updateData.currentStep = currentStep;
+    if (isCompleted !== undefined) updateData.isCompleted = isCompleted;
+    if (isSubmitted !== undefined) {
+      updateData.isSubmitted = isSubmitted;
+      if (isSubmitted) {
+        updateData.submittedAt = new Date();
+      }
+    }
+
+    const [response] = await db
+      .update(subscriptionResponse)
+      .set(updateData)
+      .where(eq(subscriptionResponse.id, id))
+      .returning();
+    return response;
+  } catch (error) {
+    throw new ChatSDKError(
+      'bad_request:database',
+      'Failed to update subscription response',
+    );
+  }
+}
+
+export async function getSubscriptionResponseByUserId({
+  userId,
+}: {
+  userId: string;
+}) {
+  try {
+    const [response] = await db
+      .select()
+      .from(subscriptionResponse)
+      .where(eq(subscriptionResponse.userId, userId))
+      .orderBy(desc(subscriptionResponse.createdAt))
+      .limit(1);
+    return response;
+  } catch (error) {
+    throw new ChatSDKError(
+      'bad_request:database',
+      'Failed to get subscription response by user id',
+    );
+  }
+}
+
+export async function getSubscriptionResponseById({
+  id,
+}: {
+  id: string;
+}) {
+  try {
+    const [response] = await db
+      .select()
+      .from(subscriptionResponse)
+      .where(eq(subscriptionResponse.id, id));
+    return response;
+  } catch (error) {
+    throw new ChatSDKError(
+      'bad_request:database',
+      'Failed to get subscription response by id',
+    );
+  }
+}
+
+export async function getAllSubscriptionResponses({
+  limit = 50,
+  offset = 0,
+}: {
+  limit?: number;
+  offset?: number;
+} = {}) {
+  try {
+    return await db
+      .select()
+      .from(subscriptionResponse)
+      .orderBy(desc(subscriptionResponse.createdAt))
+      .limit(limit)
+      .offset(offset);
+  } catch (error) {
+    throw new ChatSDKError(
+      'bad_request:database',
+      'Failed to get all subscription responses',
+    );
+  }
+}
+
+export async function deleteSubscriptionResponse({
+  id,
+}: {
+  id: string;
+}) {
+  try {
+    return await db
+      .delete(subscriptionResponse)
+      .where(eq(subscriptionResponse.id, id));
+  } catch (error) {
+    throw new ChatSDKError(
+      'bad_request:database',
+      'Failed to delete subscription response',
     );
   }
 }

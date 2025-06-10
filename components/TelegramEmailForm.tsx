@@ -156,22 +156,22 @@ export const TelegramEmailForm = ({ telegramUser, onComplete, onSkip }: Telegram
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999999] min-h-screen w-full">
-      <div className="bg-white dark:bg-zinc-900 rounded-lg w-full h-full md:w-full md:h-full lg:w-[90%] lg:h-[90%] xl:w-[80%] xl:h-[80%] 2xl:w-[70%] 2xl:h-[70%] lg:rounded-xl flex flex-col overflow-hidden">
+      <div className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white dark:bg-zinc-900 rounded-3xl w-[calc(100vw-2rem)] h-[95vh] sm:w-auto sm:h-auto sm:max-w-md sm:max-h-[90vh] sm:rounded-2xl flex flex-col overflow-hidden">
         {/* Header Section */}
-        <div className="flex-shrink-0 p-6 md:p-8 border-b border-gray-200 dark:border-zinc-700">
-          <div className="flex items-center gap-4">
+        <div className="flex-shrink-0 p-4 sm:p-6 border-b border-gray-200 dark:border-zinc-700">
+          <div className="flex items-center gap-3">
             {telegramUser.photo_url && (
               <img 
                 src={telegramUser.photo_url} 
                 alt="Profile" 
-                className="w-16 h-16 md:w-20 md:h-20 rounded-full"
+                className="w-12 h-12 sm:w-16 sm:h-16 rounded-full"
               />
             )}
             <div>
-              <h3 className="text-xl md:text-2xl font-semibold dark:text-zinc-50">
+              <h3 className="text-base sm:text-lg font-medium dark:text-zinc-50">
                 Welcome, {telegramUser.first_name}!
               </h3>
-              <p className="text-sm md:text-base text-gray-500 dark:text-zinc-400">
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-zinc-400">
                 Complete your account setup
               </p>
             </div>
@@ -179,10 +179,10 @@ export const TelegramEmailForm = ({ telegramUser, onComplete, onSkip }: Telegram
         </div>
 
         {/* Form Section */}
-        <div className="flex-1 overflow-y-auto p-6 md:p-8">
-          <form onSubmit={handleSubmit} className="space-y-6 max-w-md mx-auto">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6">
+          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6 max-w-sm mx-auto">
             <div>
-              <label htmlFor="email" className="block text-sm md:text-base font-medium text-gray-700 dark:text-zinc-300 mb-2">
+              <label htmlFor="email" className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">
                 Email Address
               </label>
               <input
@@ -197,7 +197,7 @@ export const TelegramEmailForm = ({ telegramUser, onComplete, onSkip }: Telegram
                 }}
                 required
                 disabled={isSubmitting}
-                className={`w-full px-4 py-3 md:py-4 text-base border rounded-lg focus:outline-none focus:ring-2 dark:bg-zinc-800 dark:text-zinc-100 disabled:opacity-50 disabled:cursor-not-allowed ${
+                className={`w-full px-3 py-2 sm:py-3 text-sm border rounded-lg focus:outline-none focus:ring-2 dark:bg-zinc-800 dark:text-zinc-100 disabled:opacity-50 disabled:cursor-not-allowed ${
                   errors.email 
                     ? 'border-red-500 focus:ring-red-500' 
                     : 'border-gray-300 dark:border-zinc-600 focus:ring-blue-500'
@@ -205,12 +205,12 @@ export const TelegramEmailForm = ({ telegramUser, onComplete, onSkip }: Telegram
                 placeholder="your@email.com"
               />
               {errors.email && (
-                <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.email}</p>
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.email}</p>
               )}
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm md:text-base font-medium text-gray-700 dark:text-zinc-300 mb-2">
+              <label htmlFor="password" className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">
                 Password
               </label>
               <input
@@ -226,7 +226,7 @@ export const TelegramEmailForm = ({ telegramUser, onComplete, onSkip }: Telegram
                 required
                 minLength={6}
                 disabled={isSubmitting}
-                className={`w-full px-4 py-3 md:py-4 text-base border rounded-lg focus:outline-none focus:ring-2 dark:bg-zinc-800 dark:text-zinc-100 disabled:opacity-50 disabled:cursor-not-allowed ${
+                className={`w-full px-3 py-2 sm:py-3 text-sm border rounded-lg focus:outline-none focus:ring-2 dark:bg-zinc-800 dark:text-zinc-100 disabled:opacity-50 disabled:cursor-not-allowed ${
                   errors.password 
                     ? 'border-red-500 focus:ring-red-500' 
                     : 'border-gray-300 dark:border-zinc-600 focus:ring-blue-500'
@@ -234,12 +234,12 @@ export const TelegramEmailForm = ({ telegramUser, onComplete, onSkip }: Telegram
                 placeholder="At least 6 characters"
               />
               {errors.password && (
-                <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.password}</p>
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.password}</p>
               )}
             </div>
 
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm md:text-base font-medium text-gray-700 dark:text-zinc-300 mb-2">
+              <label htmlFor="confirmPassword" className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-zinc-300 mb-1">
                 Confirm Password
               </label>
               <input
@@ -255,7 +255,7 @@ export const TelegramEmailForm = ({ telegramUser, onComplete, onSkip }: Telegram
                 required
                 minLength={6}
                 disabled={isSubmitting}
-                className={`w-full px-4 py-3 md:py-4 text-base border rounded-lg focus:outline-none focus:ring-2 dark:bg-zinc-800 dark:text-zinc-100 disabled:opacity-50 disabled:cursor-not-allowed ${
+                className={`w-full px-3 py-2 sm:py-3 text-sm border rounded-lg focus:outline-none focus:ring-2 dark:bg-zinc-800 dark:text-zinc-100 disabled:opacity-50 disabled:cursor-not-allowed ${
                   errors.confirmPassword 
                     ? 'border-red-500 focus:ring-red-500' 
                     : 'border-gray-300 dark:border-zinc-600 focus:ring-blue-500'
@@ -263,25 +263,25 @@ export const TelegramEmailForm = ({ telegramUser, onComplete, onSkip }: Telegram
                 placeholder="Confirm your password"
               />
               {errors.confirmPassword && (
-                <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.confirmPassword}</p>
+                <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.confirmPassword}</p>
               )}
             </div>
           </form>
         </div>
 
         {/* Footer Section */}
-        <div className="flex-shrink-0 p-6 md:p-8 border-t border-gray-200 dark:border-zinc-700">
-          <div className="max-w-md mx-auto space-y-4">
+        <div className="flex-shrink-0 p-4 sm:p-6 border-t border-gray-200 dark:border-zinc-700">
+          <div className="max-w-sm mx-auto space-y-3">
             <button
               type="submit"
               onClick={handleSubmit}
               disabled={isSubmitting || isSkipping}
-              className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 dark:disabled:bg-blue-700 text-white py-3 md:py-4 px-6 rounded-lg transition-colors flex items-center justify-center gap-3 text-base md:text-lg font-medium disabled:cursor-not-allowed"
+              className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 dark:disabled:bg-blue-700 text-white py-2.5 sm:py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2 text-sm sm:text-base font-medium disabled:cursor-not-allowed"
             >
               {isSubmitting ? (
                 <>
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  Setting up account...
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Setting up...
                 </>
               ) : (
                 'Complete Setup'
@@ -292,11 +292,11 @@ export const TelegramEmailForm = ({ telegramUser, onComplete, onSkip }: Telegram
               type="button"
               onClick={handleSkip}
               disabled={isSubmitting || isSkipping}
-              className="w-full py-3 md:py-4 text-sm md:text-base text-gray-500 hover:text-gray-700 dark:text-zinc-400 dark:hover:text-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full py-2 sm:py-2.5 text-xs sm:text-sm text-gray-500 hover:text-gray-700 dark:text-zinc-400 dark:hover:text-zinc-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1"
             >
               {isSkipping ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-gray-400 dark:border-gray-500 border-t-transparent rounded-full animate-spin" />
+                  <div className="w-3 h-3 border-2 border-gray-400 dark:border-gray-500 border-t-transparent rounded-full animate-spin" />
                   <span>Skipping...</span>
                 </>
               ) : (
