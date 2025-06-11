@@ -147,6 +147,8 @@ function PureMessages({
       style={{
         scrollbarWidth: 'thin',
         scrollbarColor: 'hsl(var(--muted-foreground)) transparent',
+        isolation: 'isolate',
+        WebkitOverflowScrolling: 'touch',
       }}
     >
       <style jsx>{`
