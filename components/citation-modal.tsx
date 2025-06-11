@@ -9,6 +9,7 @@ import { getSourceDescription, SOURCE_DESCRIPTIONS } from './source-descriptions
 import { Button } from './ui/button';
 import { useTelegramHaptics } from '@/hooks/use-telegram-haptics';
 import { Markdown } from './markdown';
+import { createPortal } from 'react-dom';
 
 interface CitationModalProps {
   isOpen: boolean;
@@ -447,7 +448,10 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
     }
   };
 
-  return (
+  // Use portal to render outside the chat container's stacking context
+  if (!isOpen) return null;
+
+  const modalContent = (
     <AnimatePresence>
       {isOpen && (
         <>
@@ -457,7 +461,7 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[9999]"
+            className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[99999]"
           />
 
           {/* Modal */}
@@ -466,7 +470,7 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="fixed right-0 top-0 h-full w-full max-w-lg z-[9999] overflow-hidden citation-modal-glass"
+            className="fixed right-0 top-0 h-full w-full max-w-lg z-[99999] overflow-hidden citation-modal-glass"
           >
             <div className="flex flex-col h-full">
               {/* Header */}
@@ -1235,4 +1239,7 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
       )}
     </AnimatePresence>
   );
+
+  // Render using portal to escape stacking context
+  return typeof window !== 'undefined' ? createPortal(modalContent, document.body) : null;
 } 

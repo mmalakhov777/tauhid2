@@ -64,9 +64,17 @@ export async function POST(request: NextRequest) {
       // Remove language instruction pattern like [Answer in Russian], [Answer in Turkish], etc.
       const cleanedUserContent = userContent.replace(/\n\n\[Answer in [^\]]+\]$/i, '').trim();
       
-      // Get assistant response (first 30 words for a more engaging preview)
+      // Get assistant response and clean it from source citations
       const assistantContent = getUserContent(assistantMessage);
-      const assistantWords = assistantContent.trim().split(/\s+/);
+      
+      // Remove source citations like [1], [2], etc.
+      const cleanedAssistantContent = assistantContent
+        .replace(/\[\d+\]/g, '') // Remove [1], [2], [3], etc.
+        .replace(/\s+/g, ' ') // Replace multiple spaces with single space
+        .trim();
+      
+      // Get first 30 words for preview
+      const assistantWords = cleanedAssistantContent.split(/\s+/);
       const assistantPreview = assistantWords.slice(0, 30).join(' ') + (assistantWords.length > 30 ? '...' : '');
       
       // Create a more engaging preview that focuses on the answer
@@ -77,8 +85,8 @@ export async function POST(request: NextRequest) {
         // Short question - show both Q&A
         return `"${cleanedUserContent}"\n\n${assistantPreview}`;
       } else {
-        // Long question - just show the answer with context
-        return `Islamic guidance: ${assistantPreview}`;
+        // Long question - just show the answer
+        return assistantPreview;
       }
     };
 
