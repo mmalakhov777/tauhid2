@@ -5,19 +5,19 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
 const buttonVariants = cva(
-  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 relative overflow-hidden',
+  'inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0',
   {
     variants: {
       variant: {
-        default: 'bg-primary/80 text-primary-foreground shadow-lg hover:shadow-xl hover:shadow-primary/25 hover:scale-[1.02] active:scale-[0.98] before:absolute before:inset-0 before:bg-gradient-to-r before:from-white/20 before:to-white/10 before:opacity-0 hover:before:opacity-100 before:transition-opacity before:duration-300 before:backdrop-blur-sm',
+        default: 'bg-primary text-primary-foreground hover:bg-primary/90',
         destructive:
-          'bg-destructive/80 text-destructive-foreground shadow-lg hover:shadow-xl hover:shadow-destructive/25 hover:scale-[1.02] active:scale-[0.98] before:absolute before:inset-0 before:bg-white/20 before:opacity-0 hover:before:opacity-100 before:transition-opacity before:duration-300 before:backdrop-blur-sm',
+          'bg-destructive text-destructive-foreground hover:bg-destructive/90',
         outline:
-          'border border-border bg-background/60 backdrop-blur-xl text-foreground shadow-lg hover:shadow-xl hover:bg-accent/80 hover:text-accent-foreground hover:border-border/50 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300',
+          'border border-input bg-background hover:bg-accent hover:text-accent-foreground',
         secondary:
-          'bg-secondary/70 text-secondary-foreground backdrop-blur-xl border border-border/30 shadow-lg hover:shadow-xl hover:bg-secondary/60 hover:border-border/50 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300',
-        ghost: 'bg-transparent hover:bg-accent/60 hover:text-accent-foreground hover:backdrop-blur-xl hover:border hover:border-border/30 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] transition-all duration-300',
-        link: 'text-primary underline-offset-4 hover:underline hover:text-primary/80 transition-colors duration-200',
+          'bg-secondary text-secondary-foreground hover:bg-secondary/80',
+        ghost: 'hover:bg-accent hover:text-accent-foreground',
+        link: 'text-primary underline-offset-4 hover:underline',
       },
       size: {
         default: 'h-10 px-4 py-2',

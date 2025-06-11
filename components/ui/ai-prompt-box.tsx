@@ -4,6 +4,7 @@ import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { ArrowUp, Paperclip, Square, X, StopCircle, Mic, Globe, BrainCog, FolderCode } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "next-themes";
+import { useTranslations } from '@/lib/i18n';
 
 // Utility function for className merging
 const cn = (...classes: (string | undefined | null | false)[]) => classes.filter(Boolean).join(" ");
@@ -108,7 +109,7 @@ const DialogContent = React.forwardRef<
       {children}
       <DialogPrimitive.Close className="absolute right-4 top-4 z-10 rounded-full bg-muted/80 p-2 hover:bg-muted transition-all">
         <X className="h-5 w-5 text-muted-foreground hover:text-foreground" />
-        <span className="sr-only">Close</span>
+        <span className="sr-only">{useTranslations().t('chat.close')}</span>
       </DialogPrimitive.Close>
     </DialogPrimitive.Content>
   </DialogPortal>
@@ -167,11 +168,12 @@ interface ImageViewDialogProps {
   onClose: () => void;
 }
 const ImageViewDialog: React.FC<ImageViewDialogProps> = ({ imageUrl, onClose }) => {
+  const { t } = useTranslations();
   if (!imageUrl) return null;
   return (
     <Dialog open={!!imageUrl} onOpenChange={onClose}>
       <DialogContent className="p-0 border-none bg-transparent shadow-none max-w-[90vw] md:max-w-[800px]">
-        <DialogTitle className="sr-only">Image Preview</DialogTitle>
+        <DialogTitle className="sr-only">{t('chat.imagePreview')}</DialogTitle>
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -181,7 +183,7 @@ const ImageViewDialog: React.FC<ImageViewDialogProps> = ({ imageUrl, onClose }) 
         >
           <img
             src={imageUrl}
-            alt="Full preview"
+            alt={t('chat.fullPreview')}
             className="w-full max-h-[80vh] object-contain rounded-2xl"
           />
         </motion.div>
@@ -522,7 +524,7 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
   const { 
     onSend = () => {}, 
     isLoading = false, 
-    placeholder = "Type your message here...", 
+    placeholder, 
     className,
     onAttachmentClick,
     attachmentCount = 0,
@@ -536,6 +538,7 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
   const mediaRecorderRef = React.useRef<MediaRecorder | null>(null);
   const audioChunksRef = React.useRef<Blob[]>([]);
   const promptBoxRef = React.useRef<HTMLDivElement>(null);
+  const { t } = useTranslations();
 
   const handleSubmit = () => {
     if (input.trim()) {
@@ -622,7 +625,7 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
       
     } catch (error) {
       console.error('Transcription error:', error);
-      alert('Failed to transcribe audio. Please try again.');
+      alert(t('chat.transcriptionFailed'));
     } finally {
       setIsTranscribing(false);
     }
@@ -638,12 +641,12 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
 
   const handleStartRecording = () => {
     // This is called by VoiceRecorder when recording starts
-    console.log("Recording started");
+    console.log(t('chat.recordingStarted'));
   };
 
   const handleStopRecording = (duration: number) => {
     // This is called by VoiceRecorder when recording stops with duration
-    console.log(`Recording stopped after ${duration} seconds`);
+    console.log(`${t('chat.recordingStopped')} ${duration} seconds`);
   };
 
   const hasContent = input.trim() !== "";
@@ -668,7 +671,7 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
         isRecording ? "h-0 overflow-hidden opacity-0" : "opacity-100"
       )}>
         <PromptInputTextarea
-          placeholder={isTranscribing ? "Transcribing..." : placeholder}
+          placeholder={isTranscribing ? t('chat.transcribing') : placeholder || t('chat.typeMessageHere')}
           className="text-base"
         />
       </div>
@@ -692,7 +695,7 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
 
         {/* Attachment Button */}
         {onAttachmentClick && (
-          <PromptInputAction tooltip="Attach files">
+          <PromptInputAction tooltip={t('chat.attachFiles')}>
             <Button
               variant="ghost"
               size="icon"
@@ -711,7 +714,7 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
 
         {/* Stop Button */}
         {showStopButton && onStopClick && (
-          <PromptInputAction tooltip="Stop generation">
+          <PromptInputAction tooltip={t('chat.stopGeneration')}>
             <Button
               variant="ghost"
               size="icon"
@@ -732,14 +735,14 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
           <PromptInputAction
             tooltip={
               isLoading
-                ? "Generating..."
+                ? t('chat.generating')
                 : isTranscribing
-                ? "Transcribing audio..."
+                ? t('chat.transcribingAudio')
                 : isRecording
-                ? "Stop recording"
+                ? t('chat.stopRecording')
                 : hasContent
-                ? "Send message"
-                : "Start voice input"
+                ? t('chat.sendMessage')
+                : t('chat.startVoiceInput')
             }
           >
             <Button
@@ -769,19 +772,19 @@ export const PromptInputBox = React.forwardRef((props: PromptInputBoxProps, ref:
               {isLoading || isTranscribing ? (
                 <>
                 <Square className="h-4 w-4 animate-pulse" />
-                  {isTranscribing && <span className="ml-2 text-sm">Transcribing...</span>}
+                  {isTranscribing && <span className="ml-2 text-sm">{t('chat.transcribing')}</span>}
                 </>
               ) : isRecording ? (
                 <>
                 <StopCircle className="h-4 w-4" />
-                  <span className="ml-2 text-sm">Stop</span>
+                  <span className="ml-2 text-sm">{t('chat.stop')}</span>
                 </>
               ) : hasContent && !isRecording ? (
                 <ArrowUp className="h-4 w-4" />
               ) : (
                 <>
                 <Mic className="h-4 w-4" />
-                  <span className="ml-2 text-sm">Speak</span>
+                  <span className="ml-2 text-sm">{t('chat.speak')}</span>
                 </>
               )}
             </Button>

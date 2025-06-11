@@ -10,6 +10,7 @@ import { Button } from './ui/button';
 import { useTelegramHaptics } from '@/hooks/use-telegram-haptics';
 import { Markdown } from './markdown';
 import { createPortal } from 'react-dom';
+import { useTranslations } from '@/contexts/TranslationContext';
 
 interface CitationModalProps {
   isOpen: boolean;
@@ -20,6 +21,64 @@ interface CitationModalProps {
 }
 
 export function CitationModal({ isOpen, onClose, citation, citationNumber, allMessages }: CitationModalProps) {
+  const { t, translations, language } = useTranslations();
+  
+  // Create a safe translation function that works in portal context
+  const safeT = (key: string): string => {
+    // First try the regular t function
+    try {
+      const result = t(key);
+      // If translation exists and is different from key, use it
+      if (result !== key) {
+        return result;
+      }
+    } catch (error) {
+      // If t() fails, continue to fallback
+    }
+    
+    // Fallback to English translations
+    const fallbacks: Record<string, string> = {
+      'citationModal.citationDetails': 'Citation Details',
+      'citationModal.originalText': 'Original Text',
+      'citationModal.fullText': 'Full Text',
+      'citationModal.sourceType': 'Source Type',
+      'citationModal.metadata': 'Metadata',
+      'citationModal.additionalInformation': 'Additional Information',
+      'citationModal.aiExplanation': 'AI Explanation',
+      'citationModal.analyzingConnection': 'Analyzing the connection...',
+      'citationModal.backToResponse': 'Back to response',
+      'citationModal.noTextAvailable': '[No text available]',
+      'citationModal.noOriginalTextAvailable': '[No original text available]',
+      'citationModal.noTextFromPdf': '[No text available from PDF]',
+      'citationModal.noTranscriptAvailable': '[No transcript available]',
+      'citationModal.failedToLoadPdfText': 'Failed to load text from PDF',
+      'citationModal.failedToLoadYoutubeTranscript': 'Failed to load transcript from YouTube',
+      'citationModal.failedToGenerateExplanation': 'Failed to generate explanation. Please try again.',
+      'citationModal.relevanceScore': 'Relevance Score',
+      'citationModal.source': 'Source',
+      'citationModal.namespace': 'Namespace',
+      'citationModal.searchQuery': 'Search Query',
+      'citationModal.volume': 'Volume',
+      'citationModal.page': 'Page',
+      'citationModal.classicalIslamicText': 'Classical Islamic Text',
+      'citationModal.risaleiNurCollection': 'Risale-i Nur Collection',
+      'citationModal.author': 'Author',
+      'citationModal.extractedText': 'Extracted Text',
+      'citationModal.sourceLink': 'Source Link',
+      'citationModal.url': 'URL',
+      'citationModal.sourceName': 'Source Name',
+      'citationModal.alterLink': 'Alter Link',
+      'citationModal.id': 'ID',
+      'citationModal.typeLabels.risaleNur': 'Risale-i Nur',
+      'citationModal.typeLabels.youtube': 'YouTube',
+      'citationModal.typeLabels.classicalSource': 'Classical Source',
+      'citationModal.typeLabels.modernSource': 'Modern Source',
+      'citationModal.typeLabels.islamqaFatwa': 'IslamQA Fatwa',
+      'citationModal.typeLabels.unknownSource': 'Unknown Source'
+    };
+    
+    return fallbacks[key] || key;
+  };
   const [activeTab, setActiveTab] = useState<'details' | 'original'>('details');
   const [pdfText, setPdfText] = useState<string>('');
   const [isLoadingPdfText, setIsLoadingPdfText] = useState(false);
@@ -102,15 +161,15 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
   }
 
   const typeLabels: Record<string, string> = {
-    'RIS': 'Risale-i Nur',
-    'YT': 'YouTube',
-    'CLS': 'Classical Source',
-    'classic': 'Classical Source',
-    'modern': 'Modern Source',
-    'risale': 'Risale-i Nur',
-    'youtube': 'YouTube',
-    'islamqa_fatwa': 'IslamQA Fatwa',
-    'unknown': 'Unknown Source'
+    'RIS': safeT('citationModal.typeLabels.risaleNur'),
+    'YT': safeT('citationModal.typeLabels.youtube'),
+    'CLS': safeT('citationModal.typeLabels.classicalSource'),
+    'classic': safeT('citationModal.typeLabels.classicalSource'),
+    'modern': safeT('citationModal.typeLabels.modernSource'),
+    'risale': safeT('citationModal.typeLabels.risaleNur'),
+    'youtube': safeT('citationModal.typeLabels.youtube'),
+    'islamqa_fatwa': safeT('citationModal.typeLabels.islamqaFatwa'),
+    'unknown': safeT('citationModal.typeLabels.unknownSource')
   };
 
   const isYouTube = type === 'YT' || type === 'youtube';
@@ -190,7 +249,7 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
           setPdfText(data.text || '');
         } catch (error) {
           console.error('Error fetching PDF text:', error);
-          setPdfTextError('Failed to load text from PDF');
+          setPdfTextError(safeT('citationModal.failedToLoadPdfText'));
         } finally {
           setIsLoadingPdfText(false);
         }
@@ -226,7 +285,7 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
           setYoutubeTranscript(data.transcript || '');
         } catch (error) {
           console.error('Error fetching YouTube transcript:', error);
-          setYoutubeTranscriptError('Failed to load transcript from YouTube');
+          setYoutubeTranscriptError(safeT('citationModal.failedToLoadYoutubeTranscript'));
         } finally {
           setIsLoadingYoutubeTranscript(false);
         }
@@ -441,7 +500,7 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
       }
     } catch (error) {
       console.error('Error generating explanation:', error);
-      setExplanation('Failed to generate explanation. Please try again.');
+      setExplanation(safeT('citationModal.failedToGenerateExplanation'));
       notificationOccurred('error'); // Error haptic
     } finally {
       setIsLoadingExplanation(false);
@@ -490,7 +549,7 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                               : "text-muted-foreground hover:text-foreground"
                           )}
                         >
-                          Citation Details
+                          {safeT('citationModal.citationDetails')}
                         </button>
                         <button
                           onClick={() => setActiveTab('original')}
@@ -501,7 +560,7 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                               : "text-muted-foreground hover:text-foreground"
                           )}
                         >
-                          Original Text
+                          {safeT('citationModal.originalText')}
                         </button>
                       </div>
                     </div>
@@ -518,7 +577,7 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                               : "text-muted-foreground hover:text-foreground"
                           )}
                         >
-                          Citation Details
+                          {safeT('citationModal.citationDetails')}
                         </button>
                         <button
                           onClick={() => setActiveTab('original')}
@@ -529,7 +588,7 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                               : "text-muted-foreground hover:text-foreground"
                           )}
                         >
-                          Original Text
+                          {safeT('citationModal.originalText')}
                         </button>
                       </div>
                     </div>
@@ -546,7 +605,7 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                               : "text-muted-foreground hover:text-foreground"
                           )}
                         >
-                          Citation Details
+                          {safeT('citationModal.citationDetails')}
                         </button>
                         <button
                           onClick={() => setActiveTab('original')}
@@ -557,12 +616,12 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                               : "text-muted-foreground hover:text-foreground"
                           )}
                         >
-                          Original Text
+                          {safeT('citationModal.originalText')}
                         </button>
                       </div>
                     </div>
                   ) : (
-                    <h2 className="text-lg font-semibold">Citation Details</h2>
+                    <h2 className="text-lg font-semibold">{safeT('citationModal.citationDetails')}</h2>
                   )}
                 </div>
                 <button
@@ -612,13 +671,13 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                                 <div className="flex flex-col gap-0.5 text-xs text-muted-foreground mt-auto">
                                   {/* Source info */}
                                   <div className="flex items-center gap-2">
-                                    <span className="text-xs">Classical Islamic Text</span>
+                                    <span className="text-xs">{safeT('citationModal.classicalIslamicText')}</span>
                                   </div>
                                   
                                   {/* Volume info */}
                                   {citation.metadata?.volume && (
                                     <div className="text-xs">
-                                      Volume: {citation.metadata.volume}
+                                      {safeT('citationModal.volume')}: {citation.metadata.volume}
                                     </div>
                                   )}
                                 </div>
@@ -658,13 +717,13 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                                 <div className="flex flex-col gap-0.5 text-xs text-muted-foreground mt-auto">
                                   {/* Source info */}
                                   <div className="flex items-center gap-2">
-                                    <span className="text-xs">Classical Islamic Text</span>
+                                    <span className="text-xs">{safeT('citationModal.classicalIslamicText')}</span>
                                   </div>
                                   
                                   {/* Volume info */}
                                   {citation.metadata?.volume && (
                                     <div className="text-xs">
-                                      Volume: {citation.metadata.volume}
+                                      {safeT('citationModal.volume')}: {citation.metadata.volume}
                                     </div>
                                   )}
                                 </div>
@@ -704,13 +763,13 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                                 <div className="flex flex-col gap-0.5 text-xs text-muted-foreground mt-auto">
                                   {/* Source info */}
                                   <div className="flex items-center gap-2">
-                                    <span className="text-xs">Classical Islamic Text</span>
+                                    <span className="text-xs">{safeT('citationModal.classicalIslamicText')}</span>
                                   </div>
                                   
                                   {/* Volume info */}
                                   {citation.metadata?.volume && (
                                     <div className="text-xs">
-                                      Volume: {citation.metadata.volume}
+                                      {safeT('citationModal.volume')}: {citation.metadata.volume}
                                     </div>
                                   )}
                                 </div>
@@ -750,13 +809,13 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                                 <div className="flex flex-col gap-0.5 text-xs text-muted-foreground mt-auto">
                                   {/* Source info */}
                                   <div className="flex items-center gap-2">
-                                    <span className="text-xs">Classical Islamic Text</span>
+                                    <span className="text-xs">{safeT('citationModal.classicalIslamicText')}</span>
                                   </div>
                                   
                                   {/* Volume info */}
                                   {citation.metadata?.volume && (
                                     <div className="text-xs">
-                                      Volume: {citation.metadata.volume}
+                                      {safeT('citationModal.volume')}: {citation.metadata.volume}
                                     </div>
                                   )}
                                 </div>
@@ -776,7 +835,7 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                           >
                             <h3 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
                               <Sparkles className="w-4 h-4 text-primary" />
-                              AI Explanation
+                              {safeT('citationModal.aiExplanation')}
                             </h3>
                             {isLoadingExplanation && !explanation ? (
                               <div className="flex items-center justify-center py-8">
@@ -785,7 +844,7 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                                     <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary/20"></div>
                                     <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent absolute inset-0"></div>
                                   </div>
-                                  <span className="text-sm text-muted-foreground animate-pulse">Analyzing the connection...</span>
+                                  <span className="text-sm text-muted-foreground animate-pulse">{safeT('citationModal.analyzingConnection')}</span>
                                 </div>
                               </div>
                             ) : (
@@ -802,7 +861,7 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                     {activeTab === 'original' && (
                       <div>
                         <div className="bg-muted/50 rounded-lg p-4 text-sm leading-relaxed border border-border">
-                          {citation.metadata?.original_text || '[No original text available]'}
+                          {citation.metadata?.original_text || safeT('citationModal.noOriginalTextAvailable')}
                         </div>
                       </div>
                     )}
@@ -848,18 +907,18 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                               <div className="flex flex-col gap-0.5 text-xs sm:text-xs text-muted-foreground mt-auto">
                                 {/* Source info */}
                                 <div className="flex items-center gap-2">
-                                  <span className="text-[10px] sm:text-xs">Risale-i Nur Collection</span>
+                                  <span className="text-[10px] sm:text-xs">{safeT('citationModal.risaleiNurCollection')}</span>
                                 </div>
                                 
                                 {/* Author */}
                                 <div className="text-[10px] sm:text-xs">
-                                  Author: Bediuzzaman Said Nursi
+                                  {safeT('citationModal.author')}: Bediuzzaman Said Nursi
                                 </div>
                                 
                                 {/* Page info */}
                                 {citation.metadata?.page_number && (
                                   <div className="text-[10px] sm:text-xs">
-                                    Page: {citation.metadata.page_number}
+                                    {safeT('citationModal.page')}: {citation.metadata.page_number}
                                   </div>
                                 )}
                               </div>
@@ -878,7 +937,7 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                           >
                             <h3 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
                               <Sparkles className="w-4 h-4 text-primary" />
-                              AI Explanation
+                              {safeT('citationModal.aiExplanation')}
                             </h3>
                             {isLoadingExplanation && !explanation ? (
                               <div className="flex items-center justify-center py-8">
@@ -887,7 +946,7 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                                     <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary/20"></div>
                                     <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent absolute inset-0"></div>
                                   </div>
-                                  <span className="text-sm text-muted-foreground animate-pulse">Analyzing the connection...</span>
+                                  <span className="text-sm text-muted-foreground animate-pulse">{safeT('citationModal.analyzingConnection')}</span>
                                 </div>
                               </div>
                             ) : (
@@ -905,7 +964,7 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                       <div className="space-y-4">
                         {/* Mobile: Show extracted text */}
                         <div className="block sm:hidden">
-                          <h3 className="text-sm font-semibold text-muted-foreground mb-2">Extracted Text</h3>
+                          <h3 className="text-sm font-semibold text-muted-foreground mb-2">{safeT('citationModal.extractedText')}</h3>
                           {isLoadingPdfText ? (
                             <div className="flex items-center justify-center py-8">
                               <div className="flex flex-col items-center gap-3">
@@ -922,7 +981,7 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                             </div>
                           ) : (
                             <div className="bg-muted/50 rounded-lg p-4 text-sm leading-relaxed border border-border max-h-96 overflow-y-auto">
-                              {pdfText || citation.text || '[No text available]'}
+                              {pdfText || citation.text || safeT('citationModal.noTextAvailable')}
                             </div>
                           )}
                         </div>
@@ -957,13 +1016,13 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                              citation.metadata.source_link.startsWith('https://'));
                           
                           const linkToUse = isSourceLinkValid ? citation.metadata.source_link : citation.metadata?.url;
-                          const labelToUse = isSourceLinkValid ? 'Source Link' : 'URL';
+                          const labelToUse = isSourceLinkValid ? safeT('citationModal.sourceLink') : safeT('citationModal.url');
                           
                           return linkToUse ? (
                             <div className="space-y-4">
                               {/* Source Name - Domain from link */}
                               <div>
-                                <h3 className="text-sm font-semibold text-muted-foreground mb-2">Source Name</h3>
+                                <h3 className="text-sm font-semibold text-muted-foreground mb-2">{safeT('citationModal.sourceName')}</h3>
                                 <div className="bg-muted/50 rounded-lg p-4 border border-border">
                                   <div className="flex items-start gap-3">
                                     {/* Favicon */}
@@ -1040,7 +1099,7 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                               {citation.metadata?.url && citation.metadata.url !== linkToUse && (
                                 <div>
                                   <h3 className="text-sm font-semibold text-muted-foreground mb-2">
-                                    Alter Link
+                                    {safeT('citationModal.alterLink')}
                                   </h3>
                                   <div className="bg-muted/50 rounded-lg p-3 border border-border">
                                     <a 
@@ -1067,7 +1126,7 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                           >
                             <h3 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
                               <Sparkles className="w-4 h-4 text-primary" />
-                              AI Explanation
+                              {safeT('citationModal.aiExplanation')}
                             </h3>
                             {isLoadingExplanation && !explanation ? (
                               <div className="flex items-center justify-center py-8">
@@ -1076,7 +1135,7 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                                     <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary/20"></div>
                                     <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent absolute inset-0"></div>
                                   </div>
-                                  <span className="text-sm text-muted-foreground animate-pulse">Analyzing the connection...</span>
+                                  <span className="text-sm text-muted-foreground animate-pulse">{safeT('citationModal.analyzingConnection')}</span>
                                 </div>
                               </div>
                             ) : (
@@ -1092,9 +1151,9 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                     {/* Original Text Tab */}
                     {activeTab === 'original' && (
                       <div className="space-y-4">
-                        <h3 className="text-sm font-semibold text-muted-foreground mb-2">Full Text</h3>
+                        <h3 className="text-sm font-semibold text-muted-foreground mb-2">{safeT('citationModal.fullText')}</h3>
                         <div className="bg-muted/50 rounded-lg p-4 text-sm leading-relaxed border border-border">
-                          {citation.text || '[No text available]'}
+                          {citation.text || safeT('citationModal.noTextAvailable')}
                         </div>
                       </div>
                     )}
@@ -1137,7 +1196,7 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                           >
                             <h3 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
                               <Sparkles className="w-4 h-4 text-primary" />
-                              AI Explanation
+                              {safeT('citationModal.aiExplanation')}
                             </h3>
                             {isLoadingExplanation && !explanation ? (
                               <div className="flex items-center justify-center py-8">
@@ -1146,7 +1205,7 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                                     <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary/20"></div>
                                     <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent absolute inset-0"></div>
                                   </div>
-                                  <span className="text-sm text-muted-foreground animate-pulse">Analyzing the connection...</span>
+                                  <span className="text-sm text-muted-foreground animate-pulse">{safeT('citationModal.analyzingConnection')}</span>
                                 </div>
                               </div>
                             ) : (
@@ -1163,7 +1222,7 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                         {/* Source Type */}
                         {!isRisale && (
                           <div>
-                            <h3 className="text-sm font-semibold text-muted-foreground mb-2">Source Type</h3>
+                            <h3 className="text-sm font-semibold text-muted-foreground mb-2">{safeT('citationModal.sourceType')}</h3>
                             <div className="flex items-center gap-2">
                               <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium">
                                 {typeLabels[type] || type}
@@ -1175,9 +1234,9 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                         {/* Full Text */}
                         {!isRisale && (
                           <div>
-                            <h3 className="text-sm font-semibold text-muted-foreground mb-2">Full Text</h3>
+                            <h3 className="text-sm font-semibold text-muted-foreground mb-2">{safeT('citationModal.fullText')}</h3>
                             <div className="bg-muted/50 rounded-lg p-4 text-sm leading-relaxed border border-border">
-                              {citation.text || '[No text available]'}
+                              {citation.text || safeT('citationModal.noTextAvailable')}
                             </div>
                           </div>
                         )}
@@ -1185,42 +1244,42 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                         {/* Metadata */}
                         <div>
                           {!isRisale && (
-                            <h3 className="text-sm font-semibold text-muted-foreground mb-2">Metadata</h3>
+                            <h3 className="text-sm font-semibold text-muted-foreground mb-2">{safeT('citationModal.metadata')}</h3>
                           )}
                           <div className="space-y-2">
                             {/* Non-YouTube, non-Risale citations show all fields as before */}
                             <>
                               {citation.score !== undefined && (
                                 <div className="flex justify-between py-2 border-b border-border">
-                                  <span className="text-sm text-muted-foreground">Relevance Score</span>
+                                  <span className="text-sm text-muted-foreground">{safeT('citationModal.relevanceScore')}</span>
                                   <span className="text-sm font-mono text-foreground">{citation.score.toFixed(4)}</span>
                                 </div>
                               )}
                               
                               {citation.metadata?.source && (
                                 <div className="flex justify-between py-2 border-b border-border">
-                                  <span className="text-sm text-muted-foreground">Source</span>
+                                  <span className="text-sm text-muted-foreground">{safeT('citationModal.source')}</span>
                                   <span className="text-sm font-mono text-foreground">{citation.metadata.source}</span>
                                 </div>
                               )}
                               
                               {citation.namespace && (
                                 <div className="flex justify-between py-2 border-b border-border">
-                                  <span className="text-sm text-muted-foreground">Namespace</span>
+                                  <span className="text-sm text-muted-foreground">{safeT('citationModal.namespace')}</span>
                                   <span className="text-sm font-mono text-foreground">{citation.namespace}</span>
                                 </div>
                               )}
                               
                               {citation.id && (
                                 <div className="flex justify-between py-2 border-b border-border">
-                                  <span className="text-sm text-muted-foreground">ID</span>
+                                  <span className="text-sm text-muted-foreground">{safeT('citationModal.id')}</span>
                                   <span className="text-xs font-mono text-foreground">{citation.id}</span>
                                 </div>
                               )}
 
                               {citation.query && (
                                 <div className="py-2 border-b border-border">
-                                  <span className="text-sm text-muted-foreground">Search Query</span>
+                                  <span className="text-sm text-muted-foreground">{safeT('citationModal.searchQuery')}</span>
                                   <div className="mt-1 text-sm font-mono bg-muted/50 rounded p-2 border border-border">
                                     {citation.query}
                                   </div>
@@ -1233,7 +1292,7 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                         {/* Additional metadata fields */}
                         {citation.metadata && Object.keys(citation.metadata).length > 1 && (
                           <div>
-                            <h3 className="text-sm font-semibold text-muted-foreground mb-2">Additional Information</h3>
+                            <h3 className="text-sm font-semibold text-muted-foreground mb-2">{safeT('citationModal.additionalInformation')}</h3>
                             <div className="space-y-2">
                               {Object.entries(citation.metadata).map(([key, value]) => {
                                 // Always exclude these fields from additional info
@@ -1263,7 +1322,7 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                   onClick={onClose}
                   className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium py-3"
                 >
-                  Back to response
+                  {safeT('citationModal.backToResponse')}
                 </Button>
               </div>
             </div>

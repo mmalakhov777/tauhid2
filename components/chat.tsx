@@ -4,6 +4,7 @@ import type { Attachment, UIMessage } from 'ai';
 import { useChat } from '@ai-sdk/react';
 import { useEffect, useState, useRef } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
+import { useTranslations } from '@/lib/i18n';
 // import { ChatHeader } from '@/components/chat-header';
 import type { Vote } from '@/lib/db/schema';
 import { fetcher, fetchWithErrorHandlers, generateUUID } from '@/lib/utils';
@@ -57,6 +58,7 @@ export function Chat({
     userAgent: typeof window !== 'undefined' ? window.navigator.userAgent.substring(0, 100) : 'server'
   });
 
+  const { t } = useTranslations();
   const { mutate } = useSWRConfig();
   const [vectorSearchProgress, setVectorSearchProgress] = useState<any>(null);
   const [vectorSearchData, setVectorSearchData] = useState<any>(null);
@@ -547,7 +549,7 @@ export function Chat({
           <div 
             className="fixed inset-0 z-0 dark:hidden"
             style={{
-              backgroundImage: "url('/images/bacground_white.jpeg')",
+              backgroundImage: "url('/images/bg_white_new.png')",
               backgroundSize: 'cover',
               backgroundPosition: 'center',
               backgroundRepeat: 'no-repeat',
@@ -559,7 +561,7 @@ export function Chat({
           <div 
             className="fixed inset-0 z-0 hidden dark:block"
             style={{
-              backgroundImage: "url('/images/bacground_night.jpeg')",
+              backgroundImage: "url('/images/bg_night_new.png')",
               backgroundSize: 'cover',
               backgroundPosition: 'center',
               backgroundRepeat: 'no-repeat',
@@ -570,7 +572,7 @@ export function Chat({
         </>
       )}
       
-      <div className="flex flex-col min-w-0 h-dvh bg-transparent overflow-hidden pb-5 md:pb-0 relative z-10 border-l-0">
+      <div className="flex flex-col min-w-0 h-dvh bg-transparent overflow-hidden pb-5 md:pb-0 relative z-0">
         {/* ChatHeader commented out - replaced by floating New Chat button
         <ChatHeader
           chatId={id}
@@ -608,10 +610,10 @@ export function Chat({
                 {/* Greeting section */}
                 <div className="mb-6 sm:mb-8 w-full max-w-full">
                   <div className="text-2xl sm:text-3xl md:text-4xl font-semibold mb-3 text-left break-words text-foreground">
-                    Assalamu Alaikum!
+                    {t('chatPage.greeting')}
                   </div>
                   <div className="text-lg sm:text-xl md:text-2xl text-muted-foreground text-left break-words">
-                    How can I assist you with Islamic knowledge today?
+                    {t('chatPage.subGreeting')}
                   </div>
                 </div>
                 

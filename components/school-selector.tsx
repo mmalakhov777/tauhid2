@@ -13,6 +13,7 @@ import {
 import { cn } from '@/lib/utils';
 import { ChevronDownIcon, GraduationCap } from 'lucide-react';
 import { SourceSelector, type SourceSelection, DEFAULT_SOURCES } from './source-selector';
+import { useTranslations } from '@/lib/i18n';
 
 export interface SchoolSelection {
   hanafi: boolean;
@@ -28,37 +29,6 @@ const DEFAULT_SCHOOLS: SchoolSelection = {
   hanbali: false,
 };
 
-const schools = [
-  {
-    id: 'hanafi' as keyof SchoolSelection,
-    label: 'Hanafi',
-    description: 'Hanafi school of Islamic jurisprudence',
-    icon: <GraduationCap className="h-4 w-4" />,
-    available: true,
-  },
-  {
-    id: 'shafii' as keyof SchoolSelection,
-    label: 'Shafi\'i',
-    description: 'Shafi\'i school of Islamic jurisprudence',
-    icon: <GraduationCap className="h-4 w-4" />,
-    available: false,
-  },
-  {
-    id: 'maliki' as keyof SchoolSelection,
-    label: 'Maliki',
-    description: 'Maliki school of Islamic jurisprudence',
-    icon: <GraduationCap className="h-4 w-4" />,
-    available: false,
-  },
-  {
-    id: 'hanbali' as keyof SchoolSelection,
-    label: 'Hanbali',
-    description: 'Hanbali school of Islamic jurisprudence',
-    icon: <GraduationCap className="h-4 w-4" />,
-    available: false,
-  },
-];
-
 export function SchoolSelector({
   selectedSchools = DEFAULT_SCHOOLS,
   onSchoolsChange,
@@ -73,6 +43,38 @@ export function SchoolSelector({
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const { t } = useTranslations();
+
+  const schools = [
+    {
+      id: 'hanafi' as keyof SchoolSelection,
+      label: t('schools.hanafi'),
+      description: t('schools.schoolDescription.hanafi'),
+      icon: <GraduationCap className="h-4 w-4" />,
+      available: true,
+    },
+    {
+      id: 'shafii' as keyof SchoolSelection,
+      label: t('schools.shafii'),
+      description: t('schools.schoolDescription.shafii'),
+      icon: <GraduationCap className="h-4 w-4" />,
+      available: false,
+    },
+    {
+      id: 'maliki' as keyof SchoolSelection,
+      label: t('schools.maliki'),
+      description: t('schools.schoolDescription.maliki'),
+      icon: <GraduationCap className="h-4 w-4" />,
+      available: false,
+    },
+    {
+      id: 'hanbali' as keyof SchoolSelection,
+      label: t('schools.hanbali'),
+      description: t('schools.schoolDescription.hanbali'),
+      icon: <GraduationCap className="h-4 w-4" />,
+      available: false,
+    },
+  ];
 
   const handleSchoolToggle = useCallback((schoolId: keyof SchoolSelection, event?: Event) => {
     // Prevent dropdown from closing
@@ -102,7 +104,7 @@ export function SchoolSelector({
       timestamp: new Date().toISOString()
     });
     onSchoolsChange?.(newSchools);
-  }, [selectedSchools, onSchoolsChange]);
+  }, [selectedSchools, onSchoolsChange, schools]);
 
   const selectedCount = Object.values(selectedSchools).filter(Boolean).length;
   const allSelected = selectedCount === schools.length;
@@ -116,12 +118,12 @@ export function SchoolSelector({
     
     if (availableSelectedCount === 1) {
       const selectedSchool = schools.find(s => selectedSchools[s.id] && s.available);
-      return selectedSchool?.label || 'School';
+      return selectedSchool?.label || t('schools.school');
     }
     if (availableSelectedCount > 1) {
-      return `${availableSelectedCount} Schools`;
+      return `${availableSelectedCount} ${t('schools.schools')}`;
     }
-    return 'School';
+    return t('schools.school');
   };
 
   return (
@@ -145,7 +147,7 @@ export function SchoolSelector({
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="start" className="min-w-[300px] bg-white/10 dark:bg-gray-900/10 backdrop-blur-md border border-white/20 shadow-lg rounded-xl p-2">
-        <DropdownMenuLabel>Islamic School</DropdownMenuLabel>
+        <DropdownMenuLabel>{t('schools.islamicSchool')}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         
         {schools.map((school) => (
@@ -167,7 +169,7 @@ export function SchoolSelector({
                   {school.label}
                   {!school.available && (
                     <span className="text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded">
-                      Soon
+                      {t('schools.comingSoon')}
                     </span>
                   )}
                 </div>
@@ -190,7 +192,7 @@ export function SchoolSelector({
         
         {/* Source Selector as second level */}
         <div className="px-2 py-2">
-          <DropdownMenuLabel className="px-0 py-1 text-xs">Search Sources</DropdownMenuLabel>
+          <DropdownMenuLabel className="px-0 py-1 text-xs">{t('sources.searchSources')}</DropdownMenuLabel>
           <SourceSelector
             selectedSources={selectedSources}
             onSourcesChange={onSourcesChange}

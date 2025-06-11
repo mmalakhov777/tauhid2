@@ -1,6 +1,7 @@
 import type { Attachment } from 'ai';
 
 import { LoaderIcon } from './icons';
+import { useTranslations } from '@/lib/i18n';
 
 export const PreviewAttachment = ({
   attachment,
@@ -10,6 +11,7 @@ export const PreviewAttachment = ({
   isUploading?: boolean;
 }) => {
   const { name, url, contentType } = attachment;
+  const { t } = useTranslations();
 
   return (
     <div data-testid="input-attachment-preview" className="flex flex-col gap-2">
@@ -21,7 +23,7 @@ export const PreviewAttachment = ({
             <img
               key={url}
               src={url}
-              alt={name ?? 'An image attachment'}
+              alt={name ?? t('chat.imageAttachment')}
               className="rounded-md size-full object-cover"
             />
           ) : (

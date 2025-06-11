@@ -23,6 +23,7 @@ import { signOut, useSession } from 'next-auth/react';
 import { useTelegram } from '@/hooks/useTelegram';
 import { SkeletonWave } from './ui/skeleton';
 import { ProfileModal } from './profile-modal';
+import { useTranslations } from '@/lib/i18n';
 
 export function SidebarUserNav({ user }: { user: User }) {
   const { theme, setTheme } = useTheme();
@@ -30,6 +31,7 @@ export function SidebarUserNav({ user }: { user: User }) {
   const { status } = useSession();
   const [showProfileModal, setShowProfileModal] = useState(false);
   const { user: telegramUser } = useTelegram();
+  const { t } = useTranslations();
 
   const isGuest = user.email?.includes('guest-');
   const isTelegramUser = user.email?.startsWith('telegram_') && user.email?.endsWith('@telegram.local');
@@ -37,7 +39,7 @@ export function SidebarUserNav({ user }: { user: User }) {
   // Determine display name and avatar
   const displayName = telegramUser?.first_name && isTelegramUser
     ? `${telegramUser.first_name} ${telegramUser.last_name || ''}`.trim()
-    : user.name || user.email?.split('@')[0] || 'User';
+    : user.name || user.email?.split('@')[0] || t('sidebar.user');
 
   const truncatedDisplayName = displayName.length > 20 
     ? `${displayName.slice(0, 20)}...` 
@@ -69,7 +71,7 @@ export function SidebarUserNav({ user }: { user: User }) {
                   <div className="flex items-center gap-2 min-w-0">
                     <Image
                       src={avatarUrl}
-                      alt={truncatedDisplayName ?? 'User Avatar'}
+                      alt={truncatedDisplayName ?? t('sidebar.userAvatar')}
                       width={24}
                       height={24}
                       className="rounded-full flex-shrink-0"
@@ -100,7 +102,7 @@ export function SidebarUserNav({ user }: { user: User }) {
                       {telegramUser.photo_url && (
                         <Image
                           src={telegramUser.photo_url}
-                          alt="Profile"
+                          alt={t('sidebar.profileImage')}
                           width={40}
                           height={40}
                           className="rounded-full"
@@ -117,7 +119,7 @@ export function SidebarUserNav({ user }: { user: User }) {
                         )}
                         {telegramUser.is_premium && (
                           <span className="text-xs text-blue-600 dark:text-blue-400">
-                            Premium User ⭐
+                            {t('sidebar.premiumUser')} ⭐
                           </span>
                         )}
                       </div>
@@ -131,7 +133,7 @@ export function SidebarUserNav({ user }: { user: User }) {
                 className="cursor-pointer text-left bg-transparent border border-transparent hover:bg-white/15 hover:text-accent-foreground transition-all duration-200 rounded-lg mx-1 hover:shadow-sm hover:border-white/30"
                 onSelect={() => setShowProfileModal(true)}
               >
-                Profile
+                {t('sidebar.profile')}
               </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-white/20" />
               <DropdownMenuItem
@@ -139,7 +141,7 @@ export function SidebarUserNav({ user }: { user: User }) {
                 className="cursor-pointer text-left bg-transparent border border-transparent hover:bg-white/15 hover:text-accent-foreground transition-all duration-200 rounded-lg mx-1 hover:shadow-sm hover:border-white/30"
                 onSelect={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               >
-                {`Toggle ${theme === 'light' ? 'dark' : 'light'} mode`}
+                {theme === 'light' ? t('sidebar.toggleDarkMode') : t('sidebar.toggleLightMode')}
               </DropdownMenuItem>
               <DropdownMenuSeparator className="bg-white/20" />
               <DropdownMenuItem asChild data-testid="user-nav-item-auth">
@@ -148,7 +150,7 @@ export function SidebarUserNav({ user }: { user: User }) {
                   className="w-full cursor-pointer text-left bg-transparent border border-transparent hover:bg-white/15 hover:text-accent-foreground transition-all duration-200 rounded-lg mx-1 hover:shadow-sm hover:border-white/30"
                   onClick={() => {
                     if (status === 'loading') {
-                      console.log('Checking authentication status, please try again!');
+                      console.log(t('sidebar.checkingAuthStatus'));
                       return;
                     }
 
@@ -161,7 +163,7 @@ export function SidebarUserNav({ user }: { user: User }) {
                     }
                   }}
                 >
-                  {isGuest ? 'Login to your account' : 'Sign out'}
+                  {isGuest ? t('sidebar.loginToYourAccount') : t('sidebar.signOut')}
                 </button>
               </DropdownMenuItem>
             </DropdownMenuContent>

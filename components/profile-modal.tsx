@@ -7,6 +7,7 @@ import { createPortal } from 'react-dom';
 import { useTelegram } from '@/hooks/useTelegram';
 import { guestRegex } from '@/lib/constants';
 import { entitlementsByUserType } from '@/lib/ai/entitlements';
+import { useTranslations } from '@/lib/i18n';
 import {
   User,
   Mail,
@@ -113,6 +114,7 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
   const [userStats, setUserStats] = useState<UserStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const { t } = useTranslations();
 
   // Ensure we're mounted on the client
   useEffect(() => {
@@ -131,7 +133,7 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
   const displayName = telegramUser && isTelegramUser
     ? `${telegramUser.first_name}${telegramUser.last_name ? ' ' + telegramUser.last_name : ''}`
     : isGuest 
-    ? 'Guest User' 
+    ? t('profileModal.guest') + ' User' 
     : user?.name || user?.email;
     
   const avatarUrl = telegramUser?.photo_url && isTelegramUser
@@ -216,7 +218,7 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
             <div className="p-4 sm:p-6 pb-2 sm:pb-4">
               <h2 className="text-lg sm:text-xl font-normal tracking-tight text-gray-900 dark:text-white flex items-center gap-2">
                 <User className="h-4 w-4 sm:h-5 sm:w-5" />
-                Profile Information
+                {t('profileModal.profileInformation')}
               </h2>
             </div>
 
@@ -225,7 +227,7 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
               {/* User Info Section */}
               <CustomCard>
                 <div className="space-y-4">
-                  <h3 className="text-sm sm:text-base font-medium text-gray-900 dark:text-white">User Information</h3>
+                  <h3 className="text-sm sm:text-base font-medium text-gray-900 dark:text-white">{t('profileModal.userInformation')}</h3>
                   
                   <div className="flex items-center gap-3">
                     <Image
@@ -238,12 +240,12 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
                     <div className="flex-1 space-y-1 min-w-0">
                       <div className="flex items-center gap-1 flex-wrap">
                         <h4 className="text-sm sm:text-base font-medium text-gray-900 dark:text-white truncate">{displayName}</h4>
-                        {isGuest && <CustomBadge variant="secondary">Guest</CustomBadge>}
-                        {isTelegramUser && <CustomBadge variant="outline">Telegram</CustomBadge>}
+                        {isGuest && <CustomBadge variant="secondary">{t('profileModal.guest')}</CustomBadge>}
+                        {isTelegramUser && <CustomBadge variant="outline">{t('profileModal.telegram')}</CustomBadge>}
                         {telegramUser?.is_premium && (
                           <CustomBadge variant="default">
                             <Crown className="h-3 w-3 mr-1" />
-                            Premium
+                            {t('profileModal.premium')}
                           </CustomBadge>
                         )}
                       </div>
@@ -270,12 +272,12 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
                         <div className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
                           <Globe className="h-3 w-3 flex-shrink-0" />
-                          <span>Language: {telegramUser.language_code?.toUpperCase() || 'Unknown'}</span>
+                          <span>{t('profileModal.language')}: {telegramUser.language_code?.toUpperCase() || t('profileModal.unknown')}</span>
                         </div>
                         {telegramUser.allows_write_to_pm !== undefined && (
                           <div className="flex items-center gap-1 text-gray-600 dark:text-gray-400">
                             <MessageSquare className="h-3 w-3 flex-shrink-0" />
-                            <span>DM: {telegramUser.allows_write_to_pm ? 'Allowed' : 'Restricted'}</span>
+                            <span>{t('profileModal.dm')}: {telegramUser.allows_write_to_pm ? t('profileModal.dmAllowed') : t('profileModal.dmRestricted')}</span>
                           </div>
                         )}
                       </div>
@@ -289,19 +291,19 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
                 <div className="space-y-4">
                   <h3 className="text-sm sm:text-base font-medium text-gray-900 dark:text-white flex items-center gap-2">
                     <Star className="h-3 w-3 sm:h-4 sm:w-4" />
-                    Account Type & Limits
+                    {t('profileModal.accountTypeLimits')}
                   </h3>
                   
                   <div className="flex items-center justify-between">
-                    <span className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">Account Type:</span>
+                    <span className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">{t('profileModal.accountType')}</span>
                     <CustomBadge variant={userType === 'guest' ? 'secondary' : 'default'}>
-                      {userType === 'guest' ? 'Guest' : 'Regular'}
+                      {userType === 'guest' ? t('profileModal.guestAccount') : t('profileModal.regularAccount')}
                     </CustomBadge>
                   </div>
                   
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-gray-900 dark:text-white">Messages Today:</span>
+                      <span className="text-gray-900 dark:text-white">{t('profileModal.messagesToday')}</span>
                       <span className="font-medium text-gray-900 dark:text-white">
                         {loading ? '...' : userStats?.messagesLast24h || 0} / {entitlements.maxMessagesPerDay}
                       </span>
@@ -317,31 +319,31 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
                   <div className="space-y-4">
                     <h3 className="text-sm sm:text-base font-medium text-gray-900 dark:text-white flex items-center gap-2">
                       <Bot className="h-3 w-3 sm:h-4 sm:w-4 text-blue-500" />
-                      Telegram User Data
+                      {t('profileModal.telegramUserData')}
                     </h3>
                     
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Telegram ID:</span>
+                          <span className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('profileModal.telegramId')}</span>
                           <span className="font-mono text-xs text-gray-900 dark:text-white">{telegramUser.id}</span>
                         </div>
                         
                         {telegramUser.username && (
                           <div className="flex items-center justify-between">
-                            <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Username:</span>
+                            <span className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('profileModal.username')}</span>
                             <span className="font-mono text-xs text-gray-900 dark:text-white">@{telegramUser.username}</span>
                           </div>
                         )}
                         
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-medium text-gray-600 dark:text-gray-400">First Name:</span>
+                          <span className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('profileModal.firstName')}</span>
                           <span className="text-xs text-gray-900 dark:text-white">{telegramUser.first_name}</span>
                         </div>
                         
                         {telegramUser.last_name && (
                           <div className="flex items-center justify-between">
-                            <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Last Name:</span>
+                            <span className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('profileModal.lastName')}</span>
                             <span className="text-xs text-gray-900 dark:text-white">{telegramUser.last_name}</span>
                           </div>
                         )}
@@ -349,35 +351,35 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
                       
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Language:</span>
-                          <span className="text-xs text-gray-900 dark:text-white">{telegramUser.language_code?.toUpperCase() || 'Unknown'}</span>
+                          <span className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('profileModal.language')}</span>
+                          <span className="text-xs text-gray-900 dark:text-white">{telegramUser.language_code?.toUpperCase() || t('profileModal.unknown')}</span>
                         </div>
                         
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Premium:</span>
+                          <span className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('profileModal.premium')}</span>
                           <CustomBadge variant={telegramUser.is_premium ? "default" : "secondary"}>
                             {telegramUser.is_premium ? (
                               <>
                                 <Crown className="h-3 w-3 mr-1" />
-                                Yes
+                                {t('profileModal.yes')}
                               </>
                             ) : (
-                              'No'
+                              t('profileModal.no')
                             )}
                           </CustomBadge>
                         </div>
                         
                         <div className="flex items-center justify-between">
-                          <span className="text-xs font-medium text-gray-600 dark:text-gray-400">DM Access:</span>
+                          <span className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('profileModal.dmAccess')}</span>
                           <CustomBadge variant={telegramUser.allows_write_to_pm ? "default" : "secondary"}>
-                            {telegramUser.allows_write_to_pm ? 'Allowed' : 'Restricted'}
+                            {telegramUser.allows_write_to_pm ? t('profileModal.dmAllowed') : t('profileModal.dmRestricted')}
                           </CustomBadge>
                         </div>
                         
                         {telegramUser.photo_url && (
                           <div className="flex items-center justify-between">
-                            <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Profile Photo:</span>
-                            <CustomBadge variant="default">Available</CustomBadge>
+                            <span className="text-xs font-medium text-gray-600 dark:text-gray-400">{t('profileModal.profilePhoto')}</span>
+                            <CustomBadge variant="default">{t('profileModal.available')}</CustomBadge>
                           </div>
                         )}
                       </div>
@@ -388,11 +390,10 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
                     <div className="text-xs text-gray-600 dark:text-gray-400 bg-gray-100/80 dark:bg-gray-800/80 p-3 rounded-lg">
                       <div className="flex items-center gap-2 mb-2">
                         <Bot className="h-4 w-4" />
-                        <span className="font-medium">Telegram Integration</span>
+                        <span className="font-medium">{t('profileModal.telegramIntegration')}</span>
                       </div>
                       <p>
-                        This account is linked to Telegram. Your profile information is automatically 
-                        synchronized with your Telegram account data.
+                        {t('profileModal.telegramIntegrationDescription')}
                       </p>
                     </div>
                   </div>
@@ -404,30 +405,30 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
                 <div className="space-y-4">
                   <h3 className="text-sm sm:text-base font-medium text-gray-900 dark:text-white flex items-center gap-2">
                     <Activity className="h-3 w-3 sm:h-4 sm:w-4" />
-                    Usage Statistics
+                    {t('profileModal.usageStatistics')}
                   </h3>
                   
                   {loading ? (
-                    <div className="text-center text-xs text-gray-600 dark:text-gray-400">Loading...</div>
+                    <div className="text-center text-xs text-gray-600 dark:text-gray-400">{t('profileModal.loading')}</div>
                   ) : userStats ? (
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       <div className="text-center p-2 sm:p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                         <div className="text-lg sm:text-xl font-semibold text-blue-600 dark:text-blue-400">{userStats.messagesLast24h}</div>
-                        <div className="text-xs text-gray-600 dark:text-gray-400">24h</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">{t('profileModal.last24h')}</div>
                       </div>
                       <div className="text-center p-2 sm:p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
                         <div className="text-lg sm:text-xl font-semibold text-green-600 dark:text-green-400">{userStats.totalMessages}</div>
-                        <div className="text-xs text-gray-600 dark:text-gray-400">Total</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">{t('profileModal.total')}</div>
                       </div>
                       <div className="text-center p-2 sm:p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
                         <div className="text-lg sm:text-xl font-semibold text-purple-600 dark:text-purple-400">
                           {Math.floor((Date.now() - new Date(userStats.joinDate).getTime()) / (1000 * 60 * 60 * 24))}
                         </div>
-                        <div className="text-xs text-gray-600 dark:text-gray-400">Days</div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400">{t('profileModal.days')}</div>
                       </div>
                     </div>
                   ) : (
-                    <div className="text-center text-xs text-gray-600 dark:text-gray-400">No stats available</div>
+                    <div className="text-center text-xs text-gray-600 dark:text-gray-400">{t('profileModal.noStatsAvailable')}</div>
                   )}
                   
                   {userStats && (
@@ -435,7 +436,7 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
                       <CustomSeparator />
                       <div className="flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400">
                         <Calendar className="h-3 w-3" />
-                        <span>Member since: {new Date(userStats.joinDate).toLocaleDateString()}</span>
+                        <span>{t('profileModal.memberSince')} {new Date(userStats.joinDate).toLocaleDateString()}</span>
                       </div>
                     </>
                   )}
@@ -447,10 +448,10 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
                 <CustomCard className="border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-900/30">
                   <div className="flex items-center gap-2 text-amber-800 dark:text-amber-200 mb-2">
                     <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
-                    <span className="font-medium">Guest Session</span>
+                    <span className="font-medium">{t('profileModal.guestSession')}</span>
                   </div>
                   <p className="text-sm text-amber-700 dark:text-amber-300">
-                    You&apos;re using a temporary guest account. Create an account to save your chat history and get higher message limits.
+                    {t('profileModal.guestSessionDescription')}
                   </p>
                 </CustomCard>
               )}

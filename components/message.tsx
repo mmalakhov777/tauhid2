@@ -26,6 +26,7 @@ import { SourcePreviewCards } from './source-preview-cards';
 import { determineCitationType, filterEligibleCitations, formatBookOrNamespace, RIS_NAMESPACES, YT_NAMESPACES } from './citation-utils';
 import { SkeletonCard, SkeletonDots, SkeletonText } from './ui/skeleton';
 import { useTelegramHaptics } from '@/hooks/use-telegram-haptics';
+import { useTranslations } from '@/lib/i18n';
 
 // Global debug state
 let globalDebugEnabled = false;
@@ -76,6 +77,7 @@ const PurePreviewMessage = ({
   const [isQueryMappingExpanded, setIsQueryMappingExpanded] = useState(false);
   const { impactOccurred, selectionChanged } = useTelegramHaptics();
   const previousContentLengthRef = useRef(0);
+  const { t } = useTranslations();
 
   // Listen for debug toggle events
   useEffect(() => {
@@ -205,7 +207,7 @@ const PurePreviewMessage = ({
                                 <PencilEditIcon />
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent>Edit message</TooltipContent>
+                            <TooltipContent>{t('message.editMessage')}</TooltipContent>
                           </Tooltip>
                         )} */}
 
@@ -301,7 +303,7 @@ const PurePreviewMessage = ({
                                         : "border-transparent text-muted-foreground hover:text-foreground"
                                     )}
                                   >
-                                    Response
+                                    {t('message.response')}
                                   </button>
                                   <button
                                     onClick={() => handleTabChange('sources')}
@@ -312,7 +314,7 @@ const PurePreviewMessage = ({
                                         : "border-transparent text-muted-foreground hover:text-foreground"
                                     )}
                                   >
-                                    Sources ({filterEligibleCitations(vectorSearchData.citations).length})
+                                    {t('message.sources')} ({filterEligibleCitations(vectorSearchData.citations).length})
                                   </button>
                                 </div>
 
@@ -365,7 +367,7 @@ const PurePreviewMessage = ({
                             onClick={() => setShowRawData(!showRawData)}
                             className="text-sm font-semibold mb-2 flex items-center gap-2 hover:opacity-80"
                           >
-                            {showRawData ? '▼' : '▶'} Raw Debug Data
+                            {showRawData ? '▼' : '▶'} {t('message.rawDebugData')}
                           </button>
                           
                           {showRawData && (
@@ -373,7 +375,7 @@ const PurePreviewMessage = ({
                               {/* Search Results Count */}
                               {vectorSearchData.citations && (
                                 <div>
-                                  <h4 className="font-semibold mb-1">Search Results Count (computed):</h4>
+                                  <h4 className="font-semibold mb-1">{t('message.searchResultsCount')}</h4>
                                   <pre className="bg-background p-2 rounded overflow-auto">
                                     {JSON.stringify({
                                       classic: vectorSearchData.citations.filter((c: any) => determineCitationType(c) === 'CLS').length,
@@ -389,7 +391,7 @@ const PurePreviewMessage = ({
                               {/* Raw Citations */}
                               {vectorSearchData.citations && (
                                 <div>
-                                  <h4 className="font-semibold mb-1">Raw Citations ({vectorSearchData.citations.length} total):</h4>
+                                  <h4 className="font-semibold mb-1">{t('message.rawCitations')} ({vectorSearchData.citations.length} {t('message.total')}):</h4>
                                   <pre className="bg-background p-2 rounded overflow-auto max-h-96">
                                     {JSON.stringify(vectorSearchData.citations, null, 2)}
                                   </pre>
@@ -501,6 +503,7 @@ export const PreviewMessage = memo(
 export const ThinkingMessage = ({ vectorSearchProgress }: { vectorSearchProgress?: any }) => {
   const role = 'assistant';
   const { impactOccurred } = useTelegramHaptics();
+  const { t } = useTranslations();
 
   // Haptic feedback when thinking message appears
   useEffect(() => {
@@ -568,7 +571,7 @@ export const ThinkingMessage = ({ vectorSearchProgress }: { vectorSearchProgress
               transition={{ duration: 2, repeat: Infinity }}
               className="text-sm font-medium"
             >
-              Thinking and searching...
+              {t('message.thinkingAndSearching')}
             </motion.span>
           </motion.div>
 

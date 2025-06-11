@@ -4,6 +4,7 @@ import type { User } from 'next-auth';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import React, { useState, useEffect } from 'react';
+import { useTranslations, SUPPORTED_LANGUAGES } from '@/lib/i18n';
 
 import { PlusIcon, GlobeIcon } from '@/components/icons';
 import { SidebarHistory } from '@/components/sidebar-history';
@@ -36,7 +37,7 @@ import {
 export function AppSidebar({ user }: { user: User | undefined }) {
   const router = useRouter();
   const { setOpenMobile, openMobile } = useSidebar();
-  const [selectedLanguage, setSelectedLanguage] = useState('en');
+  const { t, language, changeLanguage, isLoading } = useTranslations();
   const [showTelegramEmailForm, setShowTelegramEmailForm] = useState(false);
   
   // Add custom styles for ultra-transparent glass effect
@@ -53,6 +54,8 @@ export function AppSidebar({ user }: { user: User | undefined }) {
         height: calc(100vh - 16px) !important;
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04) !important;
         isolation: isolate !important;
+        position: relative !important;
+        z-index: 999 !important;
       }
       .sidebar-transparent [data-sidebar="sidebar"] {
         background: rgba(255, 255, 255, 0.23) !important;
@@ -64,6 +67,8 @@ export function AppSidebar({ user }: { user: User | undefined }) {
         height: calc(100vh - 16px) !important;
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04) !important;
         isolation: isolate !important;
+        position: relative !important;
+        z-index: 999 !important;
       }
       .dark [data-sidebar="sidebar"] {
         background: rgba(255, 255, 255, 0.0008) !important;
@@ -73,6 +78,8 @@ export function AppSidebar({ user }: { user: User | undefined }) {
         height: calc(100vh - 16px) !important;
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12) !important;
         isolation: isolate !important;
+        position: relative !important;
+        z-index: 999 !important;
       }
       // NEW CHAT BUTTON - TRANSPARENT (no backdrop filter)
       [data-new-chat="true"],
@@ -210,6 +217,35 @@ export function AppSidebar({ user }: { user: User | undefined }) {
       [data-sidebar="content"] {
         isolation: isolate;
         -webkit-overflow-scrolling: touch;
+        overflow: visible !important;
+      }
+      
+      /* Create a proper scrolling container inside the sidebar content */
+      [data-sidebar="sidebar"] {
+        overflow: visible !important;
+      }
+      
+      /* Make sure the sidebar content doesn't clip the border */
+      .sidebar-transparent [data-sidebar="content"] {
+        overflow: visible !important;
+      }
+      
+      .dark [data-sidebar="content"] {
+        overflow: visible !important;
+      }
+      
+      /* Fix the sidebar history overflow that clips the border */
+      [data-sidebar="sidebar"] .flex-1.overflow-y-auto {
+        overflow: visible !important;
+        padding-right: 2px !important;
+      }
+      
+      /* Create internal scrolling container that doesn't clip border */
+      [data-sidebar="sidebar"] .flex-1.overflow-y-auto > * {
+        overflow-y: auto !important;
+        overflow-x: visible !important;
+        max-height: 100% !important;
+        padding-right: 0 !important;
       }
     `;
     document.head.appendChild(style);
@@ -233,28 +269,9 @@ export function AppSidebar({ user }: { user: User | undefined }) {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  const languages = [
-    { code: 'en', name: 'English' },
-    { code: 'tr', name: 'Türkçe' },
-    { code: 'ar', name: 'العربية' },
-    { code: 'ru', name: 'Русский' },
-    { code: 'de', name: 'Deutsch' },
-    { code: 'fr', name: 'Français' },
-    { code: 'es', name: 'Español' },
-  ];
-
-  // Load language from localStorage on mount
-  useEffect(() => {
-    const savedLanguage = localStorage.getItem('selectedLanguage');
-    if (savedLanguage && languages.some(lang => lang.code === savedLanguage)) {
-      setSelectedLanguage(savedLanguage);
-    }
-  }, []);
-
   const handleLanguageChange = (languageCode: string) => {
     console.log('🔍 Language changed to:', languageCode);
-    setSelectedLanguage(languageCode);
-    localStorage.setItem('selectedLanguage', languageCode);
+    changeLanguage(languageCode as any);
     console.log('🔍 Language saved to localStorage:', languageCode);
   };
 
@@ -346,7 +363,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                         alt="Logo"
                         width={350}
                         height={150}
-                        className="h-60 w-auto"
+                        className="h-56 w-auto"
                       />
                     </div>
                   </button>
@@ -367,22 +384,23 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                         <DropdownMenuTrigger asChild>
                           <SidebarMenuButton
                             className="h-10 w-fit px-2 bg-white/5 border border-white/20 hover:bg-white/10 transition-all duration-200 rounded-[100px]"
+                            data-user-nav="true"
                           >
                             <GlobeIcon size={16} />
                             <span className="text-sm font-medium">
-                              {languages.find(lang => lang.code === selectedLanguage)?.name.slice(0, 2).toUpperCase() || 'EN'}
+                              {SUPPORTED_LANGUAGES.find(lang => lang.code === language)?.name.slice(0, 2).toUpperCase() || 'EN'}
                             </span>
                           </SidebarMenuButton>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="start" className="w-[200px] bg-white/10 backdrop-blur-md border border-white/20 shadow-lg rounded-xl p-2">
-                          <DropdownMenuLabel className="text-foreground px-2 py-1.5">Select Language</DropdownMenuLabel>
+                          <DropdownMenuLabel className="text-foreground px-2 py-1.5">{t('sidebar.selectLanguage')}</DropdownMenuLabel>
                           <DropdownMenuSeparator className="bg-white/20" />
-                          {languages.map((lang) => (
+                          {SUPPORTED_LANGUAGES.map((lang) => (
                             <DropdownMenuItem
                               key={lang.code}
                               onClick={() => handleLanguageChange(lang.code)}
                               className={`cursor-pointer text-left bg-transparent border border-transparent hover:bg-white/15 hover:text-accent-foreground transition-all duration-200 rounded-lg mx-1 hover:shadow-sm hover:border-white/30 ${
-                                selectedLanguage === lang.code ? 'bg-white/15 border-white/30 text-accent-foreground' : ''
+                                language === lang.code ? 'bg-white/15 border-white/30 text-accent-foreground' : ''
                               }`}
                             >
                               {lang.name}
@@ -433,7 +451,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                     alt="Logo"
                     width={350}
                     height={150}
-                    className="h-60 w-auto"
+                    className="h-56 w-auto"
                   />
                 </div>
               </button>
@@ -450,26 +468,27 @@ export function AppSidebar({ user }: { user: User | undefined }) {
             <div className="flex-shrink-0">
               <SidebarMenu>
                 <SidebarMenuItem>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <SidebarMenuButton
-                        className="h-10 w-fit px-2 bg-white/5 border border-white/20 hover:bg-white/10 transition-all duration-200 rounded-[100px]"
-                      >
+                                        <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <SidebarMenuButton
+                            className="h-10 w-fit px-2 bg-white/5 border border-white/20 hover:bg-white/10 transition-all duration-200 rounded-[100px]"
+                            data-user-nav="true"
+                          >
                         <GlobeIcon size={16} />
                         <span className="text-sm font-medium">
-                          {languages.find(lang => lang.code === selectedLanguage)?.name.slice(0, 2).toUpperCase() || 'EN'}
+                          {SUPPORTED_LANGUAGES.find(lang => lang.code === language)?.name.slice(0, 2).toUpperCase() || 'EN'}
                         </span>
                       </SidebarMenuButton>
                     </DropdownMenuTrigger>
                                               <DropdownMenuContent align="start" className="w-[200px] bg-white/10 backdrop-blur-md border border-white/20 shadow-lg rounded-xl p-2">
-                      <DropdownMenuLabel className="text-foreground px-2 py-1.5">Select Language</DropdownMenuLabel>
+                      <DropdownMenuLabel className="text-foreground px-2 py-1.5">{t('sidebar.selectLanguage')}</DropdownMenuLabel>
                       <DropdownMenuSeparator className="bg-white/20" />
-                      {languages.map((lang) => (
+                      {SUPPORTED_LANGUAGES.map((lang) => (
                         <DropdownMenuItem
                           key={lang.code}
                           onClick={() => handleLanguageChange(lang.code)}
                           className={`cursor-pointer text-left bg-transparent border border-transparent hover:bg-white/15 hover:text-accent-foreground transition-all duration-200 rounded-lg mx-1 hover:shadow-sm hover:border-white/30 ${
-                            selectedLanguage === lang.code ? 'bg-white/15 border-white/30 text-accent-foreground' : ''
+                            language === lang.code ? 'bg-white/15 border-white/30 text-accent-foreground' : ''
                           }`}
                         >
                           {lang.name}

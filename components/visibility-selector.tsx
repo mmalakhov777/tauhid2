@@ -16,28 +16,9 @@ import {
   LockIcon,
 } from './icons';
 import { useChatVisibility } from '@/hooks/use-chat-visibility';
+import { useTranslations } from '@/lib/i18n';
 
 export type VisibilityType = 'private' | 'public';
-
-const visibilities: Array<{
-  id: VisibilityType;
-  label: string;
-  description: string;
-  icon: ReactNode;
-}> = [
-  {
-    id: 'private',
-    label: 'Private',
-    description: 'Only you can access this chat',
-    icon: <LockIcon />,
-  },
-  {
-    id: 'public',
-    label: 'Public',
-    description: 'Anyone with the link can access this chat',
-    icon: <GlobeIcon />,
-  },
-];
 
 export function VisibilitySelector({
   chatId,
@@ -48,15 +29,36 @@ export function VisibilitySelector({
   selectedVisibilityType: VisibilityType;
 } & React.ComponentProps<typeof Button>) {
   const [open, setOpen] = useState(false);
+  const { t } = useTranslations();
 
   const { visibilityType, setVisibilityType } = useChatVisibility({
     chatId,
     initialVisibilityType: selectedVisibilityType,
   });
 
+  const visibilities: Array<{
+    id: VisibilityType;
+    label: string;
+    description: string;
+    icon: ReactNode;
+  }> = [
+    {
+      id: 'private',
+      label: t('visibility.private'),
+      description: t('visibility.privateDescription'),
+      icon: <LockIcon />,
+    },
+    {
+      id: 'public',
+      label: t('visibility.public'),
+      description: t('visibility.publicDescription'),
+      icon: <GlobeIcon />,
+    },
+  ];
+
   const selectedVisibility = useMemo(
     () => visibilities.find((visibility) => visibility.id === visibilityType),
-    [visibilityType],
+    [visibilityType, visibilities],
   );
 
   return (
@@ -79,7 +81,7 @@ export function VisibilitySelector({
         </Button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="start" className="min-w-[300px] bg-white/90 dark:bg-gray-900/90 border border-white/20 shadow-lg rounded-xl p-2">
+      <DropdownMenuContent align="start" className="min-w-[300px] bg-white/10 dark:bg-gray-900/10 backdrop-blur-md border border-white/20 shadow-lg rounded-xl p-2">
         {visibilities.map((visibility) => (
           <DropdownMenuItem
             data-testid={`visibility-selector-item-${visibility.id}`}

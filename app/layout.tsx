@@ -5,6 +5,7 @@ import { ThemeProvider } from '@/components/theme-provider';
 import { TelegramAutoAuth } from '@/components/TelegramAutoAuth';
 import { TelegramStartHandler } from '@/components/TelegramStartHandler';
 import { AuthLoadingProvider } from '@/contexts/AuthLoadingContext';
+import { TranslationProvider } from '@/contexts/TranslationContext';
 import Script from 'next/script';
 
 import './globals.css';
@@ -88,9 +89,11 @@ export default async function RootLayout({
           <Toaster position="top-center" />
           <SessionProvider>
             <AuthLoadingProvider>
-            <TelegramStartHandler />
-            <TelegramAutoAuth />
-            {children}
+              <TranslationProvider>
+                <TelegramStartHandler />
+                <TelegramAutoAuth />
+                {children}
+              </TranslationProvider>
             </AuthLoadingProvider>
           </SessionProvider>
         </ThemeProvider>

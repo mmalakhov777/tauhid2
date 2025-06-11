@@ -19,7 +19,9 @@
     "db:up": "drizzle-kit up",
     "db:check-telegram": "npx tsx scripts/check-telegram-data.ts",
     "db:clean-users": "npx tsx scripts/clean-user-table.ts",
-    "test": "export PLAYWRIGHT=True && pnpm exec playwright test"
+    "test": "export PLAYWRIGHT=True && pnpm exec playwright test",
+    "i18n": "npx lingo.dev@latest i18n",
+    "i18n:check": "npx lingo.dev@latest show locale sources && npx lingo.dev@latest show locale targets"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.0.6",

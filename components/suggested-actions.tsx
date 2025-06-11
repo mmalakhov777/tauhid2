@@ -8,6 +8,7 @@ import type { VisibilityType } from './visibility-selector';
 import { Plus } from 'lucide-react';
 import { useLocalStorage } from 'usehooks-ts';
 import { type SourceSelection, DEFAULT_SOURCES } from './source-selector';
+import { useTranslations } from '@/lib/i18n';
 
 interface SuggestedActionsProps {
   chatId: string;
@@ -24,27 +25,28 @@ function PureSuggestedActions({
     'selectedSources',
     DEFAULT_SOURCES
   );
+  const { t } = useTranslations();
 
   const suggestedActions = [
     {
-      title: 'What are the five pillars of Islam and their significance',
-      action: 'What are the five pillars of Islam and their significance?',
+      title: t('suggestions.pillarsOfIslam'),
+      action: t('suggestions.pillarsOfIslam') + '?',
     },
     {
-      title: 'Explain the difference between fard, wajib, and sunnah in Islamic jurisprudence',
-      action: 'Explain the difference between fard, wajib, and sunnah in Islamic jurisprudence',
+      title: t('suggestions.fiqhDifferences'),
+      action: t('suggestions.fiqhDifferences'),
     },
     {
-      title: 'What are the conditions for valid wudu (ablution) according to fiqh',
-      action: 'What are the conditions for valid wudu (ablution) according to fiqh?',
+      title: t('suggestions.wuduConditions'),
+      action: t('suggestions.wuduConditions') + '?',
     },
     {
-      title: 'How does Islamic inheritance law (mirath) distribute wealth among heirs',
-      action: 'How does Islamic inheritance law (mirath) distribute wealth among heirs?',
+      title: t('suggestions.inheritanceLaw'),
+      action: t('suggestions.inheritanceLaw') + '?',
     },
     {
-      title: 'What are the rulings on zakat calculation and distribution in Islam',
-      action: 'What are the rulings on zakat calculation and distribution in Islam?',
+      title: t('suggestions.zakatRulings'),
+      action: t('suggestions.zakatRulings') + '?',
     },
   ];
 
@@ -69,7 +71,7 @@ function PureSuggestedActions({
           <line x1="3" y1="12" x2="21" y2="12"></line>
           <line x1="3" y1="18" x2="21" y2="18"></line>
         </svg>
-        <p className="text-xs sm:text-sm font-medium">Examples</p>
+        <p className="text-xs sm:text-sm font-medium">{t('suggestions.suggestedQuestions')}</p>
       </div>
       
       <div className="flex flex-col gap-0 w-full">

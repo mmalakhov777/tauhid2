@@ -26,6 +26,7 @@ import {
 } from './icons';
 import { memo, useState } from 'react';
 import { useChatVisibility } from '@/hooks/use-chat-visibility';
+import { useTranslations } from '@/lib/i18n';
 
 const PureChatItem = ({
   chat,
@@ -46,6 +47,7 @@ const PureChatItem = ({
     chatId: chat.id,
     initialVisibilityType: chat.visibility,
   });
+  const { t } = useTranslations();
 
   const handleChatClick = () => {
     setOpenMobile(false);
@@ -65,7 +67,7 @@ const PureChatItem = ({
   };
 
   return (
-    <SidebarMenuItem>
+    <SidebarMenuItem className="w-[97%]">
       <SidebarMenuButton asChild isActive={isActive}>
         <button 
           onClick={handleChatClick} 
@@ -91,18 +93,18 @@ const PureChatItem = ({
             showOnHover={!isActive}
           >
             <MoreHorizontalIcon />
-            <span className="sr-only">More</span>
+            <span className="sr-only">{t('sidebarHistoryItem.more')}</span>
           </SidebarMenuAction>
         </DropdownMenuTrigger>
 
-        <DropdownMenuContent side="bottom" align="end" className="bg-white/80 border border-white/20 shadow-lg rounded-xl">
+        <DropdownMenuContent side="bottom" align="end" className="bg-white/80 backdrop-blur-md border border-white/20 shadow-lg rounded-xl">
           <DropdownMenuSub>
             <DropdownMenuSubTrigger className="cursor-pointer">
               <ShareIcon />
-              <span>Share</span>
+              <span>{t('sidebarHistoryItem.share')}</span>
             </DropdownMenuSubTrigger>
             <DropdownMenuPortal>
-              <DropdownMenuSubContent className="bg-white/80 border border-white/20 shadow-lg rounded-xl">
+              <DropdownMenuSubContent className="bg-white/80 backdrop-blur-md border border-white/20 shadow-lg rounded-xl">
                 <DropdownMenuItem
                   className="cursor-pointer flex-row justify-between hover:bg-white/15 hover:text-accent-foreground transition-all duration-200"
                   onClick={() => {
@@ -111,7 +113,7 @@ const PureChatItem = ({
                 >
                   <div className="flex flex-row gap-2 items-center">
                     <LockIcon size={12} />
-                    <span>Private</span>
+                    <span>{t('sidebarHistoryItem.private')}</span>
                   </div>
                   {visibilityType === 'private' ? (
                     <CheckCircleFillIcon />
@@ -125,7 +127,7 @@ const PureChatItem = ({
                 >
                   <div className="flex flex-row gap-2 items-center">
                     <GlobeIcon />
-                    <span>Public</span>
+                    <span>{t('sidebarHistoryItem.public')}</span>
                   </div>
                   {visibilityType === 'public' ? <CheckCircleFillIcon /> : null}
                 </DropdownMenuItem>
@@ -138,7 +140,7 @@ const PureChatItem = ({
             onSelect={() => onDelete(chat.id)}
           >
             <TrashIcon />
-            <span>Delete</span>
+            <span>{t('sidebarHistoryItem.delete')}</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

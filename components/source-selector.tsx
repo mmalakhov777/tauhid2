@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { ChevronDownIcon, BookOpen, ScrollText, Youtube, Scale } from 'lucide-react';
+import { useTranslations } from '@/lib/i18n';
 
 export interface SourceSelection {
   classic: boolean;
@@ -27,33 +28,6 @@ const DEFAULT_SOURCES: SourceSelection = {
   fatwa: true,
 };
 
-const sources = [
-  {
-    id: 'classic' as keyof SourceSelection,
-    label: 'Classical Books',
-    description: 'Traditional Islamic texts and scholarly works',
-    icon: <BookOpen className="h-4 w-4" />,
-  },
-  {
-    id: 'risale' as keyof SourceSelection,
-    label: 'Tafsirs',
-    description: 'Quranic commentary and interpretation',
-    icon: <ScrollText className="h-4 w-4" />,
-  },
-  {
-    id: 'fatwa' as keyof SourceSelection,
-    label: 'Fatwa Websites',
-    description: 'Islamic legal rulings and opinions',
-    icon: <Scale className="h-4 w-4" />,
-  },
-  {
-    id: 'youtube' as keyof SourceSelection,
-    label: 'YouTube Videos',
-    description: 'Islamic educational video content',
-    icon: <Youtube className="h-4 w-4" />,
-  },
-];
-
 export function SourceSelector({
   selectedSources = DEFAULT_SOURCES,
   onSourcesChange,
@@ -64,6 +38,34 @@ export function SourceSelector({
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const { t } = useTranslations();
+
+  const sources = [
+    {
+      id: 'classic' as keyof SourceSelection,
+      label: t('sources.classicalBooks'),
+      description: t('sources.classicalBooksDescription'),
+      icon: <BookOpen className="h-4 w-4" />,
+    },
+    {
+      id: 'risale' as keyof SourceSelection,
+      label: t('sources.tafsirs'),
+      description: t('sources.tafsirsDescription'),
+      icon: <ScrollText className="h-4 w-4" />,
+    },
+    {
+      id: 'fatwa' as keyof SourceSelection,
+      label: t('sources.fatwaWebsites'),
+      description: t('sources.fatwaWebsitesDescription'),
+      icon: <Scale className="h-4 w-4" />,
+    },
+    {
+      id: 'youtube' as keyof SourceSelection,
+      label: t('sources.youtubeVideos'),
+      description: t('sources.youtubeVideosDescription'),
+      icon: <Youtube className="h-4 w-4" />,
+    },
+  ];
 
   const handleSourceToggle = useCallback((sourceId: keyof SourceSelection, event?: Event) => {
     // Prevent dropdown from closing
@@ -111,13 +113,13 @@ export function SourceSelector({
   const noneSelected = selectedCount === 0;
 
   const getButtonText = () => {
-    if (allSelected) return 'All Sources';
-    if (noneSelected) return 'No Sources';
+    if (allSelected) return t('sources.allSources');
+    if (noneSelected) return t('sources.noSources');
     if (selectedCount === 1) {
       const selectedSource = sources.find(s => selectedSources[s.id]);
-      return selectedSource?.label || 'Sources';
+      return selectedSource?.label || t('sources.sources');
     }
-    return `${selectedCount} Sources`;
+    return `${selectedCount} ${t('sources.sources')}`;
   };
 
   return (
@@ -140,8 +142,8 @@ export function SourceSelector({
         </Button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="start" className="min-w-[300px] bg-white/90 dark:bg-gray-900/90 border border-white/20 shadow-lg rounded-xl p-2">
-        <DropdownMenuLabel>Search Sources</DropdownMenuLabel>
+      <DropdownMenuContent align="start" className="min-w-[300px] bg-white/10 dark:bg-gray-900/10 backdrop-blur-md border border-white/20 shadow-lg rounded-xl p-2">
+        <DropdownMenuLabel>{t('sources.searchSources')}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         
         {!allSelected && (
@@ -154,7 +156,7 @@ export function SourceSelector({
                 <div className="flex-shrink-0 text-primary">
                   <BookOpen className="h-4 w-4" />
                 </div>
-                <div className="text-sm">Select All Sources</div>
+                <div className="text-sm">{t('sources.selectAllSources')}</div>
               </div>
             </DropdownMenuItem>
             <DropdownMenuSeparator />

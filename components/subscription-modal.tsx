@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useTelegram } from '@/hooks/useTelegram';
 import { guestRegex } from '@/lib/constants';
+import { useTranslations } from '@/lib/i18n';
 import { 
   Sparkles,
   ArrowRight,
@@ -218,6 +219,7 @@ export function SubscriptionModal({
     organization: ''
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { t } = useTranslations();
 
   const user = session?.user;
   const isGuest = guestRegex.test(user?.email ?? '');
@@ -306,6 +308,38 @@ export function SubscriptionModal({
     }));
   };
 
+  // Define purpose options with translation keys
+  const purposeOptions = [
+    { key: 'quranicVerses', label: t('subscriptionModal.purposeOptions.quranicVerses') },
+    { key: 'hadithResearch', label: t('subscriptionModal.purposeOptions.hadithResearch') },
+    { key: 'islamicJurisprudence', label: t('subscriptionModal.purposeOptions.islamicJurisprudence') },
+    { key: 'prayerGuidance', label: t('subscriptionModal.purposeOptions.prayerGuidance') },
+    { key: 'islamicHistory', label: t('subscriptionModal.purposeOptions.islamicHistory') },
+    { key: 'halalHaram', label: t('subscriptionModal.purposeOptions.halalHaram') },
+    { key: 'islamicFinance', label: t('subscriptionModal.purposeOptions.islamicFinance') },
+    { key: 'familyGuidance', label: t('subscriptionModal.purposeOptions.familyGuidance') },
+    { key: 'academicResearch', label: t('subscriptionModal.purposeOptions.academicResearch') },
+    { key: 'convertingGuidance', label: t('subscriptionModal.purposeOptions.convertingGuidance') },
+    { key: 'dailyLiving', label: t('subscriptionModal.purposeOptions.dailyLiving') },
+    { key: 'comparativeReligion', label: t('subscriptionModal.purposeOptions.comparativeReligion') }
+  ];
+
+  // Define background options with translation keys
+  const backgroundOptions = [
+    { key: 'muslimSeeking', label: t('subscriptionModal.backgroundOptions.muslimSeeking') },
+    { key: 'islamicStudent', label: t('subscriptionModal.backgroundOptions.islamicStudent') },
+    { key: 'islamicScholar', label: t('subscriptionModal.backgroundOptions.islamicScholar') },
+    { key: 'imam', label: t('subscriptionModal.backgroundOptions.imam') },
+    { key: 'academicResearcher', label: t('subscriptionModal.backgroundOptions.academicResearcher') },
+    { key: 'newMuslim', label: t('subscriptionModal.backgroundOptions.newMuslim') },
+    { key: 'nonMuslim', label: t('subscriptionModal.backgroundOptions.nonMuslim') },
+    { key: 'contentCreator', label: t('subscriptionModal.backgroundOptions.contentCreator') },
+    { key: 'financeProf', label: t('subscriptionModal.backgroundOptions.financeProf') },
+    { key: 'chaplain', label: t('subscriptionModal.backgroundOptions.chaplain') },
+    { key: 'parent', label: t('subscriptionModal.backgroundOptions.parent') },
+    { key: 'other', label: t('subscriptionModal.backgroundOptions.other') }
+  ];
+
   if (!open) return null;
 
   return (
@@ -363,9 +397,9 @@ export function SubscriptionModal({
                 <div className="space-y-6">
                   <div className="text-center space-y-4">
                     <div className="space-y-2">
-                      <h3 className="text-lg font-medium text-card-foreground">Daily Limit Reached</h3>
+                      <h3 className="text-lg font-medium text-card-foreground">{t('subscriptionModal.dailyLimitReached')}</h3>
                       <p className="text-sm text-muted-foreground">
-                        You've used {currentUsage} of your {maxLimit} daily messages
+                        {t('subscriptionModal.usedMessages').replace('{currentUsage}', currentUsage.toString()).replace('{maxLimit}', maxLimit.toString())}
                       </p>
                     </div>
                   </div>
@@ -377,43 +411,30 @@ export function SubscriptionModal({
                 <div className="h-full flex flex-col space-y-4">
                   <div className="space-y-2 flex-shrink-0">
                     <label className="text-sm font-medium text-card-foreground">
-                      What do you plan to use our Islamic AI for? (Select all that apply)
+                      {t('subscriptionModal.purposeQuestion')}
                     </label>
                     <p className="text-xs text-muted-foreground">
-                      Choose the areas where you need Islamic guidance
+                      {t('subscriptionModal.purposeDescription')}
                     </p>
                   </div>
 
                   <div className="flex-1 overflow-y-auto p-2">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {[
-                        'Quranic verses and interpretation',
-                        'Hadith research and authentication',
-                        'Islamic jurisprudence (Fiqh) questions',
-                        'Prayer and worship guidance',
-                        'Islamic history and biography',
-                        'Halal/Haram clarifications',
-                        'Islamic finance and business ethics',
-                        'Family and marriage guidance',
-                        'Academic research on Islam',
-                        'Converting to Islam guidance',
-                        'Daily Islamic living advice',
-                        'Comparative religion studies'
-                      ].map((purpose) => (
+                      {purposeOptions.map((option) => (
                         <button
-                          key={purpose}
-                          onClick={() => togglePurpose(purpose)}
+                          key={option.key}
+                          onClick={() => togglePurpose(option.label)}
                           className={`
                             w-full px-3 py-2.5 text-sm text-left rounded-lg border transition-all duration-200
                             flex items-center justify-between
-                            ${formData.purposes.includes(purpose)
+                            ${formData.purposes.includes(option.label)
                               ? 'bg-primary/10 border-primary text-primary' 
                               : 'bg-secondary border-border text-secondary-foreground hover:bg-secondary/80'
                             }
                           `}
                         >
-                          <span className="flex-1 pr-2">{purpose}</span>
-                          {formData.purposes.includes(purpose) && (
+                          <span className="flex-1 pr-2">{option.label}</span>
+                          {formData.purposes.includes(option.label) && (
                             <Check className="w-4 h-4 text-primary flex-shrink-0" />
                           )}
                         </button>
@@ -428,43 +449,30 @@ export function SubscriptionModal({
                 <div className="h-full flex flex-col space-y-4">
                   <div className="space-y-2 flex-shrink-0">
                     <label className="text-sm font-medium text-card-foreground">
-                      What best describes your background?
+                      {t('subscriptionModal.backgroundQuestion')}
                     </label>
                     <p className="text-xs text-muted-foreground">
-                      This helps us understand our user community
+                      {t('subscriptionModal.backgroundDescription')}
                     </p>
                   </div>
 
                   <div className="flex-1 overflow-y-auto p-2">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {[
-                        'Muslim seeking guidance',
-                        'Islamic studies student', 
-                        'Islamic scholar/Teacher', 
-                        'Imam/Religious leader',
-                        'Academic researcher', 
-                        'New Muslim/Convert', 
-                        'Non-Muslim learning about Islam',
-                        'Islamic content creator',
-                        'Islamic finance professional',
-                        'Chaplain/Counselor',
-                        'Parent seeking Islamic guidance',
-                        'Other'
-                      ].map((role) => (
+                      {backgroundOptions.map((option) => (
                         <button
-                          key={role}
-                          onClick={() => setFormData(prev => ({ ...prev, role }))}
+                          key={option.key}
+                          onClick={() => setFormData(prev => ({ ...prev, role: option.label }))}
                           className={`
                             w-full px-3 py-2.5 text-sm text-left rounded-lg border transition-all duration-200
                             flex items-center justify-between
-                            ${formData.role === role 
+                            ${formData.role === option.label 
                               ? 'bg-primary text-primary-foreground border-primary' 
                               : 'bg-secondary border-border text-secondary-foreground hover:bg-secondary/80'
                             }
                           `}
                         >
-                          <span className="flex-1 pr-2">{role}</span>
-                          {formData.role === role && (
+                          <span className="flex-1 pr-2">{option.label}</span>
+                          {formData.role === option.label && (
                             <Check className="w-4 h-4 text-primary flex-shrink-0" />
                           )}
                         </button>
@@ -479,20 +487,20 @@ export function SubscriptionModal({
                 <div className="space-y-4">
                   <div className="text-center space-y-4">
                     <div className="space-y-2">
-                      <h3 className="text-lg font-medium text-card-foreground">We're in Beta</h3>
+                      <h3 className="text-lg font-medium text-card-foreground">{t('subscriptionModal.betaTitle')}</h3>
                       <p className="text-sm text-muted-foreground">
-                        Thanks for your interest! We'll notify you when subscriptions are available.
+                        {t('subscriptionModal.betaDescription')}
                       </p>
                     </div>
 
                     <div className="p-4 rounded-xl space-y-3 bg-muted border border-border">
                       <div className="flex items-center justify-center gap-2">
                         <Heart className="w-4 h-4 text-pink-500" />
-                        <span className="text-sm font-medium text-card-foreground">Support Our Project</span>
+                        <span className="text-sm font-medium text-card-foreground">{t('subscriptionModal.supportProject')}</span>
                       </div>
                       
                       <div className="space-y-1">
-                        <p className="text-xs font-medium text-card-foreground">USDT (TRC-20)</p>
+                        <p className="text-xs font-medium text-card-foreground">{t('subscriptionModal.usdtLabel')}</p>
                         <div className="flex items-center gap-2 p-2 bg-background rounded border">
                           <span className="text-xs font-mono text-muted-foreground flex-1 break-all">
                             TXkGC7GzZBQQgqMVX4bhfQj1BAtLbg2Tgw
@@ -501,7 +509,7 @@ export function SubscriptionModal({
                             onClick={() => navigator.clipboard.writeText('TXkGC7GzZBQQgqMVX4bhfQj1BAtLbg2Tgw')}
                             className="text-xs px-2 py-1 bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors"
                           >
-                            Copy
+                            {t('subscriptionModal.copy')}
                           </button>
                         </div>
                       </div>
@@ -520,7 +528,7 @@ export function SubscriptionModal({
                   size="lg"
                   className="w-full"
                 >
-                  Continue
+                  {t('subscriptionModal.continue')}
                   <ArrowRight className="w-4 h-4" />
                 </SimpleButton>
               )}
@@ -533,7 +541,7 @@ export function SubscriptionModal({
                   size="lg"
                   className="w-full"
                 >
-                  Next
+                  {t('subscriptionModal.next')}
                   <ArrowRight className="w-4 h-4" />
                 </SimpleButton>
               )}
@@ -546,7 +554,7 @@ export function SubscriptionModal({
                   size="lg"
                   className="w-full"
                 >
-                  Next
+                  {t('subscriptionModal.next')}
                   <ArrowRight className="w-4 h-4" />
                 </SimpleButton>
               )}
@@ -559,7 +567,7 @@ export function SubscriptionModal({
                   className="w-full"
                 >
                   <MessageSquare className="w-4 h-4" />
-                  Join our Telegram
+                  {t('subscriptionModal.joinTelegram')}
                 </SimpleButton>
               )}
             </div>

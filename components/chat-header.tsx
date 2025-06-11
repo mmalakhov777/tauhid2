@@ -11,6 +11,7 @@ import { useSidebar } from './ui/sidebar';
 import { memo, useEffect, useState } from 'react';
 import { Tooltip, TooltipContent, TooltipTrigger } from './ui/tooltip';
 import type { Session } from 'next-auth';
+import { useTranslations } from '@/lib/i18n';
 
 function PureChatHeader({
   chatId,
@@ -24,6 +25,7 @@ function PureChatHeader({
   const router = useRouter();
   const { open } = useSidebar();
   const { width: windowWidth } = useWindowSize();
+  const { t } = useTranslations();
   
   // Use state to handle client-side rendering
   const [isClient, setIsClient] = useState(false);
@@ -51,10 +53,10 @@ function PureChatHeader({
               }}
             >
               <PlusIcon />
-              <span className="md:sr-only">New Chat</span>
+              <span className="md:sr-only">{t('chatHeader.newChat')}</span>
             </Button>
           </TooltipTrigger>
-          <TooltipContent>New Chat</TooltipContent>
+          <TooltipContent>{t('chatHeader.newChat')}</TooltipContent>
         </Tooltip>
       )}
     </header>

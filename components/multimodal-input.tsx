@@ -30,6 +30,7 @@ import { PreviewAttachment } from './preview-attachment';
 import { Button } from './ui/button';
 import { PromptInputBox } from './ui/ai-prompt-box';
 import { SuggestedActions } from './suggested-actions';
+import { useTranslations } from '@/lib/i18n';
 import equal from 'fast-deep-equal';
 import type { UseChatHelpers } from '@ai-sdk/react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -101,8 +102,9 @@ function PureMultimodalInput({
   const [isSharing, setIsSharing] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [isMakingPublic, setIsMakingPublic] = useState(false);
-  const [shareButtonText, setShareButtonText] = useState('Share');
   const [isCopyingChat, setIsCopyingChat] = useState(false);
+  const { t } = useTranslations();
+  const [shareButtonText, setShareButtonText] = useState(t('chat.share'));
   const [selectedSources, setSelectedSources] = useLocalStorage<SourceSelection>(
     'selectedSources',
     DEFAULT_SOURCES
@@ -159,7 +161,7 @@ function PureMultimodalInput({
       const { error } = await response.json();
       toast.error(error);
     } catch (error) {
-      toast.error('Failed to upload file, please try again!');
+      toast.error(t('chat.failedToUploadFile'));
     }
   };
 
@@ -196,7 +198,7 @@ function PureMultimodalInput({
     // Check if this is a readonly chat (viewing someone else's chat)
     if (isReadonly) {
       console.log('[handleSend] Readonly chat detected, copying chat for user...');
-      toast.info('Creating a copy of this conversation for you...');
+      toast.info(t('chat.creatingCopyOfConversation'));
       setIsCopyingChat(true);
 
       try {
@@ -211,13 +213,13 @@ function PureMultimodalInput({
           return;
         } else {
           console.error('[handleSend] Failed to copy chat:', result.error);
-          toast.error('Failed to create a copy of the conversation');
+          toast.error(t('chat.failedToCreateCopy'));
           setIsCopyingChat(false);
           return;
         }
       } catch (error) {
         console.error('[handleSend] Error copying chat:', error);
-        toast.error('Failed to create a copy of the conversation');
+        toast.error(t('chat.failedToCreateCopy'));
         setIsCopyingChat(false);
         return;
       }
@@ -236,7 +238,7 @@ function PureMultimodalInput({
         ) as Array<Attachment>;
       } catch (error) {
         console.error('Error uploading files!', error);
-        toast.error('Failed to upload files');
+        toast.error(t('chat.failedToUploadFiles'));
         return;
       }
     }
@@ -335,7 +337,7 @@ function PureMultimodalInput({
     
     if (!userMessage || !assistantMessage) {
       return {
-        preview: 'Check out this interesting Islamic Q&A conversation!',
+        preview: t('chat.checkOutInterestingConversation'),
         sourcesCount: 0,
         messageCount: messages.length
       };
@@ -379,7 +381,7 @@ function PureMultimodalInput({
   const getFirstAgentResponsePreview = useCallback(() => {
     const firstAgentMessage = messages.find(msg => msg.role === 'assistant');
     if (!firstAgentMessage || typeof firstAgentMessage.content !== 'string') {
-      return 'Check out this interesting conversation!';
+      return t('chat.checkOutInterestingChat');
     }
     
     const words = firstAgentMessage.content.trim().split(/\s+/);
@@ -413,7 +415,7 @@ function PureMultimodalInput({
       
     } catch (error) {
       console.error('Failed to make chat public:', error);
-      toast.error('Failed to make chat public');
+      toast.error(t('errors.serverError'));
       setIsMakingPublic(false);
       setIsSharing(false); // Reset loading state on error
     }
@@ -433,7 +435,7 @@ function PureMultimodalInput({
 
   const handleShareInternal = async () => {
     // Prevent multiple simultaneous shares
-    if (isSharing && shareButtonText !== 'Share') return;
+    if (isSharing && shareButtonText !== t('chat.share')) return;
     
     // Get the current URL
     const currentUrl = window.location.href;
@@ -472,13 +474,13 @@ function PureMultimodalInput({
           // If prepare fails, fall back to simple copy
           console.log('[handleShare] Falling back to copy link');
           await copyToClipboard(currentUrl);
-          setShareButtonText('Link Copied');
+          setShareButtonText(t('chat.linkCopied'));
           notificationOccurred('success');
-          toast.success('Chat link copied to clipboard!');
+          toast.success(t('chat.chatLinkCopied'));
           
           // Reset button text after 2 seconds
           setTimeout(() => {
-            setShareButtonText('Share');
+            setShareButtonText(t('chat.share'));
             setIsSharing(false);
           }, 2000);
           return;
@@ -496,10 +498,10 @@ function PureMultimodalInput({
             console.log('[handleShare] Share callback - Success:', success);
             if (success) {
               notificationOccurred('success');
-              toast.success('Chat shared successfully!');
+              toast.success(t('chat.chatSharedSuccessfully'));
             } else {
               notificationOccurred('warning');
-              toast.error('Share was cancelled');
+              toast.error(t('chat.shareWasCancelled'));
             }
             // Add small delay before resetting
             setTimeout(() => {
@@ -514,19 +516,19 @@ function PureMultimodalInput({
         // Fallback to copying link with button state change
         try {
           await copyToClipboard(currentUrl);
-          setShareButtonText('Link Copied');
+          setShareButtonText(t('chat.linkCopied'));
           notificationOccurred('success');
-          toast.success('Chat link copied to clipboard!');
+          toast.success(t('chat.chatLinkCopied'));
           
           // Reset button text after 2 seconds
           setTimeout(() => {
-            setShareButtonText('Share');
+            setShareButtonText(t('chat.share'));
             setIsSharing(false);
           }, 2000);
         } catch (copyError) {
           console.error('[handleShare] Failed to copy as fallback:', copyError);
           notificationOccurred('error');
-          toast.error('Failed to copy link');
+          toast.error(t('chat.failedToCopyLink'));
           setIsSharing(false);
         }
       }
@@ -540,27 +542,27 @@ function PureMultimodalInput({
         await new Promise(resolve => setTimeout(resolve, 600));
         
         await copyToClipboard(currentUrl);
-        setShareButtonText('Link Copied');
+        setShareButtonText(t('chat.linkCopied'));
         notificationOccurred('success');
-        toast.success('Chat link copied to clipboard!');
+        toast.success(t('chat.chatLinkCopied'));
         
         // Reset button text after 2 seconds
         setTimeout(() => {
-          setShareButtonText('Share');
+          setShareButtonText(t('chat.share'));
           setIsSharing(false);
         }, 2000);
         
         // If we have openTelegramLink, use the share URL as additional option
         if (webApp?.openTelegramLink) {
           console.log('[handleShare] Opening Telegram share link as fallback');
-          const shareText = `Check out this chat: ${currentUrl}`;
+          const shareText = `${t('chat.checkOutInterestingChat')}: ${currentUrl}`;
           const telegramShareUrl = `https://t.me/share/url?url=${encodeURIComponent(currentUrl)}&text=${encodeURIComponent(shareText)}`;
           webApp.openTelegramLink(telegramShareUrl);
         }
       } catch (error) {
         console.error('[handleShare] Failed to copy link:', error);
         notificationOccurred('error');
-        toast.error('Failed to copy link');
+        toast.error(t('chat.failedToCopyLink'));
         setIsSharing(false);
       }
     }
@@ -573,13 +575,13 @@ function PureMultimodalInput({
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm rounded-lg">
           <div className="flex flex-col items-center gap-3">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground">Creating your copy of the conversation...</p>
+            <p className="text-sm text-muted-foreground">{t('chat.creatingYourCopy')}</p>
           </div>
         </div>
       )}
 
       <AnimatePresence>
-        {!isAtBottom && messages.length > 0 && !isInputActive && (status === 'ready' || status === 'error' || !status) && (
+        {!isAtBottom && messages.length > 0 && !isInputActive && (status === 'ready' || status === 'error' || !status) && width && width > 768 && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -604,7 +606,7 @@ function PureMultimodalInput({
       </AnimatePresence>
 
       <AnimatePresence>
-        {isAtBottom && messages.length > 0 && !isInputActive && (status === 'ready' || status === 'error' || !status) && (
+        {((isAtBottom && messages.length > 0) || (width && width <= 768 && messages.length > 0)) && !isInputActive && (status === 'ready' || status === 'error' || !status) && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -612,7 +614,7 @@ function PureMultimodalInput({
             transition={{ type: 'spring', stiffness: 300, damping: 20 }}
             className="absolute bottom-36 left-0 right-0 z-20 flex justify-center items-center gap-3"
           >
-            {/* Hide sidebar toggle button on desktop */}
+            {/* Show sidebar toggle button on mobile */}
             {width && width <= 768 && (
               <Button
                 data-testid="sidebar-toggle-button"
@@ -639,7 +641,7 @@ function PureMultimodalInput({
               }}
             >
               <PlusIcon />
-              <span className="ml-2">New Chat</span>
+              <span className="ml-2">{t('chat.newChat')}</span>
             </Button>
             
             <Button
@@ -658,7 +660,7 @@ function PureMultimodalInput({
                 <ShareIcon />
               )}
               <span className="ml-2">
-                {isSharing ? 'Preparing...' : shareButtonText}
+                {isSharing ? t('chat.preparing') : shareButtonText}
               </span>
             </Button>
           </motion.div>
@@ -686,14 +688,14 @@ function PureMultimodalInput({
           isLoading={status === 'submitted' || status === 'streaming' || isCopyingChat}
           placeholder={
             isCopyingChat
-              ? "Creating your copy of the conversation..."
+              ? t('chat.creatingYourCopy')
               : status === 'submitted' 
-                ? "Processing your message..." 
+                ? t('chat.processingMessage')
                 : status === 'streaming' 
-                  ? "Generating response..." 
+                  ? t('chat.generatingResponse')
                   : messages.length > 0
-                    ? "Ask follow up..."
-                    : "Send a message..."
+                    ? t('chat.askFollowUp')
+                    : t('chat.sendAMessage')
           }
           className={cx(
             'w-full',
@@ -730,14 +732,14 @@ function PureMultimodalInput({
       {/* Consent Text */}
       {!hideSuggestedActionsText && (
         <div className="text-xs text-muted-foreground text-center px-1 py-1.5">
-          It&apos;s always better to ask an Imam. 
+          {t('chat.alwaysBetterToAskImam')}
           <a 
             href="https://www.google.com/maps/search/mosque+near+me" 
             target="_blank" 
             rel="noopener noreferrer"
             className="ml-2 text-primary hover:text-primary/80"
           >
-            Find near mosque
+            {t('chat.findNearMosque')}
           </a>
         </div>
       )}
@@ -758,23 +760,22 @@ function PureMultimodalInput({
       <AlertDialog open={showShareModal} onOpenChange={setShowShareModal}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Make Chat Public to Share</AlertDialogTitle>
+            <AlertDialogTitle>{t('chat.makeChatPublicToShare')}</AlertDialogTitle>
             <AlertDialogDescription>
-              This chat is currently private and can only be viewed by you. To share it with others, you need to make it public first. 
-              Anyone with the link will be able to view the conversation.
+              {t('chat.chatIsPrivateDescription')}
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
+          <AlertDialogFooter className="flex flex-col gap-2 sm:flex-row sm:justify-between">
             <AlertDialogCancel disabled={isMakingPublic}>
-              Cancel
+              {t('common.cancel')}
             </AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleMakePublicAndShare}
               disabled={isMakingPublic}
-              className="flex items-center gap-2"
+              className="flex items-center justify-center gap-2"
             >
               {isMakingPublic && <Loader2 className="h-4 w-4 animate-spin" />}
-              {isMakingPublic ? 'Making Public...' : 'Make Public & Share'}
+              {isMakingPublic ? t('chat.makingPublic') : t('chat.makePublicAndShare')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

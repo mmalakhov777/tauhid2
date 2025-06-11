@@ -1,13 +1,16 @@
 'use client';
 
 import Link from 'next/link';
+import { useTranslations } from '@/lib/i18n';
 
 export function AppFooter() {
+  const { t } = useTranslations();
+  
   const footerLinks = [
-    { label: 'Terms', href: '/terms' },
-    { label: 'Privacy', href: '/privacy' },
-    { label: 'About', href: '/about' },
-    { label: 'Contact', href: '/contact' },
+    { label: t('navigation.terms'), href: '/terms' },
+    { label: t('navigation.privacy'), href: '/privacy' },
+    { label: t('navigation.about'), href: '/about' },
+    { label: t('navigation.contact'), href: '/contact' },
   ];
 
   return (
