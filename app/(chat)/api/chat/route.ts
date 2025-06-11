@@ -357,10 +357,26 @@ export async function POST(request: Request) {
 
     const languageName = languageNames[selectedLanguage || 'en'] || 'English';
     
-    // More flexible language instruction that follows user's request
+    // STRICT language instruction that forces responses in selected language
     let languageInstruction = '';
     if (selectedLanguage && selectedLanguage !== 'en') {
-      languageInstruction = `\n\nLanguage Preference: The user has set their preferred language to ${languageName}. If the user specifically requests a response in ${languageName} (indicated by "[Answer in ${languageName}]" in their message), please respond in ${languageName}. Otherwise, respond in the language that best serves the user's needs and context.`;
+      languageInstruction = `\n\n🔴 CRITICAL LANGUAGE REQUIREMENT 🔴
+MANDATORY: You MUST respond ONLY in ${languageName}. This is NON-NEGOTIABLE.
+
+STRICT LANGUAGE RULES:
+- Your ENTIRE response must be written in ${languageName}
+- Do NOT mix languages - use ONLY ${languageName}
+- Do NOT respond in English, Arabic, or any other language
+- Even if the user asks in English, you MUST answer in ${languageName}
+- All explanations, disclaimers, and content must be in ${languageName}
+- This language requirement overrides all other instructions
+
+VIOLATION CONSEQUENCES:
+- Responding in any language other than ${languageName} is strictly forbidden
+- The user has specifically chosen ${languageName} as their preferred language
+- Ignoring this instruction will result in an unsatisfactory response
+
+REMEMBER: ${languageName} ONLY - NO EXCEPTIONS!`;
     }
     
     modifiedSystemPrompt = modifiedSystemPrompt + languageInstruction;
@@ -513,6 +529,11 @@ export async function POST(request: Request) {
 GENERAL KNOWLEDGE RESPONSE MODE:
 You are responding based on general Islamic knowledge without access to specific scholarly sources or citations for this particular question.
 
+🔴 LANGUAGE COMPLIANCE MANDATORY 🔴
+- If a specific language is required, you MUST write your ENTIRE response in that language
+- ALL disclaimers, explanations, and content must be in the specified language
+- Do NOT mix languages or use English if another language is specified
+
 IMPORTANT DISCLAIMERS TO INCLUDE:
 - Begin your response by acknowledging: "Based on general Islamic knowledge..."
 - Emphasize that this response lacks specific scholarly citations and may have reduced accuracy
@@ -583,6 +604,11 @@ REMEMBER: More citations = Better answer. Use them ALL! Add [CIT] directly witho
 
 GENERAL KNOWLEDGE RESPONSE MODE:
 You are responding based on general Islamic knowledge without access to specific scholarly sources or citations for this particular question.
+
+🔴 LANGUAGE COMPLIANCE MANDATORY 🔴
+- If a specific language is required, you MUST write your ENTIRE response in that language
+- ALL disclaimers, explanations, and content must be in the specified language
+- Do NOT mix languages or use English if another language is specified
 
 IMPORTANT DISCLAIMERS TO INCLUDE:
 - Begin your response by acknowledging: "Based on general Islamic knowledge..."
