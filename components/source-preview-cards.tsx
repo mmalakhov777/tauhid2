@@ -2,7 +2,7 @@
 
 import { cn } from '@/lib/utils';
 import { determineCitationType, formatBookOrNamespace, filterEligibleCitations } from './citation-utils';
-import { Youtube } from 'lucide-react';
+import { Youtube, ScrollText } from 'lucide-react';
 
 interface SourcePreviewCardsProps {
   vectorSearchData: {
@@ -28,6 +28,7 @@ export function SourcePreviewCards({
         const { citation, i } = item;
         const type = determineCitationType(citation);
         const isYouTube = type === 'YT';
+        const isIslamQA = type === 'islamqa_fatwa';
         const isFatawaQaziKhan = type === 'CLS' && (
           citation.metadata?.source_file?.includes('FATAWA-QAZI-KHAN-')
         );
@@ -40,8 +41,8 @@ export function SourcePreviewCards({
           <div 
             key={`preview-${citation.id || i}`}
             className={cn(
-              "rounded-md border border-border bg-card/50 cursor-pointer hover:bg-card/70 transition-all duration-200 shadow-sm hover:shadow-md overflow-hidden h-20 w-full",
-              isYouTube ? "flex flex-col" : "flex"
+              "rounded-md border border-border bg-card/50 cursor-pointer hover:bg-card/70 transition-all duration-200 shadow-sm hover:shadow-md overflow-hidden w-full",
+              isYouTube ? "flex flex-col h-20" : isIslamQA ? "flex h-10" : "flex h-20"
             )}
             onClick={() => {
               console.log('🎯 Preview card clicked - Citation Index:', i);
@@ -74,6 +75,93 @@ export function SourcePreviewCards({
                     <Youtube className="size-4 text-muted-foreground" />
                   </div>
                 )}
+              </>
+            ) : isIslamQA ? (
+              // IslamQA layout - Favicon and text (smaller height)
+              <>
+                {/* Favicon - 30% */}
+                <div className="w-[30%] shrink-0 flex items-center justify-center p-1">
+                  {(() => {
+                    // Extract domain from URL for favicon
+                    const getUrlFromCitation = (citation: any) => {
+                      const isSourceLinkValid = citation.metadata?.source_link && 
+                        (citation.metadata.source_link.startsWith('http://') || 
+                         citation.metadata.source_link.startsWith('https://'));
+                      return isSourceLinkValid ? citation.metadata.source_link : citation.metadata?.url;
+                    };
+                    
+                    const linkToUse = getUrlFromCitation(citation);
+                    if (linkToUse) {
+                      try {
+                        const url = new URL(linkToUse);
+                        const domain = url.hostname.replace('www.', '');
+                        return (
+                          <div className="relative w-full h-full flex items-center justify-center">
+                            <img 
+                              src={`/favicons/${domain}.png`}
+                              alt={`${domain} favicon`}
+                              className="w-6 h-6 rounded-sm object-contain"
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                                // Show fallback icon
+                                const fallback = target.nextElementSibling as HTMLElement;
+                                if (fallback) fallback.style.display = 'flex';
+                              }}
+                            />
+                            {/* Fallback icon */}
+                            <div 
+                              className="w-6 h-6 rounded-sm bg-emerald-600 border border-emerald-700 flex items-center justify-center text-white font-semibold text-sm absolute"
+                              style={{ display: 'none' }}
+                            >
+                              <ScrollText className="w-3 h-3" />
+                            </div>
+                          </div>
+                        );
+                      } catch {
+                        return (
+                          <div className="w-6 h-6 rounded-sm bg-slate-600 border border-slate-700 flex items-center justify-center text-white font-semibold text-sm">
+                            <ScrollText className="w-3 h-3" />
+                          </div>
+                        );
+                      }
+                    }
+                    return (
+                      <div className="w-6 h-6 rounded-sm bg-emerald-700 border border-emerald-800 flex items-center justify-center text-white font-semibold text-sm">
+                        <ScrollText className="w-3 h-3" />
+                      </div>
+                    );
+                  })()}
+                </div>
+                
+                {/* Content - 70% */}
+                <div className="flex-1 p-1 flex flex-col justify-center">
+                  <div className="font-semibold text-card-foreground mb-0.5 line-clamp-1 text-[10px]">
+                    {(() => {
+                      // Extract domain name for title
+                      const getUrlFromCitation = (citation: any) => {
+                        const isSourceLinkValid = citation.metadata?.source_link && 
+                          (citation.metadata.source_link.startsWith('http://') || 
+                           citation.metadata.source_link.startsWith('https://'));
+                        return isSourceLinkValid ? citation.metadata.source_link : citation.metadata?.url;
+                      };
+                      
+                      const linkToUse = getUrlFromCitation(citation);
+                      if (linkToUse) {
+                        try {
+                          const url = new URL(linkToUse);
+                          return url.hostname.replace('www.', '');
+                        } catch {
+                          return 'IslamQA';
+                        }
+                      }
+                      return 'IslamQA';
+                    })()}
+                  </div>
+                  <div className="flex items-center gap-1 text-[8px] text-muted-foreground mt-auto">
+                    <span className="truncate">Fatwa</span>
+                  </div>
+                </div>
               </>
             ) : (
               // Other types layout - Cover in first 30%
