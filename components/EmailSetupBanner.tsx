@@ -4,9 +4,10 @@ interface EmailSetupBannerProps {
   user: {
     email?: string | null;
   };
+  onClick?: () => void;
 }
 
-export const EmailSetupBanner = ({ user }: EmailSetupBannerProps) => {
+export const EmailSetupBanner = ({ user, onClick }: EmailSetupBannerProps) => {
   // Check if user has a dummy email (needs setup) - works for any guest user
   const needsEmailSetup = user.email?.startsWith('guest_') || 
                           user.email?.startsWith('telegram_') || 
@@ -17,7 +18,10 @@ export const EmailSetupBanner = ({ user }: EmailSetupBannerProps) => {
   }
 
   return (
-    <div className="mx-2 mb-2 p-3 bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-xl shadow-lg">
+    <div 
+      className="mx-2 mb-2 p-3 bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-xl shadow-lg cursor-pointer hover:bg-white/15 dark:hover:bg-white/8 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
+      onClick={onClick}
+    >
       <div className="flex items-start gap-2">
         <div className="flex-shrink-0 mt-0.5">
           <svg className="w-4 h-4 text-amber-400 dark:text-amber-300" fill="currentColor" viewBox="0 0 20 20">
@@ -31,6 +35,11 @@ export const EmailSetupBanner = ({ user }: EmailSetupBannerProps) => {
           <p className="text-xs text-muted-foreground mt-1">
             Set up your email to save conversations and access advanced features
           </p>
+        </div>
+        <div className="flex-shrink-0 mt-0.5">
+          <svg className="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
         </div>
       </div>
     </div>

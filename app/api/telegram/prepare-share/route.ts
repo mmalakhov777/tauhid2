@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
       reply_markup: {
         inline_keyboard: [[
           {
-            text: '📱 Open Conversation',
+            text: '🕌 Open Conversation',
             url: miniAppUrl
           }
         ]]

@@ -53,7 +53,10 @@ export function PureMessageActions({
                   return;
                 }
 
-                await copyToClipboard(textFromParts);
+                // Clean citation markers [CIT1], [CIT2], etc. from the text
+                const cleanedText = textFromParts.replace(/\[CIT\d+\]/g, '');
+
+                await copyToClipboard(cleanedText);
                 toast.success('Copied to clipboard!');
               }}
             >

@@ -20,6 +20,14 @@ declare module 'next-auth' {
     id?: string;
     email?: string | null;
     type: UserType;
+    telegramId?: number | null;
+    telegramUsername?: string | null;
+    telegramFirstName?: string | null;
+    telegramLastName?: string | null;
+    telegramPhotoUrl?: string | null;
+    telegramLanguageCode?: string | null;
+    telegramIsPremium?: boolean | null;
+    telegramAllowsWriteToPm?: boolean | null;
   }
 }
 

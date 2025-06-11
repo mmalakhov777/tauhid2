@@ -574,7 +574,7 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
               </div>
 
               {/* Content */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              <div className="flex-1 overflow-y-auto p-6 space-y-6 pb-20 sm:pb-6">
                 {/* Classical sources with tabs */}
                 {isClassical ? (
                   <>
@@ -584,32 +584,32 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                         {/* Fatawa Qazi Khan */}
                         {isFatawaQaziKhan && (
                           <div className="rounded-lg border border-border bg-card/50 overflow-hidden shadow-lg">
-                            <div className="flex gap-0">
+                            <div className="flex gap-0 h-32 sm:h-40">
                               {/* Cover Image - 40% */}
                               <div className="w-[40%] flex-shrink-0">
                                 <div className="relative w-full h-full bg-muted">
                                   <img 
                                     src="/images/fatawa-qazi-khan.png" 
                                     alt="Fatawa Qazi Khan cover"
-                                    className="w-full h-full object-cover"
+                                    className="w-full h-full object-contain"
                                   />
                                 </div>
                               </div>
                               
                               {/* Content - 60% */}
-                              <div className="flex-1 flex flex-col justify-center gap-3 p-4">
+                              <div className="flex-1 flex flex-col justify-center gap-1.5 p-3">
                                 {/* Book name as title */}
-                                <div className="text-base font-semibold text-card-foreground">
+                                <div className="text-sm font-semibold text-card-foreground leading-tight">
                                   Fatawa Qazi Khan
                                 </div>
                                 
                                 {/* Book description */}
-                                <div className="text-sm text-muted-foreground italic">
+                                <div className="text-xs text-muted-foreground italic leading-tight line-clamp-2">
                                   {SOURCE_DESCRIPTIONS['Fatawa Qazi Khan']}
                                 </div>
                                 
                                 {/* Metadata */}
-                                <div className="flex flex-col gap-1 text-sm text-muted-foreground mt-auto">
+                                <div className="flex flex-col gap-0.5 text-xs text-muted-foreground mt-auto">
                                   {/* Source info */}
                                   <div className="flex items-center gap-2">
                                     <span className="text-xs">Classical Islamic Text</span>
@@ -630,32 +630,32 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                         {/* Rad-ul-Muhtar */}
                         {isRaddulMuhtar && (
                           <div className="rounded-lg border border-border bg-card/50 overflow-hidden shadow-lg">
-                            <div className="flex gap-0">
+                            <div className="flex gap-0 h-32 sm:h-40">
                               {/* Cover Image - 40% */}
                               <div className="w-[40%] flex-shrink-0">
                                 <div className="relative w-full h-full bg-muted">
                                   <img 
                                     src="/images/raddul-muhtaar.png" 
                                     alt="Rad-ul-Muhtar cover"
-                                    className="w-full h-full object-cover object-center"
+                                    className="w-full h-full object-contain"
                                   />
                                 </div>
                               </div>
                               
                               {/* Content - 60% */}
-                              <div className="flex-1 flex flex-col justify-center gap-3 p-4">
+                              <div className="flex-1 flex flex-col justify-center gap-1.5 p-3">
                                 {/* Book name as title */}
-                                <div className="text-base font-semibold text-card-foreground">
+                                <div className="text-sm font-semibold text-card-foreground leading-tight">
                                   Rad-ul-Muhtar
                                 </div>
                                 
                                 {/* Book description */}
-                                <div className="text-sm text-muted-foreground italic">
+                                <div className="text-xs text-muted-foreground italic leading-tight line-clamp-2">
                                   {SOURCE_DESCRIPTIONS['Rad-ul-Muhtar']}
                                 </div>
                                 
                                 {/* Metadata */}
-                                <div className="flex flex-col gap-1 text-sm text-muted-foreground mt-auto">
+                                <div className="flex flex-col gap-0.5 text-xs text-muted-foreground mt-auto">
                                   {/* Source info */}
                                   <div className="flex items-center gap-2">
                                     <span className="text-xs">Classical Islamic Text</span>
@@ -676,32 +676,32 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                         {/* Badai-al-Sanai */}
                         {isBadaiAlSanai && (
                           <div className="rounded-lg border border-border bg-card/50 overflow-hidden shadow-lg">
-                            <div className="flex gap-0">
+                            <div className="flex gap-0 h-32 sm:h-40">
                               {/* Cover Image - 40% */}
                               <div className="w-[40%] flex-shrink-0">
                                 <div className="relative w-full h-full bg-muted">
                                   <img 
                                     src="/images/badai-as-sanai-urdu.png" 
                                     alt="Badai-al-Sanai cover"
-                                    className="w-full h-full object-cover object-center"
+                                    className="w-full h-full object-contain"
                                   />
                                 </div>
                               </div>
                               
                               {/* Content - 60% */}
-                              <div className="flex-1 flex flex-col justify-center gap-3 p-4">
+                              <div className="flex-1 flex flex-col justify-center gap-1.5 p-3">
                                 {/* Book name as title */}
-                                <div className="text-base font-semibold text-card-foreground">
+                                <div className="text-sm font-semibold text-card-foreground leading-tight">
                                   Badai-al-Sanai
                                 </div>
                                 
                                 {/* Book description */}
-                                <div className="text-sm text-muted-foreground italic">
+                                <div className="text-xs text-muted-foreground italic leading-tight line-clamp-2">
                                   {SOURCE_DESCRIPTIONS['Badai-al-Sanai']}
                                 </div>
                                 
                                 {/* Metadata */}
-                                <div className="flex flex-col gap-1 text-sm text-muted-foreground mt-auto">
+                                <div className="flex flex-col gap-0.5 text-xs text-muted-foreground mt-auto">
                                   {/* Source info */}
                                   <div className="flex items-center gap-2">
                                     <span className="text-xs">Classical Islamic Text</span>
@@ -722,32 +722,32 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                         {/* Sharh al-Wiqayah */}
                         {isSharhWiqayah && (
                           <div className="rounded-lg border border-border bg-card/50 overflow-hidden shadow-lg">
-                            <div className="flex gap-0">
+                            <div className="flex gap-0 h-32 sm:h-40">
                               {/* Cover Image - 40% */}
                               <div className="w-[40%] flex-shrink-0">
                                 <div className="relative w-full h-full bg-muted">
                                   <img 
                                     src="/images/sharh-al-wiqayah.png" 
                                     alt="Sharh al-Wiqayah cover"
-                                    className="w-full h-full object-cover object-center"
+                                    className="w-full h-full object-contain"
                                   />
                                 </div>
                               </div>
                               
                               {/* Content - 60% */}
-                              <div className="flex-1 flex flex-col justify-center gap-3 p-4">
+                              <div className="flex-1 flex flex-col justify-center gap-1.5 p-3">
                                 {/* Book name as title */}
-                                <div className="text-base font-semibold text-card-foreground">
+                                <div className="text-sm font-semibold text-card-foreground leading-tight">
                                   Sharh al-Wiqayah
                                 </div>
                                 
                                 {/* Book description */}
-                                <div className="text-sm text-muted-foreground italic">
+                                <div className="text-xs text-muted-foreground italic leading-tight line-clamp-2">
                                   {SOURCE_DESCRIPTIONS['Sharh al-Wiqayah']}
                                 </div>
                                 
                                 {/* Metadata */}
-                                <div className="flex flex-col gap-1 text-sm text-muted-foreground mt-auto">
+                                <div className="flex flex-col gap-0.5 text-xs text-muted-foreground mt-auto">
                                   {/* Source info */}
                                   <div className="flex items-center gap-2">
                                     <span className="text-xs">Classical Islamic Text</span>
@@ -814,14 +814,14 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                       <>
                         {/* Risale-i Nur Book Cover and Info */}
                         <div className="rounded-lg border border-border bg-card/50 overflow-hidden shadow-lg">
-                          <div className="flex gap-0">
+                          <div className="flex gap-0 h-32 sm:h-40">
                             {/* Cover Image - 40% */}
-                                                          <div className="w-[40%] flex-shrink-0">
+                            <div className="w-[40%] flex-shrink-0">
                                 <div className="relative w-full h-full bg-muted">
                                   <img 
                                     src={`/images/risaleinur/${citation.metadata?.book_name || 'placeholder'}.png`}
                                     alt={`${citation.metadata?.book_name?.replace(/_/g, ' ').replace(/-/g, ' ') || 'Risale-i Nur'} cover`}
-                                    className="w-full h-full object-cover"
+                                    className="w-full h-full object-contain"
                                     onError={(e) => {
                                       const target = e.target as HTMLImageElement;
                                       target.src = '/images/fatawa-qazi-khan.png';
@@ -831,34 +831,34 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                               </div>
                             
                             {/* Content - 60% */}
-                            <div className="flex-1 flex flex-col justify-center gap-3 p-4">
+                            <div className="flex-1 flex flex-col justify-center gap-1.5 p-3">
                               {/* Book name as title */}
                               {citation.metadata?.book_name && (
-                                <div className="text-base font-semibold text-card-foreground">
+                                <div className="text-sm font-semibold text-card-foreground leading-tight">
                                   {citation.metadata.book_name.replace(/-/g, ' ').replace(/_/g, ' ')}
                                 </div>
                               )}
                               
                               {/* Dummy description */}
-                              <div className="text-sm text-muted-foreground italic">
+                              <div className="text-xs text-muted-foreground italic leading-tight line-clamp-2">
                                 A profound work from the Risale-i Nur collection by Bediuzzaman Said Nursi, offering deep insights into Islamic spirituality and theology.
                               </div>
                               
                               {/* Metadata */}
-                              <div className="flex flex-col gap-1 text-sm text-muted-foreground mt-auto">
+                              <div className="flex flex-col gap-0.5 text-xs sm:text-xs text-muted-foreground mt-auto">
                                 {/* Source info */}
                                 <div className="flex items-center gap-2">
-                                  <span className="text-xs">Risale-i Nur Collection</span>
+                                  <span className="text-[10px] sm:text-xs">Risale-i Nur Collection</span>
                                 </div>
                                 
                                 {/* Author */}
-                                <div className="text-xs">
+                                <div className="text-[10px] sm:text-xs">
                                   Author: Bediuzzaman Said Nursi
                                 </div>
                                 
                                 {/* Page info */}
                                 {citation.metadata?.page_number && (
-                                  <div className="text-xs">
+                                  <div className="text-[10px] sm:text-xs">
                                     Page: {citation.metadata.page_number}
                                   </div>
                                 )}
@@ -903,8 +903,33 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                     {/* Original Text Tab - PDF Viewer */}
                     {activeTab === 'original' && (
                       <div className="space-y-4">
+                        {/* Mobile: Show extracted text */}
+                        <div className="block sm:hidden">
+                          <h3 className="text-sm font-semibold text-muted-foreground mb-2">Extracted Text</h3>
+                          {isLoadingPdfText ? (
+                            <div className="flex items-center justify-center py-8">
+                              <div className="flex flex-col items-center gap-3">
+                                <div className="relative">
+                                  <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary/20"></div>
+                                  <div className="animate-spin rounded-full h-6 w-6 border-2 border-primary border-t-transparent absolute inset-0"></div>
+                                </div>
+                                <span className="text-sm text-muted-foreground">Loading text...</span>
+                              </div>
+                            </div>
+                          ) : pdfTextError ? (
+                            <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-700">
+                              {pdfTextError}
+                            </div>
+                          ) : (
+                            <div className="bg-muted/50 rounded-lg p-4 text-sm leading-relaxed border border-border max-h-96 overflow-y-auto">
+                              {pdfText || citation.text || '[No text available]'}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Desktop: Show PDF viewer */}
                         {pdfUrl && (
-                          <>
+                          <div className="hidden sm:block">
                             <div className="relative w-full h-[600px] rounded-lg overflow-hidden bg-muted border">
                               <iframe
                                 key={`pdf-${citation.metadata?.page_number}`}
@@ -914,9 +939,7 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                                 style={{ border: 'none' }}
                               />
                             </div>
-                            
-                            {/* PDF Text Section - now hidden for RIS sources */}
-                          </>
+                          </div>
                         )}
                       </div>
                     )}
@@ -1232,6 +1255,16 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
 
                   </>
                 )}
+              </div>
+
+              {/* Fixed Bottom Button - Mobile Only */}
+              <div className="block sm:hidden fixed bottom-0 left-0 right-0 p-4 bg-background/95 backdrop-blur-sm border-t border-border">
+                <Button
+                  onClick={onClose}
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium py-3"
+                >
+                  Back to response
+                </Button>
               </div>
             </div>
           </motion.div>

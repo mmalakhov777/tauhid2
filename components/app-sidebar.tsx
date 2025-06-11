@@ -10,6 +10,7 @@ import { SidebarHistory } from '@/components/sidebar-history';
 import { SidebarUserNav } from '@/components/sidebar-user-nav';
 import { EmailSetupBanner } from '@/components/EmailSetupBanner';
 import { GuestRegistrationBanner } from '@/components/GuestRegistrationBanner';
+import { TelegramEmailForm } from '@/components/TelegramEmailForm';
 import { Button } from '@/components/ui/button';
 import {
   Sidebar,
@@ -36,6 +37,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
   const router = useRouter();
   const { setOpenMobile, openMobile } = useSidebar();
   const [selectedLanguage, setSelectedLanguage] = useState('en');
+  const [showTelegramEmailForm, setShowTelegramEmailForm] = useState(false);
   
   // Add custom styles for ultra-transparent glass effect
   React.useEffect(() => {
@@ -256,6 +258,31 @@ export function AppSidebar({ user }: { user: User | undefined }) {
     console.log('🔍 Language saved to localStorage:', languageCode);
   };
 
+  const handleEmailSetupClick = () => {
+    setShowTelegramEmailForm(true);
+  };
+
+  const handleTelegramFormComplete = () => {
+    setShowTelegramEmailForm(false);
+    router.refresh();
+  };
+
+  const handleTelegramFormSkip = () => {
+    setShowTelegramEmailForm(false);
+  };
+
+  // Create telegram user object from user data if available
+  const telegramUser = user && user.telegramId ? {
+    id: user.telegramId,
+    first_name: user.telegramFirstName || 'User',
+    last_name: user.telegramLastName || undefined,
+    username: user.telegramUsername || undefined,
+    photo_url: user.telegramPhotoUrl || undefined,
+    language_code: user.telegramLanguageCode || undefined,
+    is_premium: user.telegramIsPremium || undefined,
+    allows_write_to_pm: user.telegramAllowsWriteToPm || undefined,
+  } : null;
+
   // On mobile, return only our custom mobile sidebar
   if (isMobile) {
     return (
@@ -313,7 +340,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
               </SidebarMenu>
             </SidebarHeader>
             <SidebarContent>
-              {user && <EmailSetupBanner user={user} />}
+              {user && <EmailSetupBanner user={user} onClick={handleEmailSetupClick} />}
               <SidebarHistory user={user} />
               <GuestRegistrationBanner />
             </SidebarContent>
@@ -365,75 +392,86 @@ export function AppSidebar({ user }: { user: User | undefined }) {
 
   // Desktop sidebar - uses original Sidebar component
   return (
-    <Sidebar className="sidebar-transparent h-screen">
-      <SidebarHeader>
-        <SidebarMenu>
-          <div className="flex flex-row justify-center items-center">
-            <button
-              onClick={() => {
-                setOpenMobile(false);
-                router.push('/');
-              }}
-              className="flex flex-row gap-3 items-center"
-            >
-              <div className="rounded-md cursor-pointer flex items-center gap-3 transition-colors duration-200">
-                <Image
-                  src="/images/glasslogo.png"
-                  alt="Logo"
-                  width={350}
-                  height={150}
-                  className="h-60 w-auto"
-                />
-              </div>
-            </button>
-          </div>
-        </SidebarMenu>
-      </SidebarHeader>
-      <SidebarContent>
-        {user && <EmailSetupBanner user={user} />}
-        <SidebarHistory user={user} />
-        <GuestRegistrationBanner />
-      </SidebarContent>
-      <SidebarFooter>
-        <div className="flex flex-row items-center gap-2 pb-2.5">
-          <div className="flex-shrink-0">
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <SidebarMenuButton
-                      className="h-10 w-fit px-2 bg-white/5 border border-white/20 hover:bg-white/10 transition-all duration-200 rounded-[100px]"
-                    >
-                      <GlobeIcon size={16} />
-                      <span className="text-sm font-medium">
-                        {languages.find(lang => lang.code === selectedLanguage)?.name.slice(0, 2).toUpperCase() || 'EN'}
-                      </span>
-                    </SidebarMenuButton>
-                  </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="start" className="w-[200px] bg-white/10 backdrop-blur-md border border-white/20 shadow-lg rounded-xl p-2">
-                    <DropdownMenuLabel className="text-foreground px-2 py-1.5">Select Language</DropdownMenuLabel>
-                    <DropdownMenuSeparator className="bg-white/20" />
-                    {languages.map((lang) => (
-                      <DropdownMenuItem
-                        key={lang.code}
-                        onClick={() => handleLanguageChange(lang.code)}
-                        className={`cursor-pointer text-left bg-transparent border border-transparent hover:bg-white/15 hover:text-accent-foreground transition-all duration-200 rounded-lg mx-1 hover:shadow-sm hover:border-white/30 ${
-                          selectedLanguage === lang.code ? 'bg-white/15 border-white/30 text-accent-foreground' : ''
-                        }`}
+    <>
+      <Sidebar className="sidebar-transparent h-screen">
+        <SidebarHeader>
+          <SidebarMenu>
+            <div className="flex flex-row justify-center items-center">
+              <button
+                onClick={() => {
+                  setOpenMobile(false);
+                  router.push('/');
+                }}
+                className="flex flex-row gap-3 items-center"
+              >
+                <div className="rounded-md cursor-pointer flex items-center gap-3 transition-colors duration-200">
+                  <Image
+                    src="/images/glasslogo.png"
+                    alt="Logo"
+                    width={350}
+                    height={150}
+                    className="h-60 w-auto"
+                  />
+                </div>
+              </button>
+            </div>
+          </SidebarMenu>
+        </SidebarHeader>
+        <SidebarContent>
+          {user && <EmailSetupBanner user={user} onClick={handleEmailSetupClick} />}
+          <SidebarHistory user={user} />
+          <GuestRegistrationBanner />
+        </SidebarContent>
+        <SidebarFooter>
+          <div className="flex flex-row items-center gap-2 pb-2.5">
+            <div className="flex-shrink-0">
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <SidebarMenuButton
+                        className="h-10 w-fit px-2 bg-white/5 border border-white/20 hover:bg-white/10 transition-all duration-200 rounded-[100px]"
                       >
-                        {lang.name}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </SidebarMenuItem>
-            </SidebarMenu>
+                        <GlobeIcon size={16} />
+                        <span className="text-sm font-medium">
+                          {languages.find(lang => lang.code === selectedLanguage)?.name.slice(0, 2).toUpperCase() || 'EN'}
+                        </span>
+                      </SidebarMenuButton>
+                    </DropdownMenuTrigger>
+                                              <DropdownMenuContent align="start" className="w-[200px] bg-white/10 backdrop-blur-md border border-white/20 shadow-lg rounded-xl p-2">
+                      <DropdownMenuLabel className="text-foreground px-2 py-1.5">Select Language</DropdownMenuLabel>
+                      <DropdownMenuSeparator className="bg-white/20" />
+                      {languages.map((lang) => (
+                        <DropdownMenuItem
+                          key={lang.code}
+                          onClick={() => handleLanguageChange(lang.code)}
+                          className={`cursor-pointer text-left bg-transparent border border-transparent hover:bg-white/15 hover:text-accent-foreground transition-all duration-200 rounded-lg mx-1 hover:shadow-sm hover:border-white/30 ${
+                            selectedLanguage === lang.code ? 'bg-white/15 border-white/30 text-accent-foreground' : ''
+                          }`}
+                        >
+                          {lang.name}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </div>
+            <div className="flex-1 min-w-0">
+              {user && <SidebarUserNav user={user} />}
+            </div>
           </div>
-          <div className="flex-1 min-w-0">
-            {user && <SidebarUserNav user={user} />}
-          </div>
-        </div>
-      </SidebarFooter>
-    </Sidebar>
+        </SidebarFooter>
+      </Sidebar>
+
+      {/* TelegramEmailForm Modal */}
+      {showTelegramEmailForm && telegramUser && (
+        <TelegramEmailForm
+          telegramUser={telegramUser}
+          onComplete={handleTelegramFormComplete}
+          onSkip={handleTelegramFormSkip}
+        />
+      )}
+    </>
   );
 }
