@@ -164,7 +164,8 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
                   router.push('/');
                   router.refresh();
                 }}
-                size="lg" className="w-full justify-start gap-2 transition-all duration-300 bg-white/5 backdrop-blur-md border border-white/20 hover:bg-white/10 rounded-[100px]"
+                size="lg" className="w-full justify-start gap-2 transition-all duration-300 bg-white/5 border border-white/20 hover:bg-white/10 rounded-[100px]"
+                data-new-chat="true"
               >
                 <PlusIcon size={16} />
                 <span>New Chat</span>
@@ -200,7 +201,8 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
                   router.push('/');
                   router.refresh();
                 }}
-                size="lg" className="w-full justify-start gap-2 transition-all duration-300 bg-white/5 backdrop-blur-md border border-white/20 hover:bg-white/10 rounded-[100px]"
+                size="lg" className="w-full justify-start gap-2 transition-all duration-300 bg-white/5 border border-white/20 hover:bg-white/10 rounded-[100px]"
+                data-new-chat="true"
               >
                 <PlusIcon size={16} />
                 <span>New Chat</span>
@@ -254,7 +256,8 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
                   router.push('/');
                   router.refresh();
                 }}
-                size="lg" className="w-full justify-start gap-2 transition-all duration-300 bg-white/5 backdrop-blur-md border border-white/20 hover:bg-white/10 rounded-[100px]"
+                size="lg" className="w-full justify-start gap-2 transition-all duration-300 bg-white/5 border border-white/20 hover:bg-white/10 rounded-[100px]"
+                data-new-chat="true"
               >
                 <PlusIcon size={16} />
                 <span>New Chat</span>
@@ -289,7 +292,8 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
                 router.push('/');
                 router.refresh();
               }}
-              size="lg" className="w-full justify-start gap-2 transition-all duration-300 bg-white/5 backdrop-blur-md border border-white/20 hover:bg-white/10 rounded-[100px]"
+              size="lg" className="w-full justify-start gap-2 transition-all duration-300 bg-white/5 border border-white/20 hover:bg-white/10 rounded-[100px]"
+              data-new-chat="true"
             >
               <PlusIcon size={16} />
               <span>New Chat</span>

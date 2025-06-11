@@ -1,12 +1,11 @@
 'use client';
 
-import { ChevronUp } from 'lucide-react';
-import Image from 'next/image';
 import type { User } from 'next-auth';
-import { signOut, useSession } from 'next-auth/react';
 import { useTheme } from 'next-themes';
-import { useTelegram } from '@/hooks/useTelegram';
+import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { toast } from 'sonner';
+import Image from 'next/image';
 
 import {
   DropdownMenu,
@@ -20,33 +19,30 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
-import { useRouter } from 'next/navigation';
-import { toast } from './toast';
-import { LoaderIcon } from './icons';
-import { guestRegex } from '@/lib/constants';
+import { signOut, useSession } from 'next-auth/react';
+import { useTelegram } from '@/hooks/useTelegram';
 import { SkeletonWave } from './ui/skeleton';
 import { ProfileModal } from './profile-modal';
 
 export function SidebarUserNav({ user }: { user: User }) {
+  const { theme, setTheme } = useTheme();
   const router = useRouter();
-  const { data, status } = useSession();
-  const { setTheme, theme } = useTheme();
-  const { user: telegramUser } = useTelegram();
+  const { status } = useSession();
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const { user: telegramUser } = useTelegram();
 
-  const isGuest = guestRegex.test(data?.user?.email ?? '');
+  const isGuest = user.email?.includes('guest-');
   const isTelegramUser = user.email?.startsWith('telegram_') && user.email?.endsWith('@telegram.local');
-  
-  // Determine display name and avatar
-  const displayName = telegramUser && isTelegramUser
-    ? `${telegramUser.first_name}${telegramUser.last_name ? ' ' + telegramUser.last_name : ''}`
-    : isGuest 
-    ? 'Guest' 
-    : user?.email;
 
-  // Truncate display name for button to 12 characters max
-  const truncatedDisplayName = displayName ? displayName.slice(0, 12) : '';
-    
+  // Determine display name and avatar
+  const displayName = telegramUser?.first_name && isTelegramUser
+    ? `${telegramUser.first_name} ${telegramUser.last_name || ''}`.trim()
+    : user.name || user.email?.split('@')[0] || 'User';
+
+  const truncatedDisplayName = displayName.length > 20 
+    ? `${displayName.slice(0, 20)}...` 
+    : displayName;
+
   const avatarUrl = telegramUser?.photo_url && isTelegramUser
     ? telegramUser.photo_url
     : `https://avatar.vercel.sh/${user.email}`;
@@ -58,19 +54,17 @@ export function SidebarUserNav({ user }: { user: User }) {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               {status === 'loading' ? (
-                <SidebarMenuButton className="data-[state=open]:bg-white/10 data-[state=open]:backdrop-blur-md bg-white/5 backdrop-blur-md border border-white/20 hover:bg-white/10 data-[state=open]:text-sidebar-accent-foreground h-10 justify-between transition-all duration-200 rounded-[100px]">
+                <SidebarMenuButton className="h-10 justify-between transition-all duration-200 rounded-[100px] bg-white/5 border border-white/20 hover:bg-white/10" data-user-nav="true">
                   <div className="flex flex-row gap-2 items-center">
                     <SkeletonWave className="size-6 rounded-full" delay={0} />
                     <SkeletonWave className="h-4 w-32 rounded-md" delay={0.1} />
-                  </div>
-                  <div className="animate-spin text-zinc-500">
-                    <LoaderIcon />
                   </div>
                 </SidebarMenuButton>
               ) : (
                 <SidebarMenuButton
                   data-testid="user-nav-button"
-                  className="data-[state=open]:bg-white/10 data-[state=open]:backdrop-blur-md data-[state=open]:text-sidebar-accent-foreground h-10 bg-white/5 backdrop-blur-md border border-white/20 hover:bg-white/10 transition-all duration-200 rounded-[100px]"
+                  className="h-10 bg-white/5 border border-white/20 hover:bg-white/10 transition-all duration-200 rounded-[100px]"
+                  data-user-nav="true"
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <Image
@@ -97,7 +91,7 @@ export function SidebarUserNav({ user }: { user: User }) {
             <DropdownMenuContent
               data-testid="user-nav-menu"
               side="top"
-              className="w-[--radix-popper-anchor-width] text-left bg-white/10 backdrop-blur-md border border-white/20 shadow-lg rounded-xl p-2"
+              className="w-[--radix-popper-anchor-width] text-left bg-white/80 border border-white/20 shadow-lg rounded-xl p-2"
             >
               {telegramUser && isTelegramUser && (
                 <>
@@ -134,7 +128,7 @@ export function SidebarUserNav({ user }: { user: User }) {
               )}
               <DropdownMenuItem
                 data-testid="user-nav-item-profile"
-                className="cursor-pointer text-left bg-transparent border border-transparent hover:bg-white/15 hover:backdrop-blur-sm hover:text-accent-foreground transition-all duration-200 rounded-lg mx-1 hover:shadow-sm hover:border-white/30"
+                className="cursor-pointer text-left bg-transparent border border-transparent hover:bg-white/15 hover:text-accent-foreground transition-all duration-200 rounded-lg mx-1 hover:shadow-sm hover:border-white/30"
                 onSelect={() => setShowProfileModal(true)}
               >
                 Profile
@@ -142,7 +136,7 @@ export function SidebarUserNav({ user }: { user: User }) {
               <DropdownMenuSeparator className="bg-white/20" />
               <DropdownMenuItem
                 data-testid="user-nav-item-theme"
-                className="cursor-pointer text-left bg-transparent border border-transparent hover:bg-white/15 hover:backdrop-blur-sm hover:text-accent-foreground transition-all duration-200 rounded-lg mx-1 hover:shadow-sm hover:border-white/30"
+                className="cursor-pointer text-left bg-transparent border border-transparent hover:bg-white/15 hover:text-accent-foreground transition-all duration-200 rounded-lg mx-1 hover:shadow-sm hover:border-white/30"
                 onSelect={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
               >
                 {`Toggle ${theme === 'light' ? 'dark' : 'light'} mode`}
@@ -151,15 +145,10 @@ export function SidebarUserNav({ user }: { user: User }) {
               <DropdownMenuItem asChild data-testid="user-nav-item-auth">
                 <button
                   type="button"
-                  className="w-full cursor-pointer text-left bg-transparent border border-transparent hover:bg-white/15 hover:backdrop-blur-sm hover:text-accent-foreground transition-all duration-200 rounded-lg mx-1 hover:shadow-sm hover:border-white/30"
+                  className="w-full cursor-pointer text-left bg-transparent border border-transparent hover:bg-white/15 hover:text-accent-foreground transition-all duration-200 rounded-lg mx-1 hover:shadow-sm hover:border-white/30"
                   onClick={() => {
                     if (status === 'loading') {
-                      toast({
-                        type: 'error',
-                        description:
-                          'Checking authentication status, please try again!',
-                      });
-
+                      console.log('Checking authentication status, please try again!');
                       return;
                     }
 
@@ -179,10 +168,9 @@ export function SidebarUserNav({ user }: { user: User }) {
           </DropdownMenu>
         </SidebarMenuItem>
       </SidebarMenu>
-
-      <ProfileModal 
-        open={showProfileModal} 
-        onOpenChange={setShowProfileModal} 
+      <ProfileModal
+        open={showProfileModal}
+        onOpenChange={setShowProfileModal}
       />
     </>
   );
