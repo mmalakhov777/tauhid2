@@ -65,7 +65,10 @@ export function SourceSelector({
 }) {
   const [open, setOpen] = useState(false);
 
-  const handleSourceToggle = useCallback((sourceId: keyof SourceSelection) => {
+  const handleSourceToggle = useCallback((sourceId: keyof SourceSelection, event?: Event) => {
+    // Prevent dropdown from closing
+    event?.preventDefault();
+    
     // Prevent unselecting if this is the only selected source
     const selectedCount = Object.values(selectedSources).filter(Boolean).length;
     if (selectedSources[sourceId] && selectedCount === 1) {
@@ -85,6 +88,23 @@ export function SourceSelector({
     });
     onSourcesChange?.(newSources);
   }, [selectedSources, onSourcesChange]);
+
+  const handleSelectAll = useCallback((event?: Event) => {
+    // Prevent dropdown from closing
+    event?.preventDefault();
+    
+    const allSelected: SourceSelection = {
+      classic: true,
+      risale: true,
+      youtube: true,
+      fatwa: true,
+    };
+    console.log('[source-selector] Select all triggered:', {
+      newSources: allSelected,
+      timestamp: new Date().toISOString()
+    });
+    onSourcesChange?.(allSelected);
+  }, [onSourcesChange]);
 
   const selectedCount = Object.values(selectedSources).filter(Boolean).length;
   const allSelected = selectedCount === sources.length;
@@ -124,10 +144,27 @@ export function SourceSelector({
         <DropdownMenuLabel>Search Sources</DropdownMenuLabel>
         <DropdownMenuSeparator />
         
+        {!allSelected && (
+          <>
+            <DropdownMenuItem
+              onSelect={handleSelectAll}
+              className="gap-4 group/item flex flex-row justify-between items-center font-medium text-primary"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex-shrink-0 text-primary">
+                  <BookOpen className="h-4 w-4" />
+                </div>
+                <div className="text-sm">Select All Sources</div>
+              </div>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+          </>
+        )}
+        
         {sources.map((source) => (
           <DropdownMenuItem
             key={source.id}
-            onSelect={() => handleSourceToggle(source.id)}
+            onSelect={(event) => handleSourceToggle(source.id, event)}
             className="gap-4 group/item flex flex-row justify-between items-center"
             data-active={selectedSources[source.id]}
           >

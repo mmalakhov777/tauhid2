@@ -40,6 +40,43 @@ export default function AboutPage() {
             </section>
 
             <section>
+              <h2 className="text-xl font-semibold text-foreground mb-3">Precise Grounding on Trustworthy Sources</h2>
+              <p>
+                Our AI assistant is built upon a comprehensive foundation of authentic Islamic sources, ensuring accuracy and reliability in every response. We draw from:
+              </p>
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li>The complete <strong>Risale-i Nur Collection</strong> by Bediuzzaman Said Nursi, including Sözler, Mektubat, Lemalar, and specialized treatises like Kader Risalesi, İhlas Risaleleri, and Tabiat Risalesi</li>
+                <li>Classical Hanafi jurisprudence texts such as <strong>Raddul-Muhtaar</strong>, <strong>Fatawa Qazi Khan</strong>, <strong>Fatuhat-i Alamgiri</strong>, and <strong>Sharh al-Wiqayah</strong></li>
+                <li>Works by <strong>Sadr al-Shari'ah</strong> and other renowned classical scholars</li>
+                <li>Authentic Hadith collections (Sahih Bukhari, Sahih Muslim, and other reliable compilations)</li>
+                <li>Classical Tafsir works and contemporary scholarly interpretations</li>
+                <li>Urdu classical texts like <strong>Badai as-Sanai</strong> and other trusted sources</li>
+                <li>Content from verified YouTube channels of reputable Islamic scholars and educators</li>
+                <li>Peer-reviewed Islamic academic publications</li>
+              </ul>
+              <p className="mt-2">
+                Every answer is grounded in these verified sources, providing you with knowledge that is both authentic and traceable to its original Islamic foundations. Our collection spans from classical 13th-century texts to modern scholarly works, ensuring comprehensive coverage of Islamic knowledge.
+              </p>
+            </section>
+
+            <section>
+              <h2 className="text-xl font-semibold text-foreground mb-3">Multilingual Support</h2>
+              <p>
+                Our AI breaks down language barriers to make Islamic knowledge accessible to Muslims worldwide. Key features include:
+              </p>
+              <ul className="list-disc list-inside mt-2 space-y-1">
+                <li>Ask questions in any language - English, Arabic, Urdu, Turkish, Indonesian, French, Russian, and many more</li>
+                <li>Receive answers in your preferred language, regardless of the source language</li>
+                <li>Access to sources in Arabic and Urdu with seamless translation to English, Russian, or your chosen language</li>
+                <li>Preserve the authenticity of original texts while providing clear translations</li>
+                <li>Cultural context adaptation to help you understand concepts in your local context</li>
+              </ul>
+              <p className="mt-2">
+                Whether the original source is a classical Arabic text or a modern Urdu lecture, you can easily read and understand it in English, Russian, or any other supported language, making authentic Islamic knowledge truly global and accessible.
+              </p>
+            </section>
+
+            <section>
               <h2 className="text-xl font-semibold text-foreground mb-3">Important Disclaimer</h2>
               <p>
                 While we strive to provide accurate and helpful information, this service is for educational purposes only. For important religious decisions, rulings, or guidance, we strongly recommend consulting with qualified Islamic scholars, local Imams, or religious authorities in your community.

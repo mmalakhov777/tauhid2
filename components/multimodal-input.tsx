@@ -38,6 +38,7 @@ import { useScrollToBottom } from '@/hooks/use-scroll-to-bottom';
 import type { VisibilityType } from './visibility-selector';
 import { VisibilitySelector } from './visibility-selector';
 import { SourceSelector, type SourceSelection, DEFAULT_SOURCES } from './source-selector';
+import { SchoolSelector, type SchoolSelection, DEFAULT_SCHOOLS } from './school-selector';
 import type { Session } from 'next-auth';
 import { useSidebar } from './ui/sidebar';
 import {
@@ -105,6 +106,10 @@ function PureMultimodalInput({
   const [selectedSources, setSelectedSources] = useLocalStorage<SourceSelection>(
     'selectedSources',
     DEFAULT_SOURCES
+  );
+  const [selectedSchools, setSelectedSchools] = useLocalStorage<SchoolSelection>(
+    'selectedSchools',
+    DEFAULT_SCHOOLS
   );
 
   // Debug effect to track source changes
@@ -705,14 +710,16 @@ function PureMultimodalInput({
           }}
         />
 
-        {/* Visibility Selector and Source Selector - Bottom Left Inside */}
+        {/* Visibility Selector and School Selector (with Source Selector inside) - Bottom Left Inside */}
         <div className="absolute bottom-3 left-3 flex flex-row gap-1 items-center">
           <VisibilitySelector
             chatId={chatId}
             selectedVisibilityType={selectedVisibilityType}
             className="!h-8 !text-xs !px-2 !bg-white/5 !backdrop-blur-md !border !border-white/20 hover:!bg-white/10 !transition-all !duration-200 !rounded-full"
           />
-          <SourceSelector
+          <SchoolSelector
+            selectedSchools={selectedSchools}
+            onSchoolsChange={setSelectedSchools}
             selectedSources={selectedSources}
             onSourcesChange={setSelectedSources}
             className="!h-8 !text-xs !px-2 !bg-white/5 !backdrop-blur-md !border !border-white/20 hover:!bg-white/10 !transition-all !duration-200 !rounded-full"

@@ -25,7 +25,7 @@ export function AppFooter() {
       </div>
       <div className="text-center mt-3 sm:mt-4">
         <p className="text-xs text-muted-foreground">
-          © 2024 Islamic Knowledge Assistant. All rights reserved.
+          © 2025 Islamic Knowledge Assistant. All rights reserved.
         </p>
       </div>
     </div>
