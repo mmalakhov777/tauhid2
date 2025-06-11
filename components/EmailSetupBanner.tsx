@@ -1,5 +1,7 @@
 'use client';
 
+import { useState } from 'react';
+
 interface EmailSetupBannerProps {
   user: {
     email?: string | null;
@@ -8,6 +10,8 @@ interface EmailSetupBannerProps {
 }
 
 export const EmailSetupBanner = ({ user, onClick }: EmailSetupBannerProps) => {
+  const [isClicked, setIsClicked] = useState(false);
+
   // Check if user has a dummy email (needs setup) - works for any guest user
   const needsEmailSetup = user.email?.startsWith('guest_') || 
                           user.email?.startsWith('telegram_') || 
@@ -17,10 +21,20 @@ export const EmailSetupBanner = ({ user, onClick }: EmailSetupBannerProps) => {
     return null;
   }
 
+  const handleClick = () => {
+    setIsClicked(true);
+    setTimeout(() => setIsClicked(false), 200); // Visual feedback
+    onClick?.();
+  };
+
   return (
     <div 
-      className="mx-2 mb-2 p-3 bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-xl shadow-lg cursor-pointer hover:bg-white/15 dark:hover:bg-white/8 transition-all duration-200 hover:scale-[1.02] active:scale-[0.98]"
-      onClick={onClick}
+      className={`mx-2 mb-2 p-3 bg-white/10 dark:bg-white/5 backdrop-blur-md border border-white/20 dark:border-white/10 rounded-xl shadow-lg cursor-pointer transition-all duration-200 ${
+        isClicked 
+          ? 'scale-95 bg-white/25 dark:bg-white/15' 
+          : 'hover:bg-white/15 dark:hover:bg-white/8 hover:scale-[1.02] active:scale-[0.98]'
+      }`}
+      onClick={handleClick}
     >
       <div className="flex items-start gap-2">
         <div className="flex-shrink-0 mt-0.5">
@@ -30,7 +44,7 @@ export const EmailSetupBanner = ({ user, onClick }: EmailSetupBannerProps) => {
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-foreground/90">
-            Complete Your Profile
+            Complete Your Profile {isClicked && '✓'}
           </p>
           <p className="text-xs text-muted-foreground mt-1">
             Set up your email to save conversations and access advanced features

@@ -259,6 +259,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
   };
 
   const handleEmailSetupClick = () => {
+    console.log('Email setup clicked!', { user, telegramUser });
     setShowTelegramEmailForm(true);
   };
 
@@ -282,6 +283,20 @@ export function AppSidebar({ user }: { user: User | undefined }) {
     is_premium: user.telegramIsPremium || undefined,
     allows_write_to_pm: user.telegramAllowsWriteToPm || undefined,
   } : null;
+
+  // Fallback telegram user for testing if no telegram data exists
+  const fallbackTelegramUser = {
+    id: 123456789,
+    first_name: user?.email?.split('@')[0] || 'User',
+    last_name: undefined,
+    username: undefined,
+    photo_url: undefined,
+    language_code: 'en',
+    is_premium: false,
+    allows_write_to_pm: true,
+  };
+
+  const finalTelegramUser = telegramUser || fallbackTelegramUser;
 
   // On mobile, return only our custom mobile sidebar
   if (isMobile) {
@@ -339,11 +354,27 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                 </div>
               </SidebarMenu>
             </SidebarHeader>
-            <SidebarContent>
-              {user && <EmailSetupBanner user={user} onClick={handleEmailSetupClick} />}
-              <SidebarHistory user={user} />
-              <GuestRegistrationBanner />
-            </SidebarContent>
+                    <SidebarContent>
+          {user && <EmailSetupBanner user={user} onClick={handleEmailSetupClick} />}
+          
+          {/* Temporary Debug Button */}
+          {user && (
+            <div className="mx-2 mb-2">
+              <button
+                onClick={() => {
+                  console.log('Debug button clicked!');
+                  setShowTelegramEmailForm(true);
+                }}
+                className="w-full p-2 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-xs hover:bg-red-500/30 transition-colors"
+              >
+                🐛 DEBUG: Open Email Form
+              </button>
+            </div>
+          )}
+          
+          <SidebarHistory user={user} />
+          <GuestRegistrationBanner />
+        </SidebarContent>
             <SidebarFooter>
               <div className="flex flex-row items-center gap-2 pb-2.5">
                 <div className="flex-shrink-0">
@@ -419,6 +450,22 @@ export function AppSidebar({ user }: { user: User | undefined }) {
         </SidebarHeader>
         <SidebarContent>
           {user && <EmailSetupBanner user={user} onClick={handleEmailSetupClick} />}
+          
+          {/* Temporary Debug Button */}
+          {user && (
+            <div className="mx-2 mb-2">
+              <button
+                onClick={() => {
+                  console.log('Debug button clicked!');
+                  setShowTelegramEmailForm(true);
+                }}
+                className="w-full p-2 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-xs hover:bg-red-500/30 transition-colors"
+              >
+                🐛 DEBUG: Open Email Form
+              </button>
+            </div>
+          )}
+          
           <SidebarHistory user={user} />
           <GuestRegistrationBanner />
         </SidebarContent>
@@ -465,9 +512,9 @@ export function AppSidebar({ user }: { user: User | undefined }) {
       </Sidebar>
 
       {/* TelegramEmailForm Modal */}
-      {showTelegramEmailForm && telegramUser && (
+      {showTelegramEmailForm && finalTelegramUser && (
         <TelegramEmailForm
-          telegramUser={telegramUser}
+          telegramUser={finalTelegramUser}
           onComplete={handleTelegramFormComplete}
           onSkip={handleTelegramFormSkip}
         />
