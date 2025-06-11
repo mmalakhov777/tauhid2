@@ -69,12 +69,10 @@ export function AppSidebar({ user }: { user: User | undefined }) {
         height: calc(100vh - 16px) !important;
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12) !important;
       }
-      // NEW CHAT BUTTON GLASS EFFECT
+      // NEW CHAT BUTTON - TRANSPARENT (no backdrop filter)
       [data-new-chat="true"],
       [data-new-chat="true"].rounded-md {
         background: rgba(255, 255, 255, 0.35) !important;
-        backdrop-filter: blur(16px) !important;
-        -webkit-backdrop-filter: blur(16px) !important;
         border: 1px solid rgba(255, 255, 255, 0.35) !important;
         box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
         border-radius: 100px !important;
@@ -83,10 +81,10 @@ export function AppSidebar({ user }: { user: User | undefined }) {
       }
       [data-new-chat="true"]:hover,
       [data-new-chat="true"].rounded-md:hover {
-        background: rgba(255, 255, 255, 0.35) !important;
-        border: 1px solid rgba(255, 255, 255, 0.35) !important;
+        background: rgba(255, 255, 255, 0.45) !important;
+        border: 1px solid rgba(255, 255, 255, 0.4) !important;
         border-radius: 100px !important;
-        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12) !important;
         transform: translateY(-0.5px) !important;
       }
       .dark [data-new-chat="true"],
@@ -98,14 +96,14 @@ export function AppSidebar({ user }: { user: User | undefined }) {
       }
       .dark [data-new-chat="true"]:hover,
       .dark [data-new-chat="true"].rounded-md:hover {
-        background: rgba(255, 255, 255, 0.14) !important;
-        border: 1px solid rgba(255, 255, 255, 0.18) !important;
+        background: rgba(255, 255, 255, 0.16) !important;
+        border: 1px solid rgba(255, 255, 255, 0.22) !important;
         border-radius: 100px !important;
         box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
         transform: translateY(-0.5px) !important;
       }
       
-      // CHAT HISTORY ITEM GLASS EFFECT
+      // CHAT HISTORY ITEM - TRANSPARENT (no backdrop filter)
       [data-chat-item="true"],
       [data-chat-item="true"].rounded-md {
         transition: all 0.3s ease !important;
@@ -128,8 +126,6 @@ export function AppSidebar({ user }: { user: User | undefined }) {
       [data-chat-item="true"].rounded-md:hover {
         opacity: 1.0 !important;
         background: rgba(255, 255, 255, 0.18) !important;
-        backdrop-filter: blur(12px) !important;
-        -webkit-backdrop-filter: blur(12px) !important;
         border: 1px solid rgba(255, 255, 255, 0.3) !important;
         border-radius: 100px !important;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
@@ -145,12 +141,10 @@ export function AppSidebar({ user }: { user: User | undefined }) {
         transform: translateY(-0.5px) !important;
       }
       
-      // USER NAV GLASS EFFECT
+      // USER NAV - TRANSPARENT (no backdrop filter)
       [data-user-nav="true"],
       [data-user-nav="true"].rounded-md {
         background: rgba(255, 255, 255, 0.15) !important;
-        backdrop-filter: blur(12px) !important;
-        -webkit-backdrop-filter: blur(12px) !important;
         border: 1px solid rgba(255, 255, 255, 0.25) !important;
         border-radius: 100px !important;
         transition: all 0.3s ease !important;
@@ -159,7 +153,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
       [data-user-nav="true"]:hover,
       [data-user-nav="true"].rounded-md:hover {
         background: rgba(255, 255, 255, 0.27) !important;
-        border: 1px solid rgba(255, 255, 255, 0.25) !important;
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
         border-radius: 100px !important;
         box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1) !important;
         transform: translateY(-0.5px) !important;
@@ -174,18 +168,16 @@ export function AppSidebar({ user }: { user: User | undefined }) {
       .dark [data-user-nav="true"]:hover,
       .dark [data-user-nav="true"].rounded-md:hover {
         background: rgba(255, 255, 255, 0.11) !important;
-        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
         border-radius: 100px !important;
         box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3) !important;
         transform: translateY(-0.5px) !important;
       }
       
-      // SIDEBAR MENU ACTION (3-dot menu) GLASS EFFECT
+      // SIDEBAR MENU ACTION - TRANSPARENT (no backdrop filter)
       .group:hover [data-sidebar="menu-action"],
       [data-sidebar="menu-action"]:hover {
         background: rgba(255, 255, 255, 0.18) !important;
-        backdrop-filter: blur(12px) !important;
-        -webkit-backdrop-filter: blur(12px) !important;
         border-radius: 6px !important;
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
         transition: all 0.2s ease !important;
@@ -196,7 +188,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
         box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
       }
       
-      // DROPDOWN MENU GLASS EFFECT
+      // DROPDOWN MENU - KEEP BACKDROP FILTER (separate overlay)
       [data-radix-popper-content-wrapper] [role="menu"] {
         background: rgba(255, 255, 255, 0.8) !important;
         backdrop-filter: blur(16px) !important;
@@ -266,7 +258,8 @@ export function AppSidebar({ user }: { user: User | undefined }) {
             openMobile ? 'opacity-100 visible' : 'opacity-0 invisible'
           }`}
           style={{
-            background: 'rgba(0, 0, 0, 0.4)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
           }}
           onClick={() => setOpenMobile(false)}
         />
@@ -289,8 +282,6 @@ export function AppSidebar({ user }: { user: User | undefined }) {
             left: '0',
             height: 'calc(100vh - 16px)',
             width: 'calc(288px - 16px)', // 288px is w-72, subtract margin
-            transform: openMobile ? 'translateX(0)' : 'translateX(-110%)', // Move further left
-            visibility: openMobile ? 'visible' : 'hidden'
           }}
         >
           <div className="flex h-full w-full flex-col pb-5">
@@ -330,7 +321,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <SidebarMenuButton
-                            className="data-[state=open]:bg-white/10 data-[state=open]:backdrop-blur-md data-[state=open]:text-sidebar-accent-foreground h-10 w-fit px-2 bg-white/5 backdrop-blur-md border border-white/20 hover:bg-white/10 transition-all duration-200 rounded-[100px]"
+                            className="h-10 w-fit px-2 bg-white/5 border border-white/20 hover:bg-white/10 transition-all duration-200 rounded-[100px]"
                           >
                             <GlobeIcon size={16} />
                             <span className="text-sm font-medium">
@@ -338,14 +329,14 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                             </span>
                           </SidebarMenuButton>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="w-[200px] bg-white/10 backdrop-blur-md border border-white/20 shadow-lg rounded-xl p-2">
+                        <DropdownMenuContent align="start" className="w-[200px] bg-white/80 border border-white/20 shadow-lg rounded-xl p-2">
                           <DropdownMenuLabel className="text-foreground px-2 py-1.5">Select Language</DropdownMenuLabel>
                           <DropdownMenuSeparator className="bg-white/20" />
                           {languages.map((lang) => (
                             <DropdownMenuItem
                               key={lang.code}
                               onClick={() => handleLanguageChange(lang.code)}
-                              className={`cursor-pointer text-left bg-transparent border border-transparent hover:bg-white/15 hover:backdrop-blur-sm hover:text-accent-foreground transition-all duration-200 rounded-lg mx-1 hover:shadow-sm hover:border-white/30 ${
+                              className={`cursor-pointer text-left bg-transparent border border-transparent hover:bg-white/15 hover:text-accent-foreground transition-all duration-200 rounded-lg mx-1 hover:shadow-sm hover:border-white/30 ${
                                 selectedLanguage === lang.code ? 'bg-white/15 border-white/30 text-accent-foreground' : ''
                               }`}
                             >
@@ -407,7 +398,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <SidebarMenuButton
-                      className="data-[state=open]:bg-white/10 data-[state=open]:backdrop-blur-md data-[state=open]:text-sidebar-accent-foreground h-10 w-fit px-2 bg-white/5 backdrop-blur-md border border-white/20 hover:bg-white/10 transition-all duration-200 rounded-[100px]"
+                      className="h-10 w-fit px-2 bg-white/5 border border-white/20 hover:bg-white/10 transition-all duration-200 rounded-[100px]"
                     >
                       <GlobeIcon size={16} />
                       <span className="text-sm font-medium">
@@ -415,14 +406,14 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                       </span>
                     </SidebarMenuButton>
                   </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="start" className="w-[200px] bg-white/10 backdrop-blur-md border border-white/20 shadow-lg rounded-xl p-2">
+                                            <DropdownMenuContent align="start" className="w-[200px] bg-white/80 border border-white/20 shadow-lg rounded-xl p-2">
                     <DropdownMenuLabel className="text-foreground px-2 py-1.5">Select Language</DropdownMenuLabel>
                     <DropdownMenuSeparator className="bg-white/20" />
                     {languages.map((lang) => (
                       <DropdownMenuItem
                         key={lang.code}
                         onClick={() => handleLanguageChange(lang.code)}
-                        className={`cursor-pointer text-left bg-transparent border border-transparent hover:bg-white/15 hover:backdrop-blur-sm hover:text-accent-foreground transition-all duration-200 rounded-lg mx-1 hover:shadow-sm hover:border-white/30 ${
+                        className={`cursor-pointer text-left bg-transparent border border-transparent hover:bg-white/15 hover:text-accent-foreground transition-all duration-200 rounded-lg mx-1 hover:shadow-sm hover:border-white/30 ${
                           selectedLanguage === lang.code ? 'bg-white/15 border-white/30 text-accent-foreground' : ''
                         }`}
                       >
