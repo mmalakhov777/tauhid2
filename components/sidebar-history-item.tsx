@@ -95,16 +95,16 @@ const PureChatItem = ({
           </SidebarMenuAction>
         </DropdownMenuTrigger>
 
-        <DropdownMenuContent side="bottom" align="end">
+        <DropdownMenuContent side="bottom" align="end" className="bg-white/80 border border-white/20 shadow-lg rounded-xl">
           <DropdownMenuSub>
             <DropdownMenuSubTrigger className="cursor-pointer">
               <ShareIcon />
               <span>Share</span>
             </DropdownMenuSubTrigger>
             <DropdownMenuPortal>
-              <DropdownMenuSubContent>
+              <DropdownMenuSubContent className="bg-white/80 border border-white/20 shadow-lg rounded-xl">
                 <DropdownMenuItem
-                  className="cursor-pointer flex-row justify-between"
+                  className="cursor-pointer flex-row justify-between hover:bg-white/15 hover:text-accent-foreground transition-all duration-200"
                   onClick={() => {
                     setVisibilityType('private');
                   }}
@@ -118,7 +118,7 @@ const PureChatItem = ({
                   ) : null}
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  className="cursor-pointer flex-row justify-between"
+                  className="cursor-pointer flex-row justify-between hover:bg-white/15 hover:text-accent-foreground transition-all duration-200"
                   onClick={() => {
                     setVisibilityType('public');
                   }}
@@ -134,7 +134,7 @@ const PureChatItem = ({
           </DropdownMenuSub>
 
           <DropdownMenuItem
-            className="cursor-pointer text-destructive focus:bg-destructive/15 focus:text-destructive dark:text-red-500"
+            className="cursor-pointer text-destructive focus:bg-destructive/15 focus:text-destructive dark:text-red-500 hover:bg-destructive/15 hover:text-destructive transition-all duration-200"
             onSelect={() => onDelete(chat.id)}
           >
             <TrashIcon />
