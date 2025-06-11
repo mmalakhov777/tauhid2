@@ -22,13 +22,8 @@ export const EmailSetupBanner = ({ user, onClick }: EmailSetupBannerProps) => {
   }
 
   const handleClick = () => {
-    console.log('🔥 EmailSetupBanner clicked!');
     setIsClicked(true);
     setTimeout(() => setIsClicked(false), 200); // Visual feedback
-    
-    // Add alert for debugging in Telegram
-    alert('Banner clicked! Opening form...');
-    
     onClick?.();
   };
 

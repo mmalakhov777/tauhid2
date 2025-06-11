@@ -22,9 +22,6 @@ interface TelegramEmailFormProps {
 }
 
 export const TelegramEmailForm = ({ telegramUser, onComplete, onSkip }: TelegramEmailFormProps) => {
-  // Debug logging
-  console.log('TelegramEmailForm received telegramUser:', telegramUser);
-  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -85,16 +82,6 @@ export const TelegramEmailForm = ({ telegramUser, onComplete, onSkip }: Telegram
     const emailError = validateEmail(email);
     const passwordError = validatePassword(password);
     const confirmPasswordError = validateConfirmPassword(confirmPassword, password);
-    
-    // Debug logging
-    console.log('Validation results:', {
-      email: email,
-      emailError,
-      password: password ? '[HIDDEN]' : '',
-      passwordError,
-      confirmPassword: confirmPassword ? '[HIDDEN]' : '',
-      confirmPasswordError
-    });
     
     if (emailError || passwordError || confirmPasswordError) {
       setErrors({

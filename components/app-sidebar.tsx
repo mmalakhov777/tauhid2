@@ -259,7 +259,6 @@ export function AppSidebar({ user }: { user: User | undefined }) {
   };
 
   const handleEmailSetupClick = () => {
-    console.log('Email setup clicked!', { user, telegramUser });
     setShowTelegramEmailForm(true);
   };
 
@@ -356,22 +355,6 @@ export function AppSidebar({ user }: { user: User | undefined }) {
             </SidebarHeader>
                     <SidebarContent>
           {user && <EmailSetupBanner user={user} onClick={handleEmailSetupClick} />}
-          
-          {/* Temporary Debug Button */}
-          {user && (
-            <div className="mx-2 mb-2">
-              <button
-                onClick={() => {
-                  console.log('Debug button clicked!');
-                  setShowTelegramEmailForm(true);
-                }}
-                className="w-full p-2 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-xs hover:bg-red-500/30 transition-colors"
-              >
-                🐛 DEBUG: Open Email Form
-              </button>
-            </div>
-          )}
-          
           <SidebarHistory user={user} />
           <GuestRegistrationBanner />
         </SidebarContent>
@@ -459,22 +442,6 @@ export function AppSidebar({ user }: { user: User | undefined }) {
         </SidebarHeader>
         <SidebarContent>
           {user && <EmailSetupBanner user={user} onClick={handleEmailSetupClick} />}
-          
-          {/* Temporary Debug Button */}
-          {user && (
-            <div className="mx-2 mb-2">
-              <button
-                onClick={() => {
-                  console.log('Debug button clicked!');
-                  setShowTelegramEmailForm(true);
-                }}
-                className="w-full p-2 bg-red-500/20 border border-red-500/30 rounded-lg text-red-400 text-xs hover:bg-red-500/30 transition-colors"
-              >
-                🐛 DEBUG: Open Email Form
-              </button>
-            </div>
-          )}
-          
           <SidebarHistory user={user} />
           <GuestRegistrationBanner />
         </SidebarContent>
