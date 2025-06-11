@@ -201,6 +201,11 @@ export function AppSidebar({ user }: { user: User | undefined }) {
         border: 1px solid rgba(255, 255, 255, 0.15) !important;
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35) !important;
       }
+      
+      [data-sidebar="content"] {
+        isolation: isolate;
+        -webkit-overflow-scrolling: touch;
+      }
     `;
     document.head.appendChild(style);
     

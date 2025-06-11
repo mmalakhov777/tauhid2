@@ -175,7 +175,7 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
         </div>
         
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto min-h-0" style={{ isolation: 'isolate' }}>
+        <div className="flex-1 overflow-y-auto min-h-0" style={{ isolation: 'isolate', WebkitOverflowScrolling: 'touch' }}>
           <SidebarGroup>
             <SidebarGroupContent>
               <div className="px-2 text-zinc-500 w-full flex flex-row justify-center items-center text-sm gap-2">
@@ -212,7 +212,7 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
         </div>
         
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto min-h-0" style={{ isolation: 'isolate' }}>
+        <div className="flex-1 overflow-y-auto min-h-0" style={{ isolation: 'isolate', WebkitOverflowScrolling: 'touch' }}>
           <SidebarGroup>
             <SidebarGroupContent>
               <div className="mt-4">
@@ -267,7 +267,7 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
         </div>
         
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto min-h-0" style={{ isolation: 'isolate' }}>
+        <div className="flex-1 overflow-y-auto min-h-0" style={{ isolation: 'isolate', WebkitOverflowScrolling: 'touch' }}>
           <SidebarGroup>
             <SidebarGroupContent>
               <div className="px-2 text-zinc-500 w-full flex flex-row justify-center items-center text-sm gap-2 mt-4">
@@ -303,7 +303,7 @@ export function SidebarHistory({ user }: { user: User | undefined }) {
       </div>
       
       {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto min-h-0" style={{ isolation: 'isolate' }}>
+      <div className="flex-1 overflow-y-auto min-h-0" style={{ isolation: 'isolate', WebkitOverflowScrolling: 'touch' }}>
         <SidebarGroup>
           <SidebarGroupContent>
             <SidebarMenu>
