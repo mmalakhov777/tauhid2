@@ -17,6 +17,7 @@ import {
 } from './icons';
 import { useChatVisibility } from '@/hooks/use-chat-visibility';
 import { useTranslations } from '@/lib/i18n';
+import { useWindowSize } from 'usehooks-ts';
 
 export type VisibilityType = 'private' | 'public';
 
@@ -30,6 +31,7 @@ export function VisibilitySelector({
 } & React.ComponentProps<typeof Button>) {
   const [open, setOpen] = useState(false);
   const { t } = useTranslations();
+  const { width } = useWindowSize();
 
   const { visibilityType, setVisibilityType } = useChatVisibility({
     chatId,
@@ -76,7 +78,7 @@ export function VisibilitySelector({
           className="flex px-2 h-[34px] text-xs md:text-sm"
         >
           {selectedVisibility?.icon}
-          {selectedVisibility?.label}
+          {width && width > 768 && selectedVisibility?.label}
           <ChevronDownIcon />
         </Button>
       </DropdownMenuTrigger>

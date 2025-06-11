@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { ChevronDownIcon, GraduationCap } from 'lucide-react';
 import { SourceSelector, type SourceSelection, DEFAULT_SOURCES } from './source-selector';
 import { useTranslations } from '@/lib/i18n';
+import { useWindowSize } from 'usehooks-ts';
 
 export interface SchoolSelection {
   hanafi: boolean;
@@ -44,6 +45,7 @@ export function SchoolSelector({
 }) {
   const [open, setOpen] = useState(false);
   const { t } = useTranslations();
+  const { width } = useWindowSize();
 
   const schools = [
     {
@@ -116,14 +118,22 @@ export function SchoolSelector({
         return isSelected && school?.available;
       }).length;
     
+    let text = '';
     if (availableSelectedCount === 1) {
       const selectedSchool = schools.find(s => selectedSchools[s.id] && s.available);
-      return selectedSchool?.label || t('schools.school');
+      text = selectedSchool?.label || t('schools.school');
+    } else if (availableSelectedCount > 1) {
+      text = `${availableSelectedCount} ${t('schools.schools')}`;
+    } else {
+      text = t('schools.school');
     }
-    if (availableSelectedCount > 1) {
-      return `${availableSelectedCount} ${t('schools.schools')}`;
+    
+    // Limit to 6 characters on mobile
+    if (width && width <= 768 && text.length > 6) {
+      return text.substring(0, 6);
     }
-    return t('schools.school');
+    
+    return text;
   };
 
   return (
