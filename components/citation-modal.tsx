@@ -457,7 +457,7 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[60]"
+            className="fixed inset-0 bg-background/80 backdrop-blur-sm z-[9999]"
           />
 
           {/* Modal */}
@@ -466,7 +466,7 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-            className="fixed right-0 top-0 h-full w-full max-w-lg z-[60] overflow-hidden citation-modal-glass"
+            className="fixed right-0 top-0 h-full w-full max-w-lg z-[9999] overflow-hidden citation-modal-glass"
           >
             <div className="flex flex-col h-full">
               {/* Header */}

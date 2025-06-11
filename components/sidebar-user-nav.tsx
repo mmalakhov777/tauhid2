@@ -91,7 +91,7 @@ export function SidebarUserNav({ user }: { user: User }) {
             <DropdownMenuContent
               data-testid="user-nav-menu"
               side="top"
-              className="w-[--radix-popper-anchor-width] text-left bg-white/80 border border-white/20 shadow-lg rounded-xl p-2"
+              className="w-[--radix-popper-anchor-width] text-left bg-white/10 backdrop-blur-md border border-white/20 shadow-lg rounded-xl p-2"
             >
               {telegramUser && isTelegramUser && (
                 <>

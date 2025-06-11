@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/app/(auth)/auth';
-import { getUser } from '@/lib/db/queries';
+import { getUser, getChatById, getMessagesByChatId } from '@/lib/db/queries';
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { chatId, chatUrl, previewText } = await request.json();
+    const { chatId, chatUrl } = await request.json();
     
     if (!chatId || !chatUrl) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -21,6 +21,68 @@ export async function POST(request: NextRequest) {
       console.error('[prepare-share] User not found or no Telegram ID:', session.user.email);
       return NextResponse.json({ error: 'Telegram account not linked' }, { status: 400 });
     }
+
+    // Get chat from database to verify access
+    const chat = await getChatById({ id: chatId });
+    if (!chat) {
+      console.error('[prepare-share] Chat not found:', chatId);
+      return NextResponse.json({ error: 'Chat not found' }, { status: 404 });
+    }
+
+    // Check if user has access to this chat (either owns it or it's public)
+    if (chat.userId !== session.user.id && chat.visibility !== 'public') {
+      console.error('[prepare-share] User does not have access to chat:', {
+        chatId,
+        chatUserId: chat.userId,
+        sessionUserId: session.user.id,
+        visibility: chat.visibility
+      });
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+    }
+
+    // Get messages from database
+    const messages = await getMessagesByChatId({ id: chatId });
+    
+    // Generate preview from database messages
+    const generatePreviewFromMessages = () => {
+      const userMessage = messages.find(msg => msg.role === 'user');
+      const assistantMessage = messages.find(msg => msg.role === 'assistant');
+      
+      if (!userMessage || !assistantMessage) {
+        return 'Check out this interesting Islamic Q&A conversation!';
+      }
+      
+      // Extract text content from message parts
+      const getUserContent = (msg: any) => {
+        if (!msg.parts || !Array.isArray(msg.parts)) return '';
+        const textPart = msg.parts.find((part: any) => part.type === 'text');
+        return textPart?.text || '';
+      };
+      
+      // Get user question and clean language instructions
+      const userContent = getUserContent(userMessage);
+      // Remove language instruction pattern like [Answer in Russian], [Answer in Turkish], etc.
+      const cleanedUserContent = userContent.replace(/\n\n\[Answer in [^\]]+\]$/i, '').trim();
+      
+      // Get assistant response (first 30 words for a more engaging preview)
+      const assistantContent = getUserContent(assistantMessage);
+      const assistantWords = assistantContent.trim().split(/\s+/);
+      const assistantPreview = assistantWords.slice(0, 30).join(' ') + (assistantWords.length > 30 ? '...' : '');
+      
+      // Create a more engaging preview that focuses on the answer
+      // If the question is short (under 10 words), include it, otherwise just show the answer
+      const userWords = cleanedUserContent.trim().split(/\s+/);
+      
+      if (userWords.length <= 10) {
+        // Short question - show both Q&A
+        return `"${cleanedUserContent}"\n\n${assistantPreview}`;
+      } else {
+        // Long question - just show the answer with context
+        return `Islamic guidance: ${assistantPreview}`;
+      }
+    };
+
+    const previewText = generatePreviewFromMessages();
 
     // Get Telegram Bot Token from environment
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
@@ -34,6 +96,7 @@ export async function POST(request: NextRequest) {
     console.log('[prepare-share] Preview text:', previewText);
     console.log('[prepare-share] User email:', session.user.email);
     console.log('[prepare-share] Telegram User ID:', dbUser.telegramId);
+    console.log('[prepare-share] Messages count:', messages.length);
 
     // Get the bot username from environment or use a default
     const botUsername = process.env.TELEGRAM_BOT_USERNAME || 'your_bot_username';
@@ -104,6 +167,7 @@ export async function POST(request: NextRequest) {
       success: true,
       preparedMessageId: preparedMessage.id,
       expirationDate: preparedMessage.expiration_date,
+      previewText, // Return the preview for debugging
     });
 
   } catch (error) {

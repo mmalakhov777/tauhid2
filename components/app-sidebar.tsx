@@ -272,16 +272,12 @@ export function AppSidebar({ user }: { user: User | undefined }) {
           onClick={() => setOpenMobile(false)}
         />
         
-        {/* Mobile sidebar */}
+        {/* Mobile sidebar - solid background, no glass effect */}
         <div
-          className={`fixed z-40 w-72 text-sidebar-foreground transition-all duration-300 ${
+          className={`fixed z-40 w-72 bg-background border border-border text-sidebar-foreground transition-all duration-300 ${
             openMobile ? 'translate-x-0 opacity-100' : '-translate-x-full opacity-0'
           }`}
           style={{
-            background: 'rgba(255, 255, 255, 0.23)',
-            backdropFilter: 'blur(20px) saturate(150%)',
-            WebkitBackdropFilter: 'blur(20px) saturate(150%)',
-            border: '1px solid rgba(255, 255, 255, 0.12)',
             borderRadius: '16px',
             margin: '8px',
             boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
@@ -337,7 +333,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                             </span>
                           </SidebarMenuButton>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="w-[200px] bg-white/80 border border-white/20 shadow-lg rounded-xl p-2">
+                        <DropdownMenuContent align="start" className="w-[200px] bg-white/10 backdrop-blur-md border border-white/20 shadow-lg rounded-xl p-2">
                           <DropdownMenuLabel className="text-foreground px-2 py-1.5">Select Language</DropdownMenuLabel>
                           <DropdownMenuSeparator className="bg-white/20" />
                           {languages.map((lang) => (
@@ -414,7 +410,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                       </span>
                     </SidebarMenuButton>
                   </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="start" className="w-[200px] bg-white/80 border border-white/20 shadow-lg rounded-xl p-2">
+                                            <DropdownMenuContent align="start" className="w-[200px] bg-white/10 backdrop-blur-md border border-white/20 shadow-lg rounded-xl p-2">
                     <DropdownMenuLabel className="text-foreground px-2 py-1.5">Select Language</DropdownMenuLabel>
                     <DropdownMenuSeparator className="bg-white/20" />
                     {languages.map((lang) => (

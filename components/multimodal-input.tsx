@@ -330,29 +330,38 @@ function PureMultimodalInput({
     
     if (!userMessage || !assistantMessage) {
       return {
-        preview: 'Check out this interesting conversation!',
+        preview: 'Check out this interesting Islamic Q&A conversation!',
         sourcesCount: 0,
         messageCount: messages.length
       };
     }
     
-    // Get user question (first 15 words) and clean language instructions
+    // Get user question and clean language instructions
     const userContent = typeof userMessage.content === 'string' ? userMessage.content : '';
     // Remove language instruction pattern like [Answer in Russian], [Answer in Turkish], etc.
     const cleanedUserContent = userContent.replace(/\n\n\[Answer in [^\]]+\]$/i, '').trim();
-    const userWords = cleanedUserContent.trim().split(/\s+/);
-    const userPreview = userWords.slice(0, 15).join(' ') + (userWords.length > 15 ? '...' : '');
     
-    // Get assistant response (first 25 words)
+    // Get assistant response (first 30 words for a more engaging preview)
     const assistantContent = typeof assistantMessage.content === 'string' ? assistantMessage.content : '';
     const assistantWords = assistantContent.trim().split(/\s+/);
-    const assistantPreview = assistantWords.slice(0, 25).join(' ') + (assistantWords.length > 25 ? '...' : '');
+    const assistantPreview = assistantWords.slice(0, 30).join(' ') + (assistantWords.length > 30 ? '...' : '');
     
     // Count sources mentioned in the conversation
     const sourcesCount = assistantContent.match(/\[(\d+)\]/g)?.length || 0;
     
-    // Create enhanced preview
-    const preview = `Q: ${userPreview}\n\nA: ${assistantPreview}`;
+    // Create a more engaging preview that focuses on the answer
+    // If the question is short (under 10 words), include it, otherwise just show the answer
+    const userWords = cleanedUserContent.trim().split(/\s+/);
+    let preview;
+    
+    if (userWords.length <= 10) {
+      // Short question - show both Q&A
+      const userPreview = cleanedUserContent;
+      preview = `"${userPreview}"\n\n${assistantPreview}`;
+    } else {
+      // Long question - just show the answer with context
+      preview = `Islamic guidance: ${assistantPreview}`;
+    }
     
     return {
       preview,
@@ -436,10 +445,7 @@ function PureMultimodalInput({
       console.log('[handleShare] Using Telegram shareMessage API');
       
       try {
-        // Get enhanced conversation preview
-        const conversationData = getConversationPreview();
-        
-        // First, prepare the message via our API
+        // First, prepare the message via our API (it will fetch messages from DB)
         console.log('[handleShare] Preparing message via API...');
         const prepareResponse = await fetch('/api/telegram/prepare-share', {
           method: 'POST',
@@ -449,7 +455,6 @@ function PureMultimodalInput({
           body: JSON.stringify({
             chatId,
             chatUrl: currentUrl,
-            previewText: conversationData.preview,
           }),
         });
 
