@@ -417,6 +417,15 @@ export function AppSidebar({ user }: { user: User | undefined }) {
             </SidebarFooter>
           </div>
         </div>
+
+        {/* TelegramEmailForm Modal for Mobile */}
+        {showTelegramEmailForm && finalTelegramUser && (
+          <TelegramEmailForm
+            telegramUser={finalTelegramUser}
+            onComplete={handleTelegramFormComplete}
+            onSkip={handleTelegramFormSkip}
+          />
+        )}
       </>
     );
   }
