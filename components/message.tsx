@@ -132,6 +132,7 @@ const PurePreviewMessage = ({
         initial={{ y: 5, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         data-role={message.role}
+        style={{ isolation: 'isolate' }}
       >
         <div
           className={cn(
@@ -513,6 +514,7 @@ export const ThinkingMessage = ({ vectorSearchProgress }: { vectorSearchProgress
       initial={{ y: 5, opacity: 0 }}
       animate={{ y: 0, opacity: 1, transition: { delay: 0.5 } }}
       data-role={role}
+      style={{ isolation: 'isolate' }}
     >
       <div
         className={cn(

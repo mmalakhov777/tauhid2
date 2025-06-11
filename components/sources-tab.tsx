@@ -605,6 +605,7 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
               <motion.div
                 animate={{ rotate: isQueryMappingExpanded ? 0 : -90 }}
                 transition={{ duration: 0.2 }}
+                style={{ isolation: 'isolate' }}
               >
                 <ChevronDownIcon />
               </motion.div>
@@ -619,7 +620,7 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                 animate={{ height: 'auto', opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
                 transition={{ duration: 0.2, ease: 'easeInOut' }}
-                style={{ overflow: 'hidden' }}
+                style={{ overflow: 'hidden', isolation: 'isolate' }}
               >
                 <div className="bg-muted/50 border border-border p-3 rounded space-y-3">
                   <div className="text-sm text-muted-foreground mb-3 leading-relaxed">
