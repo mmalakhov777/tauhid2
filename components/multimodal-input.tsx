@@ -42,16 +42,7 @@ import { SourceSelector, type SourceSelection, DEFAULT_SOURCES } from './source-
 import { SchoolSelector, type SchoolSelection, DEFAULT_SCHOOLS } from './school-selector';
 import type { Session } from 'next-auth';
 import { useSidebar } from './ui/sidebar';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from './ui/alert-dialog';
+
 import { updateChatVisibility, copyChatForUser } from '@/app/(chat)/actions';
 import { Loader2 } from 'lucide-react';
 
@@ -756,30 +747,66 @@ function PureMultimodalInput({
         </div>
       )}
 
-      {/* Share Modal for Private Chats */}
-      <AlertDialog open={showShareModal} onOpenChange={setShowShareModal}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t('chat.makeChatPublicToShare')}</AlertDialogTitle>
-            <AlertDialogDescription>
-              {t('chat.chatIsPrivateDescription')}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex flex-col gap-2 sm:flex-row sm:justify-between">
-            <AlertDialogCancel disabled={isMakingPublic}>
-              {t('common.cancel')}
-            </AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleMakePublicAndShare}
-              disabled={isMakingPublic}
-              className="flex items-center justify-center gap-2"
-            >
-              {isMakingPublic && <Loader2 className="h-4 w-4 animate-spin" />}
-              {isMakingPublic ? t('chat.makingPublic') : t('chat.makePublicAndShare')}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* Share Modal for Private Chats - Self Contained */}
+      {showShareModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          {/* Overlay */}
+          <div 
+            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={() => setShowShareModal(false)}
+          />
+          
+          {/* Modal Content */}
+          <div className={cx(
+            "relative bg-background border rounded-2xl shadow-2xl animate-in fade-in-0 zoom-in-95 duration-300",
+            width && width <= 768 
+              ? "w-[calc(100vw-2rem)] max-w-[280px] p-4 gap-4" 
+              : "w-full max-w-lg p-6 gap-6"
+          )}>
+            {/* Header */}
+            <div className={cx(
+              "flex flex-col text-center sm:text-left",
+              width && width <= 768 ? "space-y-2" : "space-y-3"
+            )}>
+              <h2 className={cx(
+                "font-bold text-foreground",
+                width && width <= 768 ? "text-lg" : "text-xl"
+              )}>
+                {t('chat.makeChatPublicToShare')}
+              </h2>
+              <p className={cx(
+                "text-muted-foreground leading-relaxed",
+                width && width <= 768 ? "text-sm" : "text-sm"
+              )}>
+                {t('chat.chatIsPrivateDescription')}
+              </p>
+            </div>
+            
+            {/* Footer */}
+                         <div className={cx(
+               "flex flex-col gap-2 sm:flex-row sm:justify-between",
+               width && width <= 768 ? "gap-3 mt-4" : "gap-2 mt-6"
+             )}>
+               <Button
+                 onClick={handleMakePublicAndShare}
+                 disabled={isMakingPublic}
+                 className="flex items-center justify-center gap-2 w-full sm:w-auto text-xs py-2"
+               >
+                 {isMakingPublic && <Loader2 className="h-4 w-4 animate-spin" />}
+                 {isMakingPublic ? t('chat.makingPublic') : t('chat.makePublicAndShare')}
+               </Button>
+               <Button
+                 variant="outline"
+                 disabled={isMakingPublic}
+                 onClick={() => setShowShareModal(false)}
+                 className="w-full sm:w-auto text-xs py-2"
+               >
+                 {t('common.cancel')}
+               </Button>
+             </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
