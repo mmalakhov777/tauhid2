@@ -69,247 +69,40 @@ export function AppSidebar({ user }: { user: User | undefined }) {
         height: calc(100vh - 16px) !important;
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12) !important;
       }
-      
-      /* Mobile-specific optimizations - no blur on interactions */
-      @media (max-width: 768px) {
-        [data-new-chat="true"],
-        [data-new-chat="true"].rounded-md {
-          background: rgba(255, 255, 255, 0.85) !important;
-          backdrop-filter: none !important;
-          -webkit-backdrop-filter: none !important;
-          border: 1px solid rgba(255, 255, 255, 0.4) !important;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
-          border-radius: 100px !important;
-          color: var(--sidebar-foreground) !important;
-          transform: translateY(-0.5px) !important;
-        }
-        [data-new-chat="true"]:hover,
-        [data-new-chat="true"].rounded-md:hover {
-          background: rgba(255, 255, 255, 0.9) !important;
-          border: 1px solid rgba(255, 255, 255, 0.5) !important;
-          border-radius: 100px !important;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
-          transform: translateY(-0.5px) !important;
-        }
-        .dark [data-new-chat="true"],
-        .dark [data-new-chat="true"].rounded-md {
-          background: rgba(0, 0, 0, 0.85) !important;
-          border: 1px solid rgba(255, 255, 255, 0.2) !important;
-          border-radius: 100px !important;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6) !important;
-        }
-        .dark [data-new-chat="true"]:hover,
-        .dark [data-new-chat="true"].rounded-md:hover {
-          background: rgba(0, 0, 0, 0.9) !important;
-          border: 1px solid rgba(255, 255, 255, 0.25) !important;
-          border-radius: 100px !important;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.7) !important;
-          transform: translateY(-0.5px) !important;
-        }
-        
-        [data-chat-item="true"]:hover,
-        [data-chat-item="true"].rounded-md:hover {
-          opacity: 1.0 !important;
-          background: rgba(255, 255, 255, 0.8) !important;
-          backdrop-filter: none !important;
-          -webkit-backdrop-filter: none !important;
-          border: 1px solid rgba(255, 255, 255, 0.4) !important;
-          border-radius: 100px !important;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
-          transform: translateY(-0.5px) !important;
-        }
-        .dark [data-chat-item="true"]:hover,
-        .dark [data-chat-item="true"].rounded-md:hover {
-          opacity: 1.0 !important;
-          background: rgba(0, 0, 0, 0.8) !important;
-          border: 1px solid rgba(255, 255, 255, 0.25) !important;
-          border-radius: 100px !important;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5) !important;
-          transform: translateY(-0.5px) !important;
-        }
-        
-        [data-user-nav="true"],
-        [data-user-nav="true"].rounded-md {
-          background: rgba(255, 255, 255, 0.8) !important;
-          backdrop-filter: none !important;
-          -webkit-backdrop-filter: none !important;
-          border: 1px solid rgba(255, 255, 255, 0.3) !important;
-          border-radius: 100px !important;
-          transition: all 0.3s ease !important;
-          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1) !important;
-        }
-        [data-user-nav="true"]:hover,
-        [data-user-nav="true"].rounded-md:hover {
-          background: rgba(255, 255, 255, 0.9) !important;
-          border: 1px solid rgba(255, 255, 255, 0.4) !important;
-          border-radius: 100px !important;
-          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15) !important;
-          transform: translateY(-0.5px) !important;
-        }
-        .dark [data-user-nav="true"],
-        .dark [data-user-nav="true"].rounded-md {
-          background: rgba(0, 0, 0, 0.8) !important;
-          border: 1px solid rgba(255, 255, 255, 0.15) !important;
-          border-radius: 100px !important;
-          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6) !important;
-        }
-        .dark [data-user-nav="true"]:hover,
-        .dark [data-user-nav="true"].rounded-md:hover {
-          background: rgba(0, 0, 0, 0.9) !important;
-          border: 1px solid rgba(255, 255, 255, 0.2) !important;
-          border-radius: 100px !important;
-          box-shadow: 0 4px 10px rgba(0, 0, 0, 0.7) !important;
-          transform: translateY(-0.5px) !important;
-        }
-        
-        .group:hover [data-sidebar="menu-action"],
-        [data-sidebar="menu-action"]:hover {
-          background: rgba(255, 255, 255, 0.8) !important;
-          backdrop-filter: none !important;
-          -webkit-backdrop-filter: none !important;
-          border-radius: 6px !important;
-          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15) !important;
-          transition: all 0.2s ease !important;
-        }
-        .dark .group:hover [data-sidebar="menu-action"],
-        .dark [data-sidebar="menu-action"]:hover {
-          background: rgba(0, 0, 0, 0.8) !important;
-          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5) !important;
-        }
-        
-        [data-radix-popper-content-wrapper] [role="menu"] {
-          background: rgba(255, 255, 255, 0.95) !important;
-          backdrop-filter: none !important;
-          -webkit-backdrop-filter: none !important;
-          border: 1px solid rgba(255, 255, 255, 0.5) !important;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2) !important;
-        }
-        .dark [data-radix-popper-content-wrapper] [role="menu"] {
-          background: rgba(0, 0, 0, 0.95) !important;
-          border: 1px solid rgba(255, 255, 255, 0.2) !important;
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6) !important;
-        }
+      // NEW CHAT BUTTON GLASS EFFECT
+      [data-new-chat="true"],
+      [data-new-chat="true"].rounded-md {
+        background: rgba(255, 255, 255, 0.35) !important;
+        backdrop-filter: blur(16px) !important;
+        -webkit-backdrop-filter: blur(16px) !important;
+        border: 1px solid rgba(255, 255, 255, 0.35) !important;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
+        border-radius: 100px !important;
+        color: var(--sidebar-foreground) !important;
+        transform: translateY(-0.5px) !important;
       }
-      
-      /* Desktop effects (unchanged) */
-      @media (min-width: 769px) {
-        [data-new-chat="true"],
-        [data-new-chat="true"].rounded-md {
-          background: rgba(255, 255, 255, 0.35) !important;
-          backdrop-filter: blur(16px) !important;
-          -webkit-backdrop-filter: blur(16px) !important;
-          border: 1px solid rgba(255, 255, 255, 0.35) !important;
-          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
-          border-radius: 100px !important;
-          color: var(--sidebar-foreground) !important;
-          transform: translateY(-0.5px) !important;
-        }
-        [data-new-chat="true"]:hover,
-        [data-new-chat="true"].rounded-md:hover {
-          background: rgba(255, 255, 255, 0.35) !important;
-          border: 1px solid rgba(255, 255, 255, 0.35) !important;
-          border-radius: 100px !important;
-          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
-          transform: translateY(-0.5px) !important;
-        }
-        .dark [data-new-chat="true"],
-        .dark [data-new-chat="true"].rounded-md {
-          background: rgba(255, 255, 255, 0.09) !important;
-          border: 1px solid rgba(255, 255, 255, 0.18) !important;
-          border-radius: 100px !important;
-          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4) !important;
-        }
-        .dark [data-new-chat="true"]:hover,
-        .dark [data-new-chat="true"].rounded-md:hover {
-          background: rgba(255, 255, 255, 0.14) !important;
-          border: 1px solid rgba(255, 255, 255, 0.18) !important;
-          border-radius: 100px !important;
-          box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
-          transform: translateY(-0.5px) !important;
-        }
-        
-        [data-chat-item="true"]:hover,
-        [data-chat-item="true"].rounded-md:hover {
-          opacity: 1.0 !important;
-          background: rgba(255, 255, 255, 0.18) !important;
-          backdrop-filter: blur(12px) !important;
-          -webkit-backdrop-filter: blur(12px) !important;
-          border: 1px solid rgba(255, 255, 255, 0.3) !important;
-          border-radius: 100px !important;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
-          transform: translateY(-0.5px) !important;
-        }
-        .dark [data-chat-item="true"]:hover,
-        .dark [data-chat-item="true"].rounded-md:hover {
-          opacity: 1.0 !important;
-          background: rgba(255, 255, 255, 0.11) !important;
-          border: 1px solid rgba(255, 255, 255, 0.2) !important;
-          border-radius: 100px !important;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
-          transform: translateY(-0.5px) !important;
-        }
-        
-        [data-user-nav="true"],
-        [data-user-nav="true"].rounded-md {
-          background: rgba(255, 255, 255, 0.15) !important;
-          backdrop-filter: blur(12px) !important;
-          -webkit-backdrop-filter: blur(12px) !important;
-          border: 1px solid rgba(255, 255, 255, 0.25) !important;
-          border-radius: 100px !important;
-          transition: all 0.3s ease !important;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
-        }
-        [data-user-nav="true"]:hover,
-        [data-user-nav="true"].rounded-md:hover {
-          background: rgba(255, 255, 255, 0.27) !important;
-          border: 1px solid rgba(255, 255, 255, 0.25) !important;
-          border-radius: 100px !important;
-          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1) !important;
-          transform: translateY(-0.5px) !important;
-        }
-        .dark [data-user-nav="true"],
-        .dark [data-user-nav="true"].rounded-md {
-          background: rgba(255, 255, 255, 0.06) !important;
-          border: 1px solid rgba(255, 255, 255, 0.12) !important;
-          border-radius: 100px !important;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
-        }
-        .dark [data-user-nav="true"]:hover,
-        .dark [data-user-nav="true"].rounded-md:hover {
-          background: rgba(255, 255, 255, 0.11) !important;
-          border: 1px solid rgba(255, 255, 255, 0.12) !important;
-          border-radius: 100px !important;
-          box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3) !important;
-          transform: translateY(-0.5px) !important;
-        }
-        
-        .group:hover [data-sidebar="menu-action"],
-        [data-sidebar="menu-action"]:hover {
-          background: rgba(255, 255, 255, 0.18) !important;
-          backdrop-filter: blur(12px) !important;
-          -webkit-backdrop-filter: blur(12px) !important;
-          border-radius: 6px !important;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
-          transition: all 0.2s ease !important;
-        }
-        .dark .group:hover [data-sidebar="menu-action"],
-        .dark [data-sidebar="menu-action"]:hover {
-          background: rgba(255, 255, 255, 0.09) !important;
-          box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
-        }
-        
-        [data-radix-popper-content-wrapper] [role="menu"] {
-          background: rgba(255, 255, 255, 0.8) !important;
-          backdrop-filter: blur(16px) !important;
-          -webkit-backdrop-filter: blur(16px) !important;
-          border: 1px solid rgba(255, 255, 255, 0.4) !important;
-          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1) !important;
-        }
-        .dark [data-radix-popper-content-wrapper] [role="menu"] {
-          background: rgba(0, 0, 0, 0.8) !important;
-          border: 1px solid rgba(255, 255, 255, 0.15) !important;
-          box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35) !important;
-        }
+      [data-new-chat="true"]:hover,
+      [data-new-chat="true"].rounded-md:hover {
+        background: rgba(255, 255, 255, 0.35) !important;
+        border: 1px solid rgba(255, 255, 255, 0.35) !important;
+        border-radius: 100px !important;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1) !important;
+        transform: translateY(-0.5px) !important;
+      }
+      .dark [data-new-chat="true"],
+      .dark [data-new-chat="true"].rounded-md {
+        background: rgba(255, 255, 255, 0.09) !important;
+        border: 1px solid rgba(255, 255, 255, 0.18) !important;
+        border-radius: 100px !important;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4) !important;
+      }
+      .dark [data-new-chat="true"]:hover,
+      .dark [data-new-chat="true"].rounded-md:hover {
+        background: rgba(255, 255, 255, 0.14) !important;
+        border: 1px solid rgba(255, 255, 255, 0.18) !important;
+        border-radius: 100px !important;
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35) !important;
+        transform: translateY(-0.5px) !important;
       }
       
       // CHAT HISTORY ITEM GLASS EFFECT
@@ -330,6 +123,91 @@ export function AppSidebar({ user }: { user: User | undefined }) {
       [data-chat-item="true"][data-chat-index="7"] { opacity: 0.3 !important; }
       [data-chat-item="true"]:not([data-chat-index="0"]):not([data-chat-index="1"]):not([data-chat-index="2"]):not([data-chat-index="3"]):not([data-chat-index="4"]):not([data-chat-index="5"]):not([data-chat-index="6"]):not([data-chat-index="7"]) { 
         opacity: 0.2 !important; 
+      }
+      [data-chat-item="true"]:hover,
+      [data-chat-item="true"].rounded-md:hover {
+        opacity: 1.0 !important;
+        background: rgba(255, 255, 255, 0.18) !important;
+        backdrop-filter: blur(12px) !important;
+        -webkit-backdrop-filter: blur(12px) !important;
+        border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        border-radius: 100px !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
+        transform: translateY(-0.5px) !important;
+      }
+      .dark [data-chat-item="true"]:hover,
+      .dark [data-chat-item="true"].rounded-md:hover {
+        opacity: 1.0 !important;
+        background: rgba(255, 255, 255, 0.11) !important;
+        border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        border-radius: 100px !important;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3) !important;
+        transform: translateY(-0.5px) !important;
+      }
+      
+      // USER NAV GLASS EFFECT
+      [data-user-nav="true"],
+      [data-user-nav="true"].rounded-md {
+        background: rgba(255, 255, 255, 0.15) !important;
+        backdrop-filter: blur(12px) !important;
+        -webkit-backdrop-filter: blur(12px) !important;
+        border: 1px solid rgba(255, 255, 255, 0.25) !important;
+        border-radius: 100px !important;
+        transition: all 0.3s ease !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08) !important;
+      }
+      [data-user-nav="true"]:hover,
+      [data-user-nav="true"].rounded-md:hover {
+        background: rgba(255, 255, 255, 0.27) !important;
+        border: 1px solid rgba(255, 255, 255, 0.25) !important;
+        border-radius: 100px !important;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1) !important;
+        transform: translateY(-0.5px) !important;
+      }
+      .dark [data-user-nav="true"],
+      .dark [data-user-nav="true"].rounded-md {
+        background: rgba(255, 255, 255, 0.06) !important;
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        border-radius: 100px !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+      }
+      .dark [data-user-nav="true"]:hover,
+      .dark [data-user-nav="true"].rounded-md:hover {
+        background: rgba(255, 255, 255, 0.11) !important;
+        border: 1px solid rgba(255, 255, 255, 0.12) !important;
+        border-radius: 100px !important;
+        box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3) !important;
+        transform: translateY(-0.5px) !important;
+      }
+      
+      // SIDEBAR MENU ACTION (3-dot menu) GLASS EFFECT
+      .group:hover [data-sidebar="menu-action"],
+      [data-sidebar="menu-action"]:hover {
+        background: rgba(255, 255, 255, 0.18) !important;
+        backdrop-filter: blur(12px) !important;
+        -webkit-backdrop-filter: blur(12px) !important;
+        border-radius: 6px !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+        transition: all 0.2s ease !important;
+      }
+      .dark .group:hover [data-sidebar="menu-action"],
+      .dark [data-sidebar="menu-action"]:hover {
+        background: rgba(255, 255, 255, 0.09) !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3) !important;
+      }
+      
+      // DROPDOWN MENU GLASS EFFECT
+      [data-radix-popper-content-wrapper] [role="menu"] {
+        background: rgba(255, 255, 255, 0.8) !important;
+        backdrop-filter: blur(16px) !important;
+        -webkit-backdrop-filter: blur(16px) !important;
+        border: 1px solid rgba(255, 255, 255, 0.4) !important;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1) !important;
+      }
+      .dark [data-radix-popper-content-wrapper] [role="menu"] {
+        background: rgba(0, 0, 0, 0.8) !important;
+        border: 1px solid rgba(255, 255, 255, 0.15) !important;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35) !important;
       }
     `;
     document.head.appendChild(style);
@@ -388,8 +266,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
             openMobile ? 'opacity-100 visible' : 'opacity-0 invisible'
           }`}
           style={{
-            backdropFilter: 'blur(8px)',
-            WebkitBackdropFilter: 'blur(8px)',
+            background: 'rgba(0, 0, 0, 0.4)',
           }}
           onClick={() => setOpenMobile(false)}
         />
