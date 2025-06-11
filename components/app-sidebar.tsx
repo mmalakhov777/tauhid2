@@ -50,6 +50,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
         margin: 8px !important;
         height: calc(100vh - 16px) !important;
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04) !important;
+        isolation: isolate !important;
       }
       .sidebar-transparent [data-sidebar="sidebar"] {
         background: rgba(255, 255, 255, 0.23) !important;
@@ -60,6 +61,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
         margin: 8px !important;
         height: calc(100vh - 16px) !important;
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04) !important;
+        isolation: isolate !important;
       }
       .dark [data-sidebar="sidebar"] {
         background: rgba(255, 255, 255, 0.0008) !important;
@@ -68,6 +70,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
         margin: 8px !important;
         height: calc(100vh - 16px) !important;
         box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12) !important;
+        isolation: isolate !important;
       }
       // NEW CHAT BUTTON - TRANSPARENT (no backdrop filter)
       [data-new-chat="true"],
