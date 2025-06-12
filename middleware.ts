@@ -14,8 +14,8 @@ const publicRoutes = [
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Allow health checks and other essential API routes to be public
-  if (pathname.startsWith('/ping') || pathname.startsWith('/api/health')) {
+  // Allow ping checks to be public
+  if (pathname.startsWith('/ping')) {
     return new Response('pong', { status: 200 });
   }
 
