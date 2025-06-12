@@ -7,6 +7,7 @@ import {
   streamText,
 } from 'ai';
 import { auth, type UserType } from '@/app/(auth)/auth';
+import { authenticateApiRequest } from '@/lib/api-key';
 import { type RequestHints, systemPrompt } from '@/lib/ai/prompts';
 import {
   createStreamId,
@@ -122,16 +123,25 @@ export async function POST(request: Request) {
       return new ChatSDKError('bad_request:api', 'Invalid chat ID format').toResponse();
     }
 
-    const session = await auth();
-
-    if (!session?.user) {
-      return new ChatSDKError('unauthorized:chat').toResponse();
+    // Try API key authentication first, then session authentication
+    let user: any = null;
+    let userType: UserType = 'guest';
+    
+    const apiAuth = await authenticateApiRequest(request);
+    if (apiAuth) {
+      user = apiAuth.user;
+      userType = 'regular'; // API key users are treated as regular users
+    } else {
+      const session = await auth();
+      if (!session?.user) {
+        return new ChatSDKError('unauthorized:chat').toResponse();
+      }
+      user = session.user;
+      userType = session.user.type;
     }
 
-    const userType: UserType = session.user.type;
-
     const messageCount = await getMessageCountByUserId({
-      id: session.user.id,
+      id: user.id,
       differenceInHours: 24,
     });
 
@@ -148,11 +158,11 @@ export async function POST(request: Request) {
 
       console.log('[chat route] Attempting to save new chat:', {
         id,
-        userId: session.user.id,
+        userId: user.id,
         title,
         visibility: selectedVisibilityType,
         titleLength: title?.length,
-        userIdType: typeof session.user.id,
+        userIdType: typeof user.id,
         idType: typeof id,
         visibilityType: typeof selectedVisibilityType
       });
@@ -160,7 +170,7 @@ export async function POST(request: Request) {
       try {
         await saveChat({
           id,
-          userId: session.user.id,
+          userId: user.id,
           title,
           visibility: selectedVisibilityType,
         });
@@ -172,7 +182,7 @@ export async function POST(request: Request) {
           errorStack: saveChatError instanceof Error ? saveChatError.stack : undefined,
           chatData: {
             id,
-            userId: session.user.id,
+            userId: user.id,
             title,
             visibility: selectedVisibilityType
           }
@@ -180,7 +190,7 @@ export async function POST(request: Request) {
         throw saveChatError;
       }
     } else {
-      if (chat.userId !== session.user.id) {
+      if (chat.userId !== user.id) {
         return new ChatSDKError('forbidden:chat').toResponse();
       }
     }
@@ -684,7 +694,7 @@ Remember: Honesty about limitations is more valuable than false confidence. Guid
               },
               onFinish: async ({ response }) => {
                 // Only save assistant message after streaming completes successfully
-                if (session.user?.id) {
+                if (user?.id) {
                   try {
                     const assistantId = getTrailingMessageId({
                       messages: response.messages.filter(
@@ -761,7 +771,7 @@ Remember: Honesty about limitations is more valuable than false confidence. Guid
               },
               onFinish: async ({ response }) => {
                 // Only save assistant message after streaming completes successfully
-                if (session.user?.id) {
+                if (user?.id) {
                   try {
                     const assistantId = getTrailingMessageId({
                       messages: response.messages.filter(

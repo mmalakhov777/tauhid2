@@ -46,6 +46,12 @@
     "profileImage": "Profile",
     "user": "User"
   },
+  "banners": {
+    "completeProfile": "Complete Your Profile",
+    "setupEmailDescription": "Set up your email to save conversations and access advanced features",
+    "registerAccount": "Register account",
+    "saveMessagesDescription": "Save your messages and chat history"
+  },
   "chat": {
     "typeMessage": "Type your message...",
     "sendMessage": "Send message",

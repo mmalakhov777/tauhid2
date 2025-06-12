@@ -228,3 +228,25 @@ export const subscriptionResponse = pgTable('SubscriptionResponse', {
 }));
 
 export type SubscriptionResponse = InferSelectModel<typeof subscriptionResponse>;
+
+export const apiKey = pgTable('ApiKey', {
+  id: uuid('id').primaryKey().notNull().defaultRandom(),
+  userId: uuid('userId')
+    .notNull()
+    .references(() => user.id, { onDelete: 'cascade' }),
+  name: varchar('name', { length: 255 }).notNull(),
+  keyHash: varchar('keyHash', { length: 255 }).notNull().unique(),
+  keyPrefix: varchar('keyPrefix', { length: 20 }).notNull(),
+  isActive: boolean('isActive').notNull().default(true),
+  lastUsedAt: timestamp('lastUsedAt'),
+  expiresAt: timestamp('expiresAt'),
+  createdAt: timestamp('createdAt').notNull().defaultNow(),
+  updatedAt: timestamp('updatedAt').notNull().defaultNow(),
+}, (table) => ({
+  userIdIdx: index('idx_api_key_user_id').on(table.userId),
+  keyHashIdx: index('idx_api_key_hash').on(table.keyHash),
+  keyPrefixIdx: index('idx_api_key_prefix').on(table.keyPrefix),
+  isActiveIdx: index('idx_api_key_active').on(table.isActive),
+}));
+
+export type ApiKey = InferSelectModel<typeof apiKey>;

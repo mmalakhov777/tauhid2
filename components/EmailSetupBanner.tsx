@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from '@/lib/i18n';
 
 interface EmailSetupBannerProps {
   user: {
@@ -10,6 +11,7 @@ interface EmailSetupBannerProps {
 }
 
 export const EmailSetupBanner = ({ user, onClick }: EmailSetupBannerProps) => {
+  const { t } = useTranslations();
   const [isClicked, setIsClicked] = useState(false);
 
   // Check if user has a dummy email (needs setup) - works for any guest user
@@ -44,10 +46,10 @@ export const EmailSetupBanner = ({ user, onClick }: EmailSetupBannerProps) => {
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-foreground/90">
-            Complete Your Profile {isClicked && '✓'}
+            {t('banners.completeProfile')} {isClicked && '✓'}
           </p>
           <p className="text-xs text-muted-foreground mt-1">
-            Set up your email to save conversations and access advanced features
+            {t('banners.setupEmailDescription')}
           </p>
         </div>
         <div className="flex-shrink-0 mt-0.5">

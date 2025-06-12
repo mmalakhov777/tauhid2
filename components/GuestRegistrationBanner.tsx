@@ -9,8 +9,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { UserPlus, MessageSquare, Sparkles, X, TrendingUp } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTranslations } from '@/lib/i18n';
 
 export function GuestRegistrationBanner() {
+  const { t } = useTranslations();
   const { data: session } = useSession();
   const router = useRouter();
   const [userStats, setUserStats] = useState<{ messagesLast24h: number } | null>(null);
@@ -94,10 +96,10 @@ export function GuestRegistrationBanner() {
           </div>
           <div>
             <h3 className="font-semibold text-sm text-foreground">
-              Register account
+              {t('banners.registerAccount')}
             </h3>
             <p className="text-xs text-muted-foreground">
-              Save your messages and chat history
+              {t('banners.saveMessagesDescription')}
             </p>
           </div>
         </div>

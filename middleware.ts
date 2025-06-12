@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { getToken } from 'next-auth/jwt';
 import { guestRegex, isDevelopmentEnvironment } from './lib/constants';
+import { extractApiKeyFromRequest, isValidApiKeyFormat } from './lib/api-key';
 
 // Define public routes that don't require authentication
 const publicRoutes = [
@@ -21,6 +22,16 @@ export async function middleware(request: NextRequest) {
   // Let NextAuth handle its own API routes
   if (pathname.startsWith('/api/auth')) {
     return NextResponse.next();
+  }
+
+  // Check for API key authentication for API routes
+  if (pathname.startsWith('/api/')) {
+    const apiKey = extractApiKeyFromRequest(request);
+    if (apiKey && isValidApiKeyFormat(apiKey)) {
+      // Let the API route handle the authentication
+      // The route will validate the API key against the database
+      return NextResponse.next();
+    }
   }
   
   // Check if the user is authenticated
