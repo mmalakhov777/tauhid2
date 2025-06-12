@@ -31,8 +31,6 @@ import {
   type VectorSearchResult,
   subscriptionResponse,
   type SubscriptionResponse,
-  apiKey,
-  type ApiKey,
 } from './schema';
 import { generateUUID } from '../utils';
 import { generateHashedPassword } from './utils';
@@ -115,17 +113,6 @@ export async function getUser(email: string): Promise<Array<User>> {
     throw new ChatSDKError(
       'bad_request:database',
       'Failed to get user by email',
-    );
-  }
-}
-
-export async function getUserById(id: string): Promise<Array<User>> {
-  try {
-    return await db.select().from(user).where(eq(user.id, id));
-  } catch (error) {
-    throw new ChatSDKError(
-      'bad_request:database',
-      'Failed to get user by id',
     );
   }
 }
@@ -939,148 +926,6 @@ export async function deleteSubscriptionResponse({
     throw new ChatSDKError(
       'bad_request:database',
       'Failed to delete subscription response',
-    );
-  }
-}
-
-// API Key management functions
-export async function createApiKey({
-  userId,
-  name,
-  keyHash,
-  keyPrefix,
-  expiresAt,
-}: {
-  userId: string;
-  name: string;
-  keyHash: string;
-  keyPrefix: string;
-  expiresAt?: Date;
-}) {
-  try {
-    return await db.insert(apiKey).values({
-      userId,
-      name,
-      keyHash,
-      keyPrefix,
-      expiresAt,
-    }).returning();
-  } catch (error) {
-    formatDatabaseError(error, 'createApiKey');
-    throw new ChatSDKError(
-      'bad_request:database',
-      'Failed to create API key',
-    );
-  }
-}
-
-export async function getApiKeyByHash({
-  keyHash,
-}: {
-  keyHash: string;
-}): Promise<ApiKey | null> {
-  try {
-    const result = await db
-      .select()
-      .from(apiKey)
-      .where(and(
-        eq(apiKey.keyHash, keyHash),
-        eq(apiKey.isActive, true)
-      ))
-      .limit(1);
-    
-    return result[0] || null;
-  } catch (error) {
-    formatDatabaseError(error, 'getApiKeyByHash');
-    throw new ChatSDKError(
-      'bad_request:database',
-      'Failed to get API key',
-    );
-  }
-}
-
-export async function getApiKeysByUserId({
-  userId,
-}: {
-  userId: string;
-}): Promise<ApiKey[]> {
-  try {
-    return await db
-      .select()
-      .from(apiKey)
-      .where(eq(apiKey.userId, userId))
-      .orderBy(desc(apiKey.createdAt));
-  } catch (error) {
-    formatDatabaseError(error, 'getApiKeysByUserId');
-    throw new ChatSDKError(
-      'bad_request:database',
-      'Failed to get API keys for user',
-    );
-  }
-}
-
-export async function updateApiKeyLastUsed({
-  keyHash,
-}: {
-  keyHash: string;
-}) {
-  try {
-    return await db
-      .update(apiKey)
-      .set({ lastUsedAt: new Date() })
-      .where(eq(apiKey.keyHash, keyHash));
-  } catch (error) {
-    formatDatabaseError(error, 'updateApiKeyLastUsed');
-    // Don't throw error for this non-critical operation
-    console.warn('Failed to update API key last used timestamp');
-  }
-}
-
-export async function deactivateApiKey({
-  id,
-  userId,
-}: {
-  id: string;
-  userId: string;
-}) {
-  try {
-    return await db
-      .update(apiKey)
-      .set({ isActive: false })
-      .where(and(
-        eq(apiKey.id, id),
-        eq(apiKey.userId, userId)
-      ))
-      .returning();
-  } catch (error) {
-    formatDatabaseError(error, 'deactivateApiKey');
-    throw new ChatSDKError(
-      'bad_request:database',
-      'Failed to deactivate API key',
-    );
-  }
-}
-
-export async function deleteApiKey({
-  id,
-  userId,
-}: {
-  id: string;
-  userId: string;
-}) {
-  try {
-    return await db
-      .delete(apiKey)
-      .where(and(
-        eq(apiKey.id, id),
-        eq(apiKey.userId, userId)
-      ))
-      .returning();
-  } catch (error) {
-    formatDatabaseError(error, 'deleteApiKey');
-    throw new ChatSDKError(
-      'bad_request:database',
-      'Failed to delete API key',
     );
   }
 }
