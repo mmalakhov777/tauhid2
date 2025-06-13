@@ -15,9 +15,32 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
 // External Chat API configuration
 const EXTERNAL_CHAT_API_KEY = 'your-super-secret-api-key-change-this-12345';
-const EXTERNAL_CHAT_API_URL = process.env.NODE_ENV === 'development' 
-  ? 'http://localhost:3000/api/external-chat'
-  : 'https://thd2-eda9reprd-mmalakhov777s-projects.vercel.app/api/external-chat';
+
+// Get the base URL for the current environment
+function getBaseUrl(): string {
+  if (process.env.NODE_ENV === 'development') {
+    return 'http://localhost:3000';
+  }
+  
+  // In production, use VERCEL_URL if available, otherwise fallback to the main domain
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`;
+  }
+  
+  return 'https://www.tauhidai.com';
+}
+
+const BASE_URL = getBaseUrl();
+const EXTERNAL_CHAT_API_URL = `${BASE_URL}/api/external-chat`;
+
+// Log the configuration for debugging
+console.log('[Telegram Bot] Configuration:', {
+  NODE_ENV: process.env.NODE_ENV,
+  VERCEL_URL: process.env.VERCEL_URL ? `${process.env.VERCEL_URL.substring(0, 20)}...` : 'not set',
+  BASE_URL,
+  EXTERNAL_CHAT_API_URL,
+  TEST_MODE
+});
 
 interface TelegramMessage {
   message_id: number;
@@ -340,10 +363,10 @@ async function callExternalChatAPI(userMessage: string, userId: string, chatId: 
           requestBody.reply_markup = {
             inline_keyboard: [[
               {
-                text: "📚 Full Response & Citations",
-                web_app: {
-                  url: `https://www.tauhidai.com/chat/${chatUUID}`
-                }
+                              text: "📚 Full Response & Citations",
+              web_app: {
+                url: `${BASE_URL}/chat/${chatUUID}`
+              }
               }
             ]]
           };
@@ -911,7 +934,7 @@ May Allah guide us all! 🤲`;
             {
               text: "📚 Full Response & Citations",
               web_app: {
-                url: "https://tauhid.ai"
+                url: BASE_URL
               }
             }
           ]]
