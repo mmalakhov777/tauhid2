@@ -3,6 +3,7 @@ node_modules
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+pnpm-debug.log*
 
 # Build artifacts
 .next
@@ -25,3 +26,15 @@ logs
 # OS files
 .DS_Store
 Thumbs.db
+
+# IDE
+.vscode
+.idea
+
+# Testing
+coverage
+.nyc_output
+
+# Misc
+README.md
+*.md
