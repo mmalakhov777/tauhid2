@@ -6,7 +6,6 @@ import {
   smoothStream,
   streamText,
 } from 'ai';
-import { auth, type UserType } from '@/app/(auth)/auth';
 import { type RequestHints, systemPrompt } from '@/lib/ai/prompts';
 import {
   createStreamId,
@@ -19,14 +18,21 @@ import {
   saveMessages,
   saveVectorSearchResult,
   testDatabaseConnection,
+  getUser,
+  createUser,
 } from '@/lib/db/queries';
+import { user } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
+import { generateHashedPassword } from '@/lib/db/utils';
+import { drizzle } from 'drizzle-orm/postgres-js';
+import postgres from 'postgres';
 import { generateUUID, getTrailingMessageId } from '@/lib/utils';
-import { generateTitleFromUserMessage } from '../../actions';
+import { generateTitleFromUserMessage } from '../../(chat)/actions';
 import { getWeather } from '@/lib/ai/tools/get-weather';
 import { isProductionEnvironment, isVectorSearchEnabled } from '@/lib/constants';
 import { myProvider, fallbackProvider } from '@/lib/ai/providers';
 import { entitlementsByUserType } from '@/lib/ai/entitlements';
-import { postRequestBodySchema, type PostRequestBody } from './schema';
+import { externalChatRequestSchema, type ExternalChatRequest } from './schema';
 import { geolocation } from '@vercel/functions';
 import {
   createResumableStreamContext,
@@ -47,12 +53,21 @@ import {
 
 export const maxDuration = 60;
 
+// HARDCODED API KEY - Change this to your secure key
+const HARDCODED_API_KEY = 'your-super-secret-api-key-change-this-12345';
+
+// External API user email - the actual user ID will be fetched from database
+const EXTERNAL_API_USER_EMAIL = 'external-api@system.local';
+
+// Database connection for direct queries
+const client = postgres(process.env.POSTGRES_URL!);
+const db = drizzle(client);
+
 let globalStreamContext: ResumableStreamContext | null = null;
 
 function getStreamContext() {
   if (!globalStreamContext) {
     try {
-      // Check if Redis URL is properly configured
       const redisUrl = process.env.REDIS_URL;
       if (!redisUrl || redisUrl === '****' || redisUrl.trim() === '') {
         return null;
@@ -74,11 +89,95 @@ function getStreamContext() {
   return globalStreamContext;
 }
 
+// Simple API key validation
+function validateApiKey(request: Request): boolean {
+  const authHeader = request.headers.get('authorization');
+  if (!authHeader) return false;
+  
+  const [type, key] = authHeader.split(' ');
+  if (type !== 'Bearer' || !key) return false;
+  
+  return key === HARDCODED_API_KEY;
+}
+
+// Ensure external API user exists in database and return user data
+async function getOrCreateExternalApiUser(): Promise<{ id: string; type: 'premium' }> {
+  try {
+    let existingUsers = await getUser(EXTERNAL_API_USER_EMAIL);
+    if (existingUsers.length === 0) {
+      console.log('[external-chat] Creating external API user...');
+      await createUser(EXTERNAL_API_USER_EMAIL, 'system-generated-password');
+      console.log('[external-chat] External API user created successfully');
+      // Fetch the newly created user
+      existingUsers = await getUser(EXTERNAL_API_USER_EMAIL);
+    }
+    
+    if (existingUsers.length === 0) {
+      throw new Error('Failed to create or retrieve external API user');
+    }
+    
+    return {
+      id: existingUsers[0].id,
+      type: 'premium' as const
+    };
+  } catch (error) {
+    console.error('[external-chat] Failed to ensure external API user exists:', error);
+    throw error;
+  }
+}
+
+// Get or create user by ID - for custom user IDs
+async function getOrCreateUserById(userId: string): Promise<{ id: string; type: 'premium' }> {
+  try {
+    // First try to find user by ID directly
+    const existingUsers = await db.select().from(user).where(eq(user.id, userId));
+    
+    if (existingUsers.length > 0) {
+      return {
+        id: existingUsers[0].id,
+        type: 'premium' as const
+      };
+    }
+    
+    // If user doesn't exist, create with a generated email
+    const generatedEmail = `api-user-${userId}@external.local`;
+    console.log('[external-chat] Creating user for ID:', userId);
+    
+    // Insert user with specific ID
+    await db.insert(user).values({
+      id: userId,
+      email: generatedEmail,
+      password: generateHashedPassword('api-generated-password')
+    });
+    
+    console.log('[external-chat] User created successfully for ID:', userId);
+    
+    return {
+      id: userId,
+      type: 'premium' as const
+    };
+  } catch (error) {
+    console.error('[external-chat] Failed to get or create user by ID:', error);
+    throw error;
+  }
+}
+
 export async function POST(request: Request) {
-  // Test database connection first
+  // Validate API key first
+  if (!validateApiKey(request)) {
+    return new Response(
+      JSON.stringify({ error: 'Unauthorized - Invalid API key' }),
+      { 
+        status: 401, 
+        headers: { 'Content-Type': 'application/json' } 
+      }
+    );
+  }
+
+  // Test database connection
   const dbConnected = await testDatabaseConnection();
   if (!dbConnected) {
-    console.error('[chat route] Database connection test failed');
+    console.error('[external-chat route] Database connection test failed');
     return new ChatSDKError('bad_request:database', 'Database connection failed').toResponse();
   }
 
@@ -87,47 +186,82 @@ export async function POST(request: Request) {
   const isVectorSearchRequest = url.searchParams.get('vector') === '1';
   const isStreamRequest = url.searchParams.get('stream') === '1';
 
-  let requestBody: PostRequestBody;
+  let requestBody: ExternalChatRequest;
 
   try {
     const json = await request.json();
-    requestBody = postRequestBodySchema.parse(json);
+    console.log('[external-chat route] 🔍 Request body received:', {
+      hasId: !!json.id,
+      hasMessage: !!json.message,
+      hasSelectedSources: !!json.selectedSources,
+      selectedSources: json.selectedSources,
+      messageId: json.message?.id,
+      messageContent: json.message?.content?.substring(0, 100) + '...',
+      timestamp: new Date().toISOString()
+    });
+    requestBody = externalChatRequestSchema.parse(json);
+    console.log('[external-chat route] ✅ Schema validation passed');
   } catch (error) {
+    console.error('[external-chat route] ❌ Schema validation failed:', {
+      error: error instanceof Error ? error.message : String(error),
+      errorDetails: error,
+      timestamp: new Date().toISOString()
+    });
     return new ChatSDKError('bad_request:api').toResponse();
   }
 
   try {
-    const { id, message, selectedChatModel, selectedVisibilityType, selectedLanguage, selectedSources } =
+    const { id, userId, message, selectedChatModel, selectedVisibilityType, selectedLanguage, selectedSources } =
       requestBody;
 
     // Validate UUID format
     const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
     if (!uuidRegex.test(id)) {
+      console.error('[external-chat route] Invalid chat ID format:', { id });
       return new ChatSDKError('bad_request:api', 'Invalid chat ID format').toResponse();
     }
 
-    const session = await auth();
-
-    if (!session?.user) {
-      return new ChatSDKError('unauthorized:chat').toResponse();
+    // Validate userId format if provided
+    if (userId && !uuidRegex.test(userId)) {
+      console.error('[external-chat route] Invalid user ID format:', { userId });
+      return new ChatSDKError('bad_request:api', 'Invalid user ID format').toResponse();
     }
 
-    const userType: UserType = session.user.type;
+    // Get or create user - use provided userId or default external user
+    const apiUser = userId 
+      ? await getOrCreateUserById(userId)
+      : await getOrCreateExternalApiUser();
+    
+    const session = {
+      user: apiUser
+    };
 
-    const messageCount = await getMessageCountByUserId({
-      id: session.user.id,
-      differenceInHours: 24,
+    console.log('[external-chat route] Using user:', {
+      userId: session.user.id,
+      isCustomUser: !!userId,
+      providedUserId: userId
     });
 
-    if (messageCount > entitlementsByUserType[userType].maxMessagesPerDay) {
-      return new ChatSDKError('rate_limit:chat').toResponse();
-    }
+    const userType = session.user.type;
 
+    // Skip message count check for API users (they have premium access)
+    
     const chat = await getChatById({ id });
 
     if (!chat) {
       const title = await generateTitleFromUserMessage({
         message,
+      });
+
+      console.log('[external-chat route] Attempting to save new chat:', {
+        id,
+        userId: session.user.id,
+        title,
+        visibility: selectedVisibilityType,
+        titleLength: title?.length,
+        userIdType: typeof session.user.id,
+        idType: typeof id,
+        visibilityType: typeof selectedVisibilityType
       });
 
       try {
@@ -137,13 +271,24 @@ export async function POST(request: Request) {
           title,
           visibility: selectedVisibilityType,
         });
+        console.log('[external-chat route] Chat saved successfully');
       } catch (saveChatError) {
+        console.error('[external-chat route] Failed to save chat:', {
+          error: saveChatError,
+          errorMessage: saveChatError instanceof Error ? saveChatError.message : 'Unknown error',
+          errorStack: saveChatError instanceof Error ? saveChatError.stack : undefined,
+          chatData: {
+            id,
+            userId: session.user.id,
+            title,
+            visibility: selectedVisibilityType
+          }
+        });
         throw saveChatError;
       }
     } else {
-      if (chat.userId !== session.user.id) {
-        return new ChatSDKError('forbidden:chat').toResponse();
-      }
+      // For API users, allow access to all chats
+      // You might want to restrict this based on your needs
     }
 
     const previousMessages = await getMessagesByChatId({ id });
@@ -154,9 +299,26 @@ export async function POST(request: Request) {
       message,
     });
 
-    // Extract user message content
+    // Log the user request details
+    console.log('[external-chat route] User request details:', {
+      chatId: id,
+      messageId: message.id,
+      messageRole: message.role,
+      selectedLanguage,
+      selectedChatModel,
+      selectedVisibilityType,
+      selectedSources,
+    });
+
+    // Extract and log user message content
     let userMessageContent = '';
     if (message.parts && Array.isArray(message.parts)) {
+      console.log('[external-chat route] Message parts:', message.parts.map(part => ({
+        type: part.type,
+        textLength: part.type === 'text' ? part.text?.length : 0,
+        textPreview: part.type === 'text' ? part.text?.substring(0, 100) + '...' : 'N/A'
+      })));
+      
       for (const part of message.parts) {
         if (part.type === 'text' && part.text) {
           userMessageContent += part.text;
@@ -164,13 +326,21 @@ export async function POST(request: Request) {
       }
     } else if (message.content) {
       userMessageContent = message.content;
+      console.log('[external-chat route] Message content (legacy):', {
+        contentLength: message.content.length,
+        contentPreview: message.content.substring(0, 100) + '...'
+      });
     }
+
+    console.log('[external-chat route] Extracted user message content:', {
+      totalLength: userMessageContent.length,
+      contentPreview: userMessageContent.substring(0, 200) + '...',
+      fullContent: userMessageContent
+    });
 
     // Handle vector search request
     if (isVectorSearchRequest && !isStreamRequest) {
-      // Step 1: Return citations and messageId only
       const conversationHistory = buildConversationHistory(messages);
-      // Extract text content from message parts
       let userMessageContent = '';
       if (message.parts && Array.isArray(message.parts)) {
         for (const part of message.parts) {
@@ -182,6 +352,13 @@ export async function POST(request: Request) {
         userMessageContent = message.content;
       }
       
+      console.log('[external-chat route] Vector search context:', {
+        messagesCount: messages.length,
+        historyLength: conversationHistory.length,
+        userMessageLength: userMessageContent.length,
+        historyPreview: conversationHistory.substring(0, 200) + '...'
+      });
+      
       const searchResults = await performVectorSearch(
         userMessageContent,
         conversationHistory,
@@ -191,7 +368,6 @@ export async function POST(request: Request) {
 
       // Filter out citations with minimal metadata before sending to frontend
       const filteredCitations = searchResults.citations.filter((c: any) => {
-        // Check for classic sources with only answer/question/text
         if (!c.namespace && c.metadata) {
           const metadataKeys = Object.keys(c.metadata);
           const specificKeys = ['answer', 'question', 'text'];
@@ -209,7 +385,7 @@ export async function POST(request: Request) {
       return new Response(
         JSON.stringify({
           messageId: searchResults.messageId,
-          citations: filteredCitations, // Use filtered citations
+          citations: filteredCitations,
           improvedQueries: searchResults.improvedQueries,
         }),
         { 
@@ -228,7 +404,7 @@ export async function POST(request: Request) {
       country,
     };
 
-    // Save user message immediately as before
+    // Save user message immediately
     await saveMessages({
       messages: [
         {
@@ -289,10 +465,18 @@ REMEMBER: ${languageName} ONLY - NO EXCEPTIONS!`;
     modifiedSystemPrompt = modifiedSystemPrompt + languageInstruction;
 
     // Automatically perform vector search if enabled and no messageId provided
+    console.log('[external-chat route] 🔍 Vector search check:', {
+      isVectorSearchEnabled,
+      hasMessageId: !!messageId,
+      shouldPerformVectorSearch: isVectorSearchEnabled && !messageId,
+      environment: process.env.NODE_ENV,
+      enableVectorSearchEnv: process.env.ENABLE_VECTOR_SEARCH
+    });
+    
     if (isVectorSearchEnabled && !messageId) {
+      console.log('[external-chat route] 🚀 Starting automatic vector search execution');
       
       const conversationHistory = buildConversationHistory(messages);
-      // Extract text content from message parts
       let userMessageContent = '';
       if (message.parts && Array.isArray(message.parts)) {
         for (const part of message.parts) {
@@ -304,9 +488,20 @@ REMEMBER: ${languageName} ONLY - NO EXCEPTIONS!`;
         userMessageContent = message.content;
       }
       
+      console.log('[external-chat route] Vector search context:', {
+        messagesCount: messages.length,
+        historyLength: conversationHistory.length,
+        userMessageLength: userMessageContent.length,
+        historyPreview: conversationHistory.substring(0, 200) + '...',
+        selectedSources: selectedSources,
+        selectedSourcesType: typeof selectedSources,
+        selectedSourcesKeys: selectedSources ? Object.keys(selectedSources) : 'null'
+      });
+      
       const searchStartTime = Date.now();
       
       try {
+        console.log('[external-chat route] 🔍 Calling performVectorSearchWithProgress with selectedSources:', selectedSources);
         const searchResults = await performVectorSearchWithProgress(
           userMessageContent,
           conversationHistory,
@@ -323,7 +518,6 @@ REMEMBER: ${languageName} ONLY - NO EXCEPTIONS!`;
         
         // Filter out citations with minimal metadata before sending to frontend
         const filteredCitations = searchResults.citations.filter((c: any) => {
-          // Check for classic sources with only answer/question/text
           if (!c.namespace && c.metadata) {
             const metadataKeys = Object.keys(c.metadata);
             const specificKeys = ['answer', 'question', 'text'];
@@ -339,6 +533,11 @@ REMEMBER: ${languageName} ONLY - NO EXCEPTIONS!`;
         });
         
         // IMPORTANT: Store the filtered citations in messageContextMap for later use
+        console.log('[external-chat route] Storing filtered citations in messageContextMap:', {
+          messageId,
+          originalCitationsCount: searchResults.citations.length,
+          filteredCitationsCount: filteredCitations.length
+        });
         messageContextMap.set(messageId, filteredCitations);
         
         // Store search results for later saving to database
@@ -354,26 +553,43 @@ REMEMBER: ${languageName} ONLY - NO EXCEPTIONS!`;
         (globalThis as any).__vectorSearchDataToSave = {
           chatId: id,
           improvedQueries: searchResults.improvedQueries,
-          citations: filteredCitations, // Use filtered citations
+          citations: filteredCitations,
           searchResultCounts,
           searchDurationMs,
         };
         
         // Add the final update with filtered citations
         vectorSearchProgressUpdates.push({
-          step: 4, // Final step with all data
+          step: 4,
           improvedQueries: searchResults.improvedQueries,
           searchResults: searchResultCounts,
-          citations: filteredCitations // Use filtered citations
+          citations: filteredCitations
+        });
+        
+        // Add chat ID to the data stream
+        vectorSearchProgressUpdates.push({
+          type: 'chat-info',
+          chatId: id,
+          messageId: searchResults.messageId
         });
       } catch (error) {
-        // Continue without vector search on error
+        console.error('[external-chat route] ❌ Automatic vector search failed:', {
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          timestamp: new Date().toISOString()
+        });
+        console.error('Automatic vector search failed:', error);
       }
     }
 
     if (messageId && messageContextMap.has(messageId)) {
       // Build context block from stored citations
       const allContexts = getContextByMessageId(messageId);
+      console.log('[external-chat route] Found citations in messageContextMap:', {
+        messageId,
+        totalContexts: allContexts.length,
+        contextTypes: allContexts.map(c => c.metadata?.type || 'unknown')
+      });
       
       const classicContexts = allContexts.filter((ctx: any) => ctx.metadata?.type === 'classic' || ctx.metadata?.type === 'CLS' || (!ctx.metadata?.type && !ctx.namespace));
       const modernContexts = allContexts.filter((ctx: any) => ctx.metadata?.type === 'modern' || ctx.metadata?.type === 'MOD');
@@ -383,19 +599,27 @@ REMEMBER: ${languageName} ONLY - NO EXCEPTIONS!`;
       
       const totalCitations = classicContexts.length + modernContexts.length + risaleContexts.length + youtubeContexts.length + fatwaContexts.length;
       
-            if (totalCitations === 0) {
+      console.log('[external-chat route] Citation breakdown:', {
+        classic: classicContexts.length,
+        modern: modernContexts.length,
+        risale: risaleContexts.length,
+        youtube: youtubeContexts.length,
+        fatwa: fatwaContexts.length,
+        total: totalCitations
+      });
+      
+      if (totalCitations === 0) {
+        console.log('[external-chat route] No citations found, using fixed response prompt');
         
-        // Use a system prompt that forces the exact fixed response
         const fixedResponsePrompt = `You must respond with exactly this message and nothing else: "Sorry I do not have enough information to provide grounded response"
 
 Do not add any additional text, explanations, or formatting. Just return that exact message.`;
         
         modifiedSystemPrompt = fixedResponsePrompt;
       } else {
-        // Use the existing citation-based prompt
+        console.log('[external-chat route] Using citations-based prompt with', totalCitations, 'citations');
         contextBlock = buildContextBlock(classicContexts, modernContexts, risaleContexts, youtubeContexts, fatwaContexts);
 
-        // Add STRONG emphasis on using ALL citations when context is available
         const citationEmphasis = `
 
 CRITICAL CITATION REQUIREMENTS:
@@ -421,12 +645,11 @@ CONTEXT-AWARE RESPONSES:
 
 REMEMBER: More citations = Better answer. Use them ALL! Add [CIT] directly without connecting phrases.`;
 
-        // Append context block and citation emphasis to system prompt
         modifiedSystemPrompt = modifiedSystemPrompt + '\n\n' + contextBlock + citationEmphasis;
       }
     } else {
+      console.log('[external-chat route] No messageId or messageContextMap entry found, using fixed response prompt');
       
-      // Use a system prompt that forces the exact fixed response
       const fixedResponsePrompt = `You must respond with exactly this message and nothing else: "Sorry I do not have enough information to provide grounded response"
 
 Do not add any additional text, explanations, or formatting. Just return that exact message.`;
@@ -450,6 +673,17 @@ Do not add any additional text, explanations, or formatting. Just return that ex
         try {
           let result;
           try {
+            console.log('[external-chat route] Sending to AI model:', {
+              model: selectedChatModel,
+              systemPromptLength: modifiedSystemPrompt.length,
+              systemPromptPreview: modifiedSystemPrompt.substring(0, 300) + '...',
+              messagesCount: messages.length,
+              lastUserMessage: messages[messages.length - 1],
+              hasVectorSearchContext: !!messageId,
+              languageInstruction: languageInstruction || 'None'
+            });
+
+            console.log('[external-chat route] Full system prompt:', modifiedSystemPrompt);
 
             result = streamText({
               model: myProvider.languageModel(selectedChatModel),
@@ -468,7 +702,6 @@ Do not add any additional text, explanations, or formatting. Just return that ex
                 getWeather,
               },
               onFinish: async ({ response }) => {
-                // Only save assistant message after streaming completes successfully
                 if (session.user?.id) {
                   try {
                     const assistantId = getTrailingMessageId({
@@ -487,7 +720,6 @@ Do not add any additional text, explanations, or formatting. Just return that ex
                       responseMessages: response.messages,
                     });
 
-                    // Save only the assistant message (user message already saved)
                     await saveMessages({
                       messages: [
                         {
@@ -502,7 +734,6 @@ Do not add any additional text, explanations, or formatting. Just return that ex
                       ],
                     });
                     
-                    // Save vector search results if available
                     const vectorSearchData = (globalThis as any).__vectorSearchDataToSave;
                     if (vectorSearchData) {
                       try {
@@ -510,7 +741,6 @@ Do not add any additional text, explanations, or formatting. Just return that ex
                           messageId: assistantId,
                           ...vectorSearchData,
                         });
-                        // Clean up
                         delete (globalThis as any).__vectorSearchDataToSave;
                       } catch (error) {
                         console.error('Failed to save vector search results:', error);
@@ -545,7 +775,6 @@ Do not add any additional text, explanations, or formatting. Just return that ex
                 getWeather,
               },
               onFinish: async ({ response }) => {
-                // Only save assistant message after streaming completes successfully
                 if (session.user?.id) {
                   try {
                     const assistantId = getTrailingMessageId({
@@ -564,7 +793,6 @@ Do not add any additional text, explanations, or formatting. Just return that ex
                       responseMessages: response.messages,
                     });
 
-                    // Save only the assistant message (user message already saved)
                     await saveMessages({
                       messages: [
                         {
@@ -579,7 +807,6 @@ Do not add any additional text, explanations, or formatting. Just return that ex
                       ],
                     });
                     
-                    // Save vector search results if available
                     const vectorSearchData = (globalThis as any).__vectorSearchDataToSave;
                     if (vectorSearchData) {
                       try {
@@ -587,7 +814,6 @@ Do not add any additional text, explanations, or formatting. Just return that ex
                           messageId: assistantId,
                           ...vectorSearchData,
                         });
-                        // Clean up
                         delete (globalThis as any).__vectorSearchDataToSave;
                       } catch (error) {
                         console.error('Failed to save vector search results:', error);
@@ -623,7 +849,6 @@ Do not add any additional text, explanations, or formatting. Just return that ex
 
     const streamContext = getStreamContext();
 
-    // Add custom headers if using vector search
     const headers: Record<string, string> = {};
     if (messageId) {
       headers['x-message-id'] = messageId;
@@ -642,8 +867,7 @@ Do not add any additional text, explanations, or formatting. Just return that ex
       return error.toResponse();
     }
     
-    // Handle any other errors
-    console.error('Unexpected error in chat API:', error);
+    console.error('Unexpected error in external-chat API:', error);
     return new Response(
       JSON.stringify({ error: 'Internal server error' }),
       { 
@@ -655,6 +879,17 @@ Do not add any additional text, explanations, or formatting. Just return that ex
 }
 
 export async function GET(request: Request) {
+  // Validate API key first
+  if (!validateApiKey(request)) {
+    return new Response(
+      JSON.stringify({ error: 'Unauthorized - Invalid API key' }),
+      { 
+        status: 401, 
+        headers: { 'Content-Type': 'application/json' } 
+      }
+    );
+  }
+
   const streamContext = getStreamContext();
   const resumeRequestedAt = new Date();
 
@@ -679,11 +914,11 @@ export async function GET(request: Request) {
     return new ChatSDKError('bad_request:api').toResponse();
   }
 
-  const session = await auth();
-
-  if (!session?.user) {
-    return new ChatSDKError('unauthorized:chat').toResponse();
-  }
+  // Get or create external API user
+  const externalApiUser = await getOrCreateExternalApiUser();
+  const session = {
+    user: externalApiUser
+  };
 
   let chat: Chat;
 
@@ -697,9 +932,8 @@ export async function GET(request: Request) {
     return new ChatSDKError('not_found:chat').toResponse();
   }
 
-  if (chat.visibility === 'private' && chat.userId !== session.user.id) {
-    return new ChatSDKError('forbidden:chat').toResponse();
-  }
+  // For API users, allow access to all chats
+  // You might want to restrict this based on your needs
 
   const streamIds = await getStreamIdsByChatId({ chatId });
 
@@ -722,10 +956,6 @@ export async function GET(request: Request) {
     () => emptyDataStream,
   );
 
-  /*
-   * For when the generation is streaming during SSR
-   * but the resumable stream has concluded at this point.
-   */
   if (!stream) {
     const messages = await getMessagesByChatId({ id: chatId });
     const mostRecentMessage = messages.at(-1);
@@ -760,6 +990,17 @@ export async function GET(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  // Validate API key first
+  if (!validateApiKey(request)) {
+    return new Response(
+      JSON.stringify({ error: 'Unauthorized - Invalid API key' }),
+      { 
+        status: 401, 
+        headers: { 'Content-Type': 'application/json' } 
+      }
+    );
+  }
+
   const { searchParams } = new URL(request.url);
   const id = searchParams.get('id');
 
@@ -767,19 +1008,18 @@ export async function DELETE(request: Request) {
     return new ChatSDKError('bad_request:api').toResponse();
   }
 
-  const session = await auth();
-
-  if (!session?.user) {
-    return new ChatSDKError('unauthorized:chat').toResponse();
-  }
+  // Get or create external API user
+  const externalApiUser = await getOrCreateExternalApiUser();
+  const session = {
+    user: externalApiUser
+  };
 
   const chat = await getChatById({ id });
 
-  if (chat.userId !== session.user.id) {
-    return new ChatSDKError('forbidden:chat').toResponse();
-  }
+  // For API users, allow deletion of all chats
+  // You might want to restrict this based on your needs
 
   const deletedChat = await deleteChatById({ id });
 
   return Response.json(deletedChat, { status: 200 });
-}
+} 

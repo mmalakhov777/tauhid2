@@ -150,40 +150,27 @@ async function improveUserQueries(
   }
 }
 
+// Helper function to create a unique identifier for a source/book
+function getSourceIdentifier(result: VectorSearchResult): string | null {
+  if (!result.metadata || !result.metadata.source_file) return null;
+  
+  // Use only source_file field to identify the book
+  return String(result.metadata.source_file).toLowerCase().trim();
+}
+
 async function getTopKContext(
   indexName: string, 
   query: string, 
-  k = 2
+  k = 10
 ): Promise<VectorSearchResult[]> {
-  console.log(`[vector-search] 🔍 Starting search in index: ${indexName}`, {
-    query: query.substring(0, 100) + '...',
-    k,
-    timestamp: new Date().toISOString()
-  });
-
   try {
-    // Get embedding for the query using Railway service
-    console.log(`[vector-search] 🧮 Getting embedding for query in ${indexName}`);
     const queryEmbedding = await getEmbedding(query);
-    
-    console.log(`[vector-search] ✅ Embedding received for ${indexName}:`, {
-      embeddingLength: queryEmbedding.length,
-      embeddingPreview: queryEmbedding.slice(0, 5)
-    });
-
-    // Query Pinecone
-    console.log(`[vector-search] 📊 Querying Pinecone index: ${indexName}`);
     const index = pinecone.index(indexName);
     const searchResponse = await index.query({
       vector: queryEmbedding,
       topK: k * 2, // Retrieve more results to account for filtering
       includeMetadata: true,
       includeValues: false,
-    });
-
-    console.log(`[vector-search] ✅ Pinecone query completed for ${indexName}:`, {
-      matchesCount: searchResponse.matches?.length || 0,
-      topScores: searchResponse.matches?.slice(0, 3).map(m => m.score) || []
     });
 
     // Extract and filter results
@@ -211,10 +198,8 @@ async function getTopKContext(
           });
         }
         
-        // Ensure textContent is populated if it was in fullMetadata after merge
-        if (!textContent && fullMetadata.text) {
-          textContent = fullMetadata.text;
-        }
+        // Use ONLY original_text field
+        textContent = fullMetadata.original_text || "";
 
         return {
           text: textContent,
@@ -225,40 +210,31 @@ async function getTopKContext(
         };
       });
 
-    console.log(`[vector-search] 🔄 Mapped ${mappedResults.length} results for ${indexName}`);
+
 
     const filteredResults = mappedResults
-      .filter((mappedMatch) => { // Filter for specific classic sources
-        if (indexName === CLASSIC_INDEX_NAME && mappedMatch.metadata) {
-          const metadataKeys = Object.keys(mappedMatch.metadata);
-          const specificKeys = ['answer', 'question', 'text'];
-
-          const hasExactlySpecificKeys =
-              metadataKeys.length === specificKeys.length &&
-              specificKeys.every(key => metadataKeys.includes(key));
-
-          if (hasExactlySpecificKeys) {
-            return false; // Filter out
-          }
-        }
-        return true; // Keep otherwise
-      })
-      .filter((m) => {
+      .filter((m, index) => {
         // Use a lower threshold for classical sources since they tend to have lower scores
         const scoreThreshold = indexName === CLASSIC_INDEX_NAME ? 0.25 : 0.4;
         return m.text && m.score && m.score >= scoreThreshold;
       })
+      .filter((result, index, array) => {
+        // Filter out duplicates from the same book/source
+        const seenSources = new Set<string>();
+        return array.slice(0, index + 1).every((r, i) => {
+          if (i === index) return true; // Always include current item for comparison
+          
+          // Create a unique identifier for the source/book
+          const currentSource = getSourceIdentifier(result);
+          const otherSource = getSourceIdentifier(r);
+          
+          if (currentSource && otherSource && currentSource === otherSource) {
+            return false; // Filter out duplicate from same source
+          }
+          return true;
+        });
+      })
       .slice(0, k);
-
-    console.log(`[vector-search] ✅ Search completed for ${indexName}:`, {
-      initialMatches: searchResponse.matches?.length || 0,
-      afterMapping: mappedResults.length,
-      afterFiltering: filteredResults.length,
-      finalResults: filteredResults.length,
-      scoreRange: filteredResults.length > 0 ? 
-        `${Math.min(...filteredResults.map(r => r.score || 0)).toFixed(3)} - ${Math.max(...filteredResults.map(r => r.score || 0)).toFixed(3)}` : 
-        'N/A'
-    });
 
     return filteredResults;
   } catch (error) {
@@ -276,31 +252,12 @@ async function getTopKContextAllNamespaces(
   indexName: string, 
   namespaces: string[], 
   query: string, 
-  k = 2
+  k = 10
 ): Promise<VectorSearchResult[]> {
-  console.log(`[vector-search] 🔍 Starting namespace search in index: ${indexName}`, {
-    query: query.substring(0, 100) + '...',
-    namespacesCount: namespaces.length,
-    namespaces: namespaces.slice(0, 3), // Show first 3 namespaces
-    k,
-    timestamp: new Date().toISOString()
-  });
-
   try {
-    console.log(`[vector-search] 🧮 Getting embedding for namespace search in ${indexName}`);
     const queryEmbedding = await getEmbedding(query);
-    
-    console.log(`[vector-search] ✅ Embedding received for namespace search:`, {
-      embeddingLength: queryEmbedding.length,
-      indexName
-    });
-
-    // Run queries in parallel for all namespaces
-    console.log(`[vector-search] ⚡ Running parallel queries across ${namespaces.length} namespaces in ${indexName}`);
     const results = await Promise.all(
       namespaces.map(async (namespace, i) => {
-        console.log(`[vector-search] 📋 Querying namespace ${i + 1}/${namespaces.length}: ${namespace} in ${indexName}`);
-        
         try {
           const index = pinecone.index(indexName).namespace(namespace);
           const searchResponse = await index.query({
@@ -319,45 +276,31 @@ async function getTopKContextAllNamespaces(
               score: m.score,
               query: query
             }))
-            .filter(m => m.text && m.score && m.score >= 0.4);
-          
-          console.log(`[vector-search] ✅ Namespace ${namespace} search completed:`, {
-            matches: searchResponse.matches?.length || 0,
-            filtered: namespaceResults.length,
-            topScore: namespaceResults.length > 0 ? namespaceResults[0].score?.toFixed(3) : 'N/A'
-          });
+            .filter(m => m.text && m.score && m.score >= 0.4)
+            .filter((result, index, array) => {
+              // Filter out duplicates from the same book/source within this namespace
+              return array.slice(0, index).every(r => {
+                const currentSource = getSourceIdentifier(result);
+                const otherSource = getSourceIdentifier(r);
+                
+                if (currentSource && otherSource && currentSource === otherSource) {
+                  return false; // Filter out duplicate from same source
+                }
+                return true;
+              });
+            });
           
           return namespaceResults;
         } catch (namespaceError) {
-          console.error(`[vector-search] ❌ Error in namespace ${namespace}:`, {
-            error: namespaceError instanceof Error ? namespaceError.message : String(namespaceError),
-            namespace,
-            indexName
-          });
           return [];
         }
       })
     );
 
-    console.log(`[vector-search] 📊 All namespace queries completed for ${indexName}:`, {
-      namespacesQueried: namespaces.length,
-      resultsPerNamespace: results.map(r => r.length),
-      totalResultsBeforeSort: results.flat().length
-    });
-
     // Flatten and sort by score
     const allMatches = results.flat();
     allMatches.sort((a, b) => (b.score ?? 0) - (a.score ?? 0));
     const finalResults = allMatches.slice(0, k);
-    
-    console.log(`[vector-search] ✅ Namespace search completed for ${indexName}:`, {
-      totalMatches: allMatches.length,
-      finalResults: finalResults.length,
-      scoreRange: finalResults.length > 0 ? 
-        `${Math.min(...finalResults.map(r => r.score || 0)).toFixed(3)} - ${Math.max(...finalResults.map(r => r.score || 0)).toFixed(3)}` : 
-        'N/A',
-      namespacesWithResults: results.filter(r => r.length > 0).length
-    });
     
     return finalResults;
   } catch (error) {
@@ -378,28 +321,15 @@ export function buildContextBlock(
   youtube: VectorSearchResult[],
   fatwa: VectorSearchResult[]
 ): string {
-  // Filter classic citations one more time to be absolutely sure
-  const filteredClassic = classic.filter((ctx) => {
-    if (ctx.metadata) {
-      const metadataKeys = Object.keys(ctx.metadata);
-      const specificKeys = ['answer', 'question', 'text'];
-      const hasExactlySpecificKeys =
-          metadataKeys.length === specificKeys.length &&
-          specificKeys.every(key => metadataKeys.includes(key));
-      
-      if (hasExactlySpecificKeys) {
-        return false;
-      }
-    }
-    return true;
-  });
+  // No additional filtering needed - use all results as-is
+  const filteredClassic = classic;
   
-  // Limit citations to reduce token usage - max 3 per category
-  const limitedClassic = filteredClassic.slice(0, 3);
-  const limitedRisale = risale.slice(0, 3);
-  const limitedModern = modern.slice(0, 2);
-  const limitedYoutube = youtube.slice(0, 2);
-  const limitedFatwa = fatwa.slice(0, 2);
+  // Use ALL citations without any limits
+  const limitedClassic = filteredClassic;
+  const limitedRisale = risale;
+  const limitedModern = modern;
+  const limitedYoutube = youtube;
+  const limitedFatwa = fatwa;
   
   let contextBlock = 'IMPORTANT: Cite sources using [CITn] format. Use HTML output only.\n\n';
   contextBlock += 'Context types: [CLS]=Classical, [RIS]=Risale-i Nur, [MOD]=Modern, [YT]=YouTube, [FAT]=Fatwa Sites\n';
@@ -408,25 +338,24 @@ export function buildContextBlock(
   
   let i = 0;
   limitedClassic.forEach((ctx) => {
-    // Truncate very long texts to reduce tokens
-    const text = ctx.text.length > 800 ? ctx.text.substring(0, 800) + '...' : ctx.text;
-    contextBlock += `[CIT${++i}][CLS] ${text}\n\n`;
+    // Use full text without truncation
+    contextBlock += `[CIT${++i}][CLS] ${ctx.text}\n\n`;
   });
   limitedRisale.forEach((ctx) => {
-    const text = ctx.text.length > 800 ? ctx.text.substring(0, 800) + '...' : ctx.text;
-    contextBlock += `[CIT${++i}][RIS] ${text}\n\n`;
+    // Use full text without truncation
+    contextBlock += `[CIT${++i}][RIS] ${ctx.text}\n\n`;
   });
   limitedFatwa.forEach((ctx) => {
-    const text = ctx.text.length > 600 ? ctx.text.substring(0, 600) + '...' : ctx.text;
-    contextBlock += `[CIT${++i}][FAT] ${text}\n\n`;
+    // Use full text without truncation
+    contextBlock += `[CIT${++i}][FAT] ${ctx.text}\n\n`;
   });
   limitedModern.forEach((ctx) => {
-    const text = ctx.text.length > 600 ? ctx.text.substring(0, 600) + '...' : ctx.text;
-    contextBlock += `[CIT${++i}][MOD] ${text}\n\n`;
+    // Use full text without truncation
+    contextBlock += `[CIT${++i}][MOD] ${ctx.text}\n\n`;
   });
   limitedYoutube.forEach((ctx) => {
-    const text = ctx.text.length > 600 ? ctx.text.substring(0, 600) + '...' : ctx.text;
-    contextBlock += `[CIT${++i}][YT] ${text}\n\n`;
+    // Use full text without truncation
+    contextBlock += `[CIT${++i}][YT] ${ctx.text}\n\n`;
   });
   
   // Simplified citation metadata
@@ -498,36 +427,23 @@ async function performAllVectorSearches(
     fatwa: true,
   };
 
-  console.log('[vector-search] 🔄 Starting parallel vector searches:', {
-    improvedQueriesCount: improvedQueries.length,
-    queries: improvedQueries.map(q => q.substring(0, 50) + '...'),
-    selectedSources: sources,
-    timestamp: new Date().toISOString()
-  });
-
   try {
-    // Create all search promises in parallel based on selected sources
-    console.log('[vector-search] 📋 Creating search promises for selected indexes and namespaces');
     const allSearchPromises: Promise<VectorSearchResult[]>[] = [];
 
     // Classic searches for all queries (if enabled)
     if (sources.classic) {
       allSearchPromises.push(
         ...improvedQueries.map((q, i) => {
-          console.log(`[vector-search] 📚 Creating classic search promise ${i + 1}/${improvedQueries.length} for query: ${q.substring(0, 50)}...`);
-          return getTopKContext(CLASSIC_INDEX_NAME, q, 2);
+          return getTopKContext(CLASSIC_INDEX_NAME, q, 50);
         })
       );
     }
-
-    // Modern searches removed - not needed
 
     // Risale searches for all queries (if enabled)
     if (sources.risale) {
       allSearchPromises.push(
         ...improvedQueries.map((q, i) => {
-          console.log(`[vector-search] 📖 Creating Risale search promise ${i + 1}/${improvedQueries.length} for query: ${q.substring(0, 50)}...`);
-          return getTopKContextAllNamespaces(RISALENUR_INDEX_NAME, RISALENUR_NAMESPACES, q, 2);
+          return getTopKContextAllNamespaces(RISALENUR_INDEX_NAME, RISALENUR_NAMESPACES, q, 5);
         })
       );
     }
@@ -536,8 +452,7 @@ async function performAllVectorSearches(
     if (sources.youtube) {
       allSearchPromises.push(
         ...improvedQueries.map((q, i) => {
-          console.log(`[vector-search] 🎥 Creating YouTube search promise ${i + 1}/${improvedQueries.length} for query: ${q.substring(0, 50)}...`);
-          return getTopKContextAllNamespaces(YOUTUBE_INDEX_NAME, YOUTUBE_NAMESPACES, q, 2);
+          return getTopKContextAllNamespaces(YOUTUBE_INDEX_NAME, YOUTUBE_NAMESPACES, q, 5);
         })
       );
     }
@@ -546,35 +461,16 @@ async function performAllVectorSearches(
     if (sources.fatwa) {
       allSearchPromises.push(
         ...improvedQueries.map((q, i) => {
-          console.log(`[vector-search] ⚖️ Creating Fatwa search promise ${i + 1}/${improvedQueries.length} for query: ${q.substring(0, 50)}...`);
-          return getTopKContextAllNamespaces(FATWA_INDEX_NAME, FATWA_NAMESPACES, q, 2);
+          return getTopKContextAllNamespaces(FATWA_INDEX_NAME, FATWA_NAMESPACES, q, 5);
         })
       );
     }
 
-    console.log('[vector-search] ⚡ Executing all searches in parallel:', {
-      totalPromises: allSearchPromises.length,
-      expectedResults: improvedQueries.length * 5,
-      timestamp: new Date().toISOString()
-    });
-
     // Execute all searches in parallel
     const allResults = await Promise.all(allSearchPromises);
     
-    console.log('[vector-search] ✅ All parallel searches completed:', {
-      totalResults: allResults.length,
-      resultLengths: allResults.map(r => r.length),
-      timestamp: new Date().toISOString()
-    });
-    
     // Split results back into categories based on enabled sources
     const numQueries = improvedQueries.length;
-    console.log('[vector-search] 📊 Splitting results into categories:', {
-      numQueries,
-      totalResults: allResults.length,
-      enabledSources: Object.entries(sources).filter(([_, enabled]) => enabled).map(([name, _]) => name)
-    });
-    
     let resultIndex = 0;
     const classicResults = sources.classic ? allResults.slice(resultIndex, resultIndex += numQueries) : [];
     const modernResults: VectorSearchResult[][] = []; // Modern removed - empty array
@@ -582,62 +478,29 @@ async function performAllVectorSearches(
     const youtubeResults = sources.youtube ? allResults.slice(resultIndex, resultIndex += numQueries) : [];
     const fatwaResults = sources.fatwa ? allResults.slice(resultIndex, resultIndex += numQueries) : [];
 
-    console.log('[vector-search] 📈 Results split by category:', {
-      classic: classicResults.length,
-      modern: modernResults.length,
-      risale: risaleResults.length,
-      youtube: youtubeResults.length,
-      fatwa: fatwaResults.length
-    });
-
-    // Deduplicate by id
-    console.log('[vector-search] 🔄 Starting deduplication process');
+    // Deduplicate by id and also by metadata.original_text
     const dedup = (arr: VectorSearchResult[][], type: string): VectorSearchResult[] => {
       const flattened = arr.flat();
-      console.log(`[vector-search] 📋 Deduplicating ${type}:`, {
-        beforeFlattening: arr.length,
-        afterFlattening: flattened.length,
-        uniqueIds: new Set(flattened.map(x => x.id)).size
-      });
       
-      const deduplicated = Object.values(
+      // First deduplicate by id
+      let deduplicated = Object.values(
         Object.fromEntries(
           flattened.map((x: VectorSearchResult) => [x.id, x])
         )
       );
-      
-      console.log(`[vector-search] ✅ ${type} deduplication complete:`, {
-        before: flattened.length,
-        after: deduplicated.length,
-        removed: flattened.length - deduplicated.length
-      });
-      
-      // Apply the same filter for classic sources
-      if (type === 'Classic') {
-        const beforeFilter = deduplicated.length;
-        const filtered = deduplicated.filter((citation) => {
-          if (citation.metadata) {
-            const metadataKeys = Object.keys(citation.metadata);
-            const specificKeys = ['answer', 'question', 'text'];
-            const hasExactlySpecificKeys =
-                metadataKeys.length === specificKeys.length &&
-                specificKeys.every(key => metadataKeys.includes(key));
-            
-            if (hasExactlySpecificKeys) {
-              return false;
-            }
+
+      // Then deduplicate by metadata.original_text if present
+      const seenOriginalText = new Set<string>();
+      deduplicated = deduplicated.filter((x: VectorSearchResult) => {
+        const originalText = x.metadata?.original_text;
+        if (originalText && typeof originalText === 'string') {
+          if (seenOriginalText.has(originalText)) {
+            return false;
           }
-          return true;
-        });
-        
-        console.log(`[vector-search] 🔍 Classic sources filtered:`, {
-          before: beforeFilter,
-          after: filtered.length,
-          filtered: beforeFilter - filtered.length
-        });
-        
-        return filtered;
-      }
+          seenOriginalText.add(originalText);
+        }
+        return true;
+      });
       
       return deduplicated;
     };
@@ -650,16 +513,14 @@ async function performAllVectorSearches(
       fatwaContexts: dedup(fatwaResults, 'Fatwa')
     };
 
-    console.log('[vector-search] 🎉 Parallel vector searches completed successfully:', {
-      classic: finalResults.classicContexts.length,
-      modern: finalResults.modernContexts.length,
-      risale: finalResults.risaleContexts.length,
-      youtube: finalResults.youtubeContexts.length,
-      fatwa: finalResults.fatwaContexts.length,
-      total: finalResults.classicContexts.length + finalResults.modernContexts.length + 
-             finalResults.risaleContexts.length + finalResults.youtubeContexts.length + 
-             finalResults.fatwaContexts.length,
-      timestamp: new Date().toISOString()
+    // Compact stats
+    console.log('[vector-search] Results:', {
+      CLS: finalResults.classicContexts.length,
+      RIS: finalResults.risaleContexts.length,
+      YT: finalResults.youtubeContexts.length,
+      FAT: finalResults.fatwaContexts.length,
+      total: finalResults.classicContexts.length + finalResults.risaleContexts.length + 
+             finalResults.youtubeContexts.length + finalResults.fatwaContexts.length
     });
 
     return finalResults;
@@ -694,65 +555,23 @@ export async function performVectorSearchWithProgress(
   improvedQueries: string[];
   contextBlock: string;
 }> {
-  console.log('[vector-search] 🚀 Starting vector search with progress:', {
-    userMessage: userMessage.substring(0, 100) + '...',
-    conversationHistoryLength: conversationHistory.length,
-    selectedChatModel,
-    selectedSources: selectedSources,
-    selectedSourcesType: typeof selectedSources,
-    selectedSourcesKeys: selectedSources ? Object.keys(selectedSources) : 'null',
-    hasProgressCallback: !!onProgress,
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV,
-    railwayServiceUrl: RAILWAY_EMBEDDING_SERVICE_URL
-  });
-
-  // Step 1: Query improvement and vector searches in parallel
-  console.log('[vector-search] 📝 Step 1: Starting query improvement');
   if (onProgress) {
-    console.log('[vector-search] 📡 Sending progress update - Step 1');
     onProgress({ step: 1 });
   }
   
   try {
-    // Run query improvement and vector searches in parallel
-    console.log('[vector-search] 🔄 Running query improvement in parallel');
-    const [improvedQueries, searchResults] = await Promise.all([
-      improveUserQueries(userMessage, conversationHistory, selectedChatModel),
-      // We'll run the searches after we get the improved queries, but we can prepare the embedding
-      Promise.resolve(null)
-    ]);
-    
-    console.log('[vector-search] ✅ Query improvement completed:', {
-      originalQuery: userMessage.substring(0, 50) + '...',
-      improvedQueriesCount: improvedQueries.length,
-      improvedQueries: improvedQueries.map(q => q.substring(0, 50) + '...')
-    });
+    const improvedQueries = await improveUserQueries(userMessage, conversationHistory, selectedChatModel);
     
     if (onProgress) {
-      console.log('[vector-search] 📡 Sending progress update - Step 1 with improved queries');
       onProgress({ step: 1, improvedQueries });
     }
     
-    // Step 2: Vector searches with improved queries
-    console.log('[vector-search] 🔍 Step 2: Starting vector searches');
     if (onProgress) {
-      console.log('[vector-search] 📡 Sending progress update - Step 2');
       onProgress({ step: 2, improvedQueries });
     }
     
-    console.log('[vector-search] 🔄 Performing all vector searches in parallel');
     const { classicContexts, modernContexts, risaleContexts, youtubeContexts, fatwaContexts } = 
       await performAllVectorSearches(improvedQueries, selectedSources);
-    
-    console.log('[vector-search] ✅ Vector searches completed:', {
-      classicCount: classicContexts.length,
-      modernCount: modernContexts.length,
-      risaleCount: risaleContexts.length,
-      youtubeCount: youtubeContexts.length,
-      fatwaCount: fatwaContexts.length,
-      totalResults: classicContexts.length + modernContexts.length + risaleContexts.length + youtubeContexts.length + fatwaContexts.length
-    });
     
     // Send search results count
     const searchResultsCount = {
@@ -764,7 +583,6 @@ export async function performVectorSearchWithProgress(
     };
     
     if (onProgress) {
-      console.log('[vector-search] 📡 Sending progress update - Step 2 with search results');
       onProgress({
         step: 2,
         improvedQueries,
@@ -773,30 +591,14 @@ export async function performVectorSearchWithProgress(
     }
 
     // Generate messageId and store context
-    console.log('[vector-search] 🆔 Generating message ID and storing context');
     const messageId = uuidv4();
     const allContexts = [...classicContexts, ...modernContexts, ...risaleContexts, ...youtubeContexts, ...fatwaContexts];
     messageContextMap.set(messageId, allContexts);
-    
-    console.log('[vector-search] 💾 Context stored:', {
-      messageId,
-      totalContexts: allContexts.length,
-      contextMapSize: messageContextMap.size
-    });
 
     // Build context block
-    console.log('[vector-search] 🏗️ Building context block');
     const contextBlock = buildContextBlock(classicContexts, modernContexts, risaleContexts, youtubeContexts, fatwaContexts);
-    
-    console.log('[vector-search] ✅ Context block built:', {
-      contextBlockLength: contextBlock.length,
-      contextBlockPreview: contextBlock.substring(0, 200) + '...'
-    });
 
-    // Step 3: Ready to generate response
-    console.log('[vector-search] ⚡ Step 3: Ready to generate response');
     if (onProgress) {
-      console.log('[vector-search] 📡 Sending progress update - Step 3');
       onProgress({
         step: 3,
         improvedQueries,
@@ -804,22 +606,12 @@ export async function performVectorSearchWithProgress(
       });
     }
 
-    const result = {
+    return {
       messageId,
       citations: allContexts,
       improvedQueries,
       contextBlock
     };
-    
-    console.log('[vector-search] 🎉 Vector search completed successfully:', {
-      messageId,
-      citationsCount: allContexts.length,
-      improvedQueriesCount: improvedQueries.length,
-      contextBlockLength: contextBlock.length,
-      timestamp: new Date().toISOString()
-    });
-
-    return result;
     
   } catch (error) {
     console.error('[vector-search] ❌ Error in vector search process:', {

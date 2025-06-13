@@ -35,6 +35,7 @@ export function SourcePreviewCards({
         const isRaddulMuhtar = type === 'CLS' && citation.metadata?.source_file?.startsWith('Rad-ul-Muhtar-Vol');
         const isBadaiAlSanai = type === 'CLS' && citation.metadata?.source_file?.match(/Badai-al-Sanai-Urdu-Vol-\d+_hocr_searchtext\.txt\.gz/);
         const isSharhWiqayah = type === 'CLS' && citation.metadata?.source_file?.match(/SharhWiqayah\d+_hocr_searchtext\.txt\.gz/);
+        const isAlHidaya = type === 'CLS' && citation.metadata?.book_name === 'Al-Hidaya';
         const thumbnailUrl = citation.metadata?.thumbnail_url;
         
         return (
@@ -202,6 +203,16 @@ export function SourcePreviewCards({
                         src="/images/sharh-al-wiqayah.png" 
                         alt="Sharh al-Wiqayah cover"
                         className="w-full h-full object-cover"
+                      />
+                    ) : isAlHidaya ? (
+                      <img 
+                        src="/images/Al-Hidaya.png" 
+                        alt="Al-Hidaya cover"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = '/images/fatawa-qazi-khan.png';
+                        }}
                       />
                     ) : (
                       <div className="w-full h-full bg-muted flex items-center justify-center">

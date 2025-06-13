@@ -243,6 +243,12 @@
     "emailNotVerified": "لم يتم التحقق من البريد الإلكتروني",
     "resendVerification": "إعادة إرسال بريد التحقق"
   },
+  "banners": {
+    "completeProfile": "أكمل ملفك الشخصي",
+    "setupEmailDescription": "قم بإعداد بريدك الإلكتروني لحفظ المحادثات والوصول إلى الميزات المتقدمة",
+    "registerAccount": "تسجيل حساب",
+    "saveMessagesDescription": "احفظ رسائلك وتاريخ المحادثات"
+  },
   "guest": {
     "guestMode": "وضع الضيف",
     "registerForMore": "سجّل للحصول على المزيد من الميزات",

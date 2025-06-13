@@ -243,6 +243,12 @@
     "emailNotVerified": "E-Mail nicht verifiziert",
     "resendVerification": "Verifizierungs-E-Mail erneut senden"
   },
+  "banners": {
+    "completeProfile": "Vervollständigen Sie Ihr Profil",
+    "setupEmailDescription": "Richten Sie Ihre E-Mail ein, um Gespräche zu speichern und auf erweiterte Funktionen zuzugreifen",
+    "registerAccount": "Konto registrieren",
+    "saveMessagesDescription": "Speichern Sie Ihre Nachrichten und Chat-Verlauf"
+  },
   "guest": {
     "guestMode": "Gastmodus",
     "registerForMore": "Registrieren für mehr Funktionen",

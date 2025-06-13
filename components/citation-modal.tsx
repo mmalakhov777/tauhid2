@@ -194,6 +194,9 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
   // Check if this is Sharh al-Wiqayah
   const isSharhWiqayah = isClassical && citation.metadata?.source_file?.match(/SharhWiqayah\d+_hocr_searchtext\.txt\.gz/);
 
+  // Check if this is Al-Hidaya
+  const isAlHidaya = isClassical && citation.metadata?.book_name === 'Al-Hidaya';
+
   // Build YouTube embed URL with timestamp if available
   let embedUrl = '';
   if (videoId) {
@@ -380,6 +383,8 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
           sourceName = 'Badai-al-Sanai';
         } else if (isSharhWiqayah) {
           sourceName = 'Sharh al-Wiqayah';
+        } else if (isAlHidaya) {
+          sourceName = 'Al-Hidaya';
         }
       } else if (isRisale) {
         // For Risale-i Nur sources, use the book name

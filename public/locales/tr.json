@@ -243,6 +243,12 @@
     "emailNotVerified": "E-posta doğrulanmadı",
     "resendVerification": "Doğrulama e-postasını yeniden gönder"
   },
+  "banners": {
+    "completeProfile": "Profilinizi Tamamlayın",
+    "setupEmailDescription": "Konuşmaları kaydetmek ve gelişmiş özelliklere erişmek için e-postanızı ayarlayın",
+    "registerAccount": "Hesap kaydet",
+    "saveMessagesDescription": "Mesajlarınızı ve sohbet geçmişinizi kaydedin"
+  },
   "guest": {
     "guestMode": "Misafir Modu",
     "registerForMore": "Daha fazla özellik için kaydolun",

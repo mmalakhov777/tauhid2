@@ -36,8 +36,8 @@ export const filterEligibleCitations = (citations: any[]) => {
       const { citation } = item;
       const type = determineCitationType(citation);
       
-      // Original filter for CLS type without source_file
-      if (type === 'CLS' && !citation.metadata?.source_file) {
+      // Original filter for CLS type without source_file - but allow Al-Hidaya and other books with book_name
+      if (type === 'CLS' && !citation.metadata?.source_file && !citation.metadata?.book_name) {
         return false;
       }
 

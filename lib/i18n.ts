@@ -83,10 +83,16 @@ export { useTranslations } from '@/contexts/TranslationContext';
 
 // Server-side translation function for API routes
 export async function getServerTranslations(language: SupportedLanguage = 'en'): Promise<Translations> {
+  // Only run on server side
+  if (typeof window !== 'undefined') {
+    console.warn('getServerTranslations called on client side');
+    return {};
+  }
+  
   try {
-    // In server environment, we need to read from file system
-    const fs = await import('fs');
-    const path = await import('path');
+    // Use require for server-side imports to avoid bundling issues
+    const fs = require('fs');
+    const path = require('path');
     
     const filePath = path.join(process.cwd(), 'locales', `${language}.json`);
     const fileContent = fs.readFileSync(filePath, 'utf-8');

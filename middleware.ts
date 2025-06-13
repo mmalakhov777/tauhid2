@@ -7,6 +7,8 @@ const publicRoutes = [
   '/login',
   '/register',
   '/api/auth/guest', // Allow guest creation
+  '/api/external-chat', // Allow external chat API with its own authentication
+  '/api/telegram', // Allow Telegram webhook
   // Add any other public static pages here
 ];
 

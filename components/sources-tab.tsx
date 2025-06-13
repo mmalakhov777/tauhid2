@@ -102,6 +102,7 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
               const isRaddulMuhtar = type === 'CLS' && citation.metadata?.source_file?.startsWith('Rad-ul-Muhtar-Vol');
               const isBadaiAlSanai = type === 'CLS' && citation.metadata?.source_file?.match(/Badai-al-Sanai-Urdu-Vol-\d+_hocr_searchtext\.txt\.gz/);
               const isSharhWiqayah = type === 'CLS' && citation.metadata?.source_file?.match(/SharhWiqayah\d+_hocr_searchtext\.txt\.gz/);
+              const isAlHidaya = type === 'CLS' && citation.metadata?.book_name === 'Al-Hidaya';
               
               return (
                 <div 
@@ -299,6 +300,46 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                         {/* Metadata */}
                         <div className="flex flex-col gap-0.5 text-[10px] text-muted-foreground mt-auto">
                           <span className="truncate">Sharh al-Wiqayah</span>
+                          {citation.metadata?.volume && (
+                            <div>Volume: {citation.metadata.volume}</div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ) : isAlHidaya ? (
+                    <div className="flex gap-3">
+                      {/* Cover Image - 40% */}
+                      <div className="w-2/5 shrink-0">
+                        <div className="relative size-full rounded-l overflow-hidden bg-muted">
+                          <img 
+                            src="/images/Al-Hidaya.png" 
+                            alt="Al-Hidaya cover"
+                            className="size-full object-cover object-center"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.src = '/images/fatawa-qazi-khan.png';
+                            }}
+                          />
+                        </div>
+                      </div>
+                      
+                      {/* Content - 60% */}
+                      <div className="flex-1 flex flex-col justify-center gap-2 py-3 pr-3">
+                        {/* Source as title */}
+                        {citation.metadata?.source && (
+                          <div className="text-sm font-semibold text-card-foreground line-clamp-1">
+                            {citation.metadata.source}
+                          </div>
+                        )}
+                        
+                        {/* Text preview */}
+                        <div className="text-[10px] text-muted-foreground line-clamp-2 italic">
+                          {citation.text?.slice(0, 80)}...
+                        </div>
+                        
+                        {/* Metadata */}
+                        <div className="flex flex-col gap-0.5 text-[10px] text-muted-foreground mt-auto">
+                          <span className="truncate">Al-Hidaya</span>
                           {citation.metadata?.volume && (
                             <div>Volume: {citation.metadata.volume}</div>
                           )}
