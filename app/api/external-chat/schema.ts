@@ -7,6 +7,7 @@ const textPartSchema = z.object({
 
 const sourceSelectionSchema = z.object({
   classic: z.boolean(),
+  modern: z.boolean(),
   risale: z.boolean(),
   youtube: z.boolean(),
   fatwa: z.boolean(),
