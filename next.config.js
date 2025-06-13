@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'standalone',
   experimental: {
     // Disable PPR to prevent build-time API route analysis
     ppr: false,
@@ -22,6 +23,10 @@ const nextConfig = {
   // Skip static optimization for API routes
   generateBuildId: async () => {
     return 'build-' + Date.now();
+  },
+  // Disable static page generation for problematic routes
+  async rewrites() {
+    return [];
   },
   redirects: async () => {
     return [
