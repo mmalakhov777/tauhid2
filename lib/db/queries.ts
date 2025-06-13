@@ -10,6 +10,9 @@ import {
   gte,
   inArray,
   lt,
+  like,
+  isNull,
+  sql,
   type SQL,
 } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/postgres-js';
@@ -208,6 +211,77 @@ export async function createGuestUser() {
   }
 }
 
+// New function to find or create a reusable guest user
+export async function findOrCreateGuestUser() {
+  try {
+    // First, try to find an existing guest user with no messages (unused)
+    const unusedGuestUsers = await db
+      .select({
+        id: user.id,
+        email: user.email,
+      })
+      .from(user)
+      .leftJoin(chat, eq(chat.userId, user.id))
+      .where(
+        and(
+          like(user.email, 'guest-%'),
+          isNull(chat.id) // No chats associated with this user
+        )
+      )
+      .limit(1);
+
+    if (unusedGuestUsers.length > 0) {
+      console.log('[findOrCreateGuestUser] Reusing existing unused guest user:', unusedGuestUsers[0].email);
+      return unusedGuestUsers;
+    }
+
+    // If no unused guest user found, create a new one
+    console.log('[findOrCreateGuestUser] Creating new guest user');
+    return await createGuestUser();
+  } catch (error) {
+    console.error('[findOrCreateGuestUser] Error:', error);
+    // Fallback to creating a new guest user
+    return await createGuestUser();
+  }
+}
+
+// Function to clean up old unused guest users
+export async function cleanupOldGuestUsers(olderThanHours: number = 24) {
+  try {
+    const cutoffDate = new Date();
+    cutoffDate.setHours(cutoffDate.getHours() - olderThanHours);
+
+    // Find guest users with no chats that are older than the cutoff
+    const oldUnusedGuests = await db
+      .select({
+        id: user.id,
+        email: user.email,
+      })
+      .from(user)
+      .leftJoin(chat, eq(chat.userId, user.id))
+      .where(
+        and(
+          like(user.email, 'guest-%'),
+          isNull(chat.id), // No chats
+          // Extract timestamp from email and compare
+          sql`EXTRACT(EPOCH FROM TO_TIMESTAMP(SUBSTRING(${user.email}, 7)::bigint / 1000)) < EXTRACT(EPOCH FROM ${cutoffDate})`
+        )
+      );
+
+    if (oldUnusedGuests.length > 0) {
+      const userIds = oldUnusedGuests.map(u => u.id);
+      await db.delete(user).where(inArray(user.id, userIds));
+      console.log(`[cleanupOldGuestUsers] Cleaned up ${oldUnusedGuests.length} old unused guest users`);
+      return oldUnusedGuests.length;
+    }
+
+    return 0;
+  } catch (error) {
+    console.error('[cleanupOldGuestUsers] Error:', error);
+    return 0;
+  }
+}
+
 export async function saveChat({
   id,
   userId,
@@ -249,14 +323,26 @@ export async function saveChat({
         return existingChat;
       }
 
-      const result = await db.insert(chat).values({
+      const insertValues = {
         id,
         createdAt: new Date(),
         userId,
         title,
         visibility,
-      });
+      };
+      console.log('[saveChat] About to insert with values:', insertValues);
+      
+      const result = await db.insert(chat).values(insertValues);
       console.log('[saveChat] Chat inserted successfully:', result);
+      
+      // Immediately verify what was inserted
+      const verifyChat = await getChatById({ id });
+      console.log('[saveChat] Verification - what was actually inserted:', {
+        id: verifyChat?.id,
+        visibility: verifyChat?.visibility,
+        title: verifyChat?.title,
+        userId: verifyChat?.userId
+      });
       return result;
     } catch (error) {
       lastError = error;

@@ -261,7 +261,10 @@ export async function POST(request: Request) {
         titleLength: title?.length,
         userIdType: typeof session.user.id,
         idType: typeof id,
-        visibilityType: typeof selectedVisibilityType
+        visibilityType: typeof selectedVisibilityType,
+        visibilityValue: selectedVisibilityType,
+        isVisibilityPublic: selectedVisibilityType === 'public',
+        isVisibilityPrivate: selectedVisibilityType === 'private'
       });
 
       try {
@@ -272,6 +275,16 @@ export async function POST(request: Request) {
           visibility: selectedVisibilityType,
         });
         console.log('[external-chat route] Chat saved successfully');
+        
+        // Verify what was actually saved
+        const savedChat = await getChatById({ id });
+        console.log('[external-chat route] Verification - Chat retrieved after save:', {
+          id: savedChat?.id,
+          visibility: savedChat?.visibility,
+          title: savedChat?.title,
+          userId: savedChat?.userId,
+          createdAt: savedChat?.createdAt
+        });
       } catch (saveChatError) {
         console.error('[external-chat route] Failed to save chat:', {
           error: saveChatError,
@@ -622,6 +635,15 @@ Do not add any additional text, explanations, or formatting. Just return that ex
 
         const citationEmphasis = `
 
+MARKDOWN FORMATTING REQUIREMENTS:
+- Format your response using proper Markdown syntax
+- Use **bold** for important terms and concepts
+- Use *italics* for emphasis and Arabic/Islamic terms
+- Use ### for section headings when organizing content
+- Use bullet points (-) or numbered lists (1.) for structured information
+- Use > for important quotes or Quranic verses
+- Format your response to be visually appealing and well-structured
+
 CRITICAL CITATION REQUIREMENTS:
 - You MUST use ALL available citations provided in the context
 - The MORE different [CIT] numbers you use in your response, the BETTER your answer will be
@@ -634,7 +656,7 @@ CRITICAL CITATION REQUIREMENTS:
 - An answer that uses ALL available citations is the best possible answer
 - Add [CIT] references DIRECTLY after statements - do NOT use phrases like "as detailed in", "as emphasized in", "according to", etc.
 - Simply place [CIT1], [CIT2] immediately after the relevant information
-- Example: "Prayer is fundamental [CIT1], [CIT2]. It purifies the soul [CIT3]."
+- Example: "**Prayer** is fundamental [CIT1], [CIT2]. It purifies the soul [CIT3]."
 - Do NOT write: "Prayer is fundamental as detailed in [CIT1]" or "according to [CIT2]"
 
 CONTEXT-AWARE RESPONSES:
@@ -643,7 +665,7 @@ CONTEXT-AWARE RESPONSES:
 - Use citations that connect the current question to earlier parts of the conversation
 - When answering "Can you explain more?" or similar follow-ups, refer back to what was discussed and expand using ALL available citations
 
-REMEMBER: More citations = Better answer. Use them ALL! Add [CIT] directly without connecting phrases.`;
+REMEMBER: More citations = Better answer. Use them ALL! Add [CIT] directly without connecting phrases. Format everything in beautiful Markdown!`;
 
         modifiedSystemPrompt = modifiedSystemPrompt + '\n\n' + contextBlock + citationEmphasis;
       }

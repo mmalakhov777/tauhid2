@@ -21,7 +21,9 @@
     "db:clean-users": "npx tsx scripts/clean-user-table.ts",
     "test": "export PLAYWRIGHT=True && pnpm exec playwright test",
     "i18n": "npx lingo.dev@latest i18n",
-    "i18n:check": "npx lingo.dev@latest show locale sources && npx lingo.dev@latest show locale targets"
+    "i18n:check": "npx lingo.dev@latest show locale sources && npx lingo.dev@latest show locale targets",
+    "cleanup-guests": "tsx scripts/cleanup-guest-users.ts",
+    "check-db": "tsx scripts/check-db-status.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^1.0.6",

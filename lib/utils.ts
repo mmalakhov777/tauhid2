@@ -100,5 +100,8 @@ export function sanitizeText(text: string) {
       .trim();
   }
   
+  // Convert literal \n characters to actual line breaks
+  sanitized = sanitized.replace(/\\n/g, '\n');
+  
   return sanitized;
 }
