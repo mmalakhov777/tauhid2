@@ -85,7 +85,12 @@ This is a simple Telegram echo bot that will later be enhanced to call your exte
 The bot currently:
 - ✅ Receives messages from Telegram
 - ✅ Extracts user info (name, chat ID, message text)
-- ✅ Sends back an echo response with greeting
+- ✅ **AI-Powered Islamic Q&A responses** using your external chat API
+- ✅ **Vector search** across authentic Islamic sources
+- ✅ **Multi-language support** (7 languages)
+- ✅ **Special commands**: `/start` and `/help`
+- ✅ **Typing indicators** and processing messages
+- ✅ **Response formatting** optimized for Telegram
 - ✅ Logs all activity for debugging
 - ✅ Handles errors gracefully
 
@@ -96,16 +101,46 @@ The bot currently:
 3. **Test with real Telegram** - Message your bot to see it work
 4. **Enhance with AI** - Connect to your external chat API
 
-## Bot Response Example
+## Bot Response Examples
 
-When you send "Hello!" to the bot, it responds:
+### Welcome Command (`/start`):
 ```
-Hello Max! 👋
+🕌 Assalamu Alaikum, Max!
 
-You said: "Hello!"
+Welcome to the Islamic Q&A Bot! I'm here to help answer your questions about Islam using authentic sources.
 
-This is a simple echo bot. Soon I'll be able to answer your Islamic questions! 🕌
+What I can help with:
+📚 Quranic verses and interpretations
+🕌 Islamic teachings and practices  
+📖 Hadith and scholarly opinions
+🤲 Prayer, worship, and daily Islamic life
+📜 Risale-i Nur teachings
+
+How to use:
+Simply ask me any Islamic question in plain language. I'll search through authentic Islamic sources and provide you with a comprehensive answer.
+
+Example questions:
+• "What does Islam say about prayer?"
+• "Can you explain the concept of Tawhid?"
+• "What are the pillars of Islam?"
+
+Feel free to ask me anything! 🤲
 ```
+
+### Islamic Question Response:
+When you ask "What are the five pillars of Islam?", the bot:
+1. Shows typing indicator
+2. Displays: "🔍 Searching Islamic sources for your question..."
+3. Calls the external chat API with vector search
+4. Returns a comprehensive answer with authentic sources
+5. Formats the response for easy reading on Telegram
+
+### AI Features:
+- **Vector Search**: Searches across Classic texts, Risale-i Nur, YouTube content, and Fatwa databases
+- **Source Citations**: References authentic Islamic sources
+- **Multi-language**: Supports 7 languages (English, Turkish, Arabic, Russian, German, French, Spanish)
+- **Context Awareness**: Maintains conversation history
+- **Error Handling**: Graceful fallbacks if API issues occur
 
 ## Troubleshooting
 
