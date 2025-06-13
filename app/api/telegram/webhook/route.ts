@@ -250,9 +250,8 @@ async function callExternalChatAPI(userMessage: string, userId: string, chatId: 
       messageTimestamp: messageTimestamp
     });
 
-    const requestBody = {
+    const requestBody: any = {
       id: chatUUID, // Unique UUID for each message (new chat every time - no follow-ups)
-      userId: actualUserId, // Actual database user ID from our database
       message: {
         id: generateUUID(),
         role: 'user' as const,
@@ -276,6 +275,14 @@ async function callExternalChatAPI(userMessage: string, userId: string, chatId: 
         fatwa: true
       }
     };
+
+    // Only add userId if we have a valid database user ID (UUID format)
+    if (dbUser && dbUser.id) {
+      requestBody.userId = dbUser.id;
+      console.log('[Telegram Bot] Adding userId to request:', dbUser.id);
+    } else {
+      console.log('[Telegram Bot] No valid database user, using external API default user');
+    }
 
     console.log('[Telegram Bot] Request body:', JSON.stringify(requestBody, null, 2));
 
