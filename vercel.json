@@ -1,0 +1,30 @@
+{
+  "functions": {
+    "app/api/telegram/webhook/route.ts": {
+      "maxDuration": 30
+    },
+    "app/api/external-chat/route.ts": {
+      "maxDuration": 60
+    }
+  },
+  "headers": [
+    {
+      "source": "/api/telegram/(.*)",
+      "headers": [
+        {
+          "key": "X-Vercel-Skip-Auth",
+          "value": "1"
+        }
+      ]
+    },
+    {
+      "source": "/api/external-chat",
+      "headers": [
+        {
+          "key": "X-Vercel-Skip-Auth",
+          "value": "1"
+        }
+      ]
+    }
+  ]
+} 
