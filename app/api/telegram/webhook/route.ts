@@ -3,6 +3,7 @@ import { generateUUID } from '@/lib/utils';
 import { createHash } from 'crypto';
 import { getUserByTelegramId } from '@/lib/db/queries';
 import { telegramAuth } from '@/app/(auth)/actions';
+import { getUserLanguage, getTranslations, formatText } from '@/lib/telegram-translations';
 
 const TELEGRAM_BOT_TOKEN = '7649122639:AAG50HM5qrVYh2hZ4NJj1S6PiLnBcsHEUeA';
 const TELEGRAM_API_URL = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
@@ -45,6 +46,7 @@ interface TelegramMessage {
     is_bot: boolean;
     first_name: string;
     username?: string;
+    language_code?: string;
   };
   chat: {
     id: number;
@@ -219,7 +221,7 @@ async function downloadAndTranscribeAudio(fileId: string): Promise<string | null
   }
 }
 
-async function callExternalChatAPI(userMessage: string, userId: string, chatId: string, processingMessage?: any, telegramChatId?: number, dbUser?: any, countdownInterval?: NodeJS.Timeout) {
+async function callExternalChatAPI(userMessage: string, userId: string, chatId: string, processingMessage?: any, telegramChatId?: number, dbUser?: any, countdownInterval?: NodeJS.Timeout, translations?: any) {
   try {
     // Generate UNIQUE chat UUID for each message (no follow-ups)
     const messageTimestamp = Date.now();
@@ -363,13 +365,14 @@ async function callExternalChatAPI(userMessage: string, userId: string, chatId: 
 
         // Add inline keyboard button only for the final complete message
         if (isComplete) {
+          const buttonText = translations?.buttons?.fullResponse || "📚 Full Response & Citations";
           requestBody.reply_markup = {
             inline_keyboard: [[
               {
-                              text: "📚 Full Response & Citations",
-              web_app: {
-                url: `${BASE_URL}/chat/${chatUUID}`
-              }
+                text: buttonText,
+                web_app: {
+                  url: `${BASE_URL}/chat/${chatUUID}`
+                }
               }
             ]]
           };
@@ -600,7 +603,10 @@ export async function POST(request: NextRequest) {
       // Ensure we have a valid database user before proceeding
       if (!dbUser || !dbUser.id) {
         console.error('[Telegram Bot] No valid database user found after lookup/creation');
-        await sendMessage(chatId, '❌ Sorry, I encountered an issue with user authentication. Please try again later.', 'Markdown');
+        // Get user language for error message
+        const userLanguage = getUserLanguage(message.from.language_code);
+        const t = getTranslations(userLanguage);
+        await sendMessage(chatId, t.errors.authenticationFailed, 'Markdown');
         return NextResponse.json({ ok: true, error: 'User authentication failed' });
       }
     } catch (error) {
@@ -611,17 +617,24 @@ export async function POST(request: NextRequest) {
     if (isAudioMessage) {
       const fileId = message.voice?.file_id || message.audio?.file_id;
       if (!fileId) {
-        await sendMessage(chatId, '❌ Sorry, I could not process the audio file. Please try again.', 'Markdown');
+        // Get user language for error message
+        const userLanguage = getUserLanguage(message.from.language_code);
+        const t = getTranslations(userLanguage);
+        await sendMessage(chatId, t.errors.audioProcessError, 'Markdown');
         return NextResponse.json({ ok: true, error: 'No file ID found' });
       }
 
       // Show typing indicator
       await sendTypingAction(chatId);
 
+      // Get user's language for processing messages
+      const userLanguage = getUserLanguage(message.from.language_code);
+      const t = getTranslations(userLanguage);
+      
       // Send initial processing message for audio
       const processingMessage = await sendMessage(
         chatId, 
-        '🎤 *Transcribing your audio message...*\n⏳ Converting speech to text...',
+        `${t.processing.transcribing}\n${t.processing.convertingSpeech}`,
         'Markdown'
       );
 
@@ -636,7 +649,7 @@ export async function POST(request: NextRequest) {
           body: JSON.stringify({
             chat_id: chatId,
             message_id: processingMessage.result.message_id,
-            text: '❌ Sorry, I could not transcribe the audio. Please try sending a clearer audio message.',
+            text: t.errors.transcriptionFailed,
             parse_mode: 'Markdown'
           }),
         });
@@ -654,7 +667,7 @@ export async function POST(request: NextRequest) {
         body: JSON.stringify({
           chat_id: chatId,
           message_id: processingMessage.result.message_id,
-          text: `🎤 *Audio transcribed:*\n"${userText}"\n\n🔍 *Preparing to search Islamic sources...*\n⏳ Initializing search... (~15 sec)`,
+          text: `${t.processing.audioTranscribed}\n"${userText}"\n\n${t.processing.preparingSearch}\n${formatText(t.processing.initializingSearch, { time: 15 })}`,
           parse_mode: 'Markdown'
         }),
       });
@@ -671,7 +684,7 @@ export async function POST(request: NextRequest) {
               body: JSON.stringify({
                 chat_id: chatId,
                 message_id: processingMessage.result.message_id,
-                text: `🎤 *Audio transcribed:*\n"${userText}"\n\n🔍 *Preparing to search Islamic sources...*\n⏳ Initializing search... (~${timeRemaining} sec)`,
+                text: `${t.processing.audioTranscribed}\n"${userText}"\n\n${t.processing.preparingSearch}\n${formatText(t.processing.initializingSearch, { time: timeRemaining })}`,
                 parse_mode: 'Markdown'
               }),
             });
@@ -684,7 +697,7 @@ export async function POST(request: NextRequest) {
       }, 1000);
 
       // Call external chat API with transcribed text
-      const apiResult = await callExternalChatAPI(userText, userId, chatId.toString(), processingMessage, chatId, dbUser, countdownInterval);
+      const apiResult = await callExternalChatAPI(userText, userId, chatId.toString(), processingMessage, chatId, dbUser, countdownInterval, t);
 
       // Clear countdown timer when API call completes
       if (countdownInterval) {
@@ -701,7 +714,7 @@ export async function POST(request: NextRequest) {
           body: JSON.stringify({
             chat_id: chatId,
             message_id: processingMessage.result.message_id,
-            text: '❌ I apologize, but I encountered a technical issue while processing your question. Please try again in a moment.',
+            text: t.errors.technicalIssue,
             parse_mode: 'Markdown'
           }),
         });
@@ -762,55 +775,81 @@ export async function POST(request: NextRequest) {
 
     // Handle special commands
     if (userText === '/start') {
-      const welcomeText = `🕌 *Assalamu Alaikum, ${userName}!*
+      // Get user's language from Telegram data
+      const userLanguage = getUserLanguage(message.from.language_code);
+      const t = getTranslations(userLanguage);
+      
+      const welcomeText = `${formatText(t.welcome.greeting, { userName })}
 
-Welcome to the Islamic Q&A Bot! I'm here to help answer your questions about Islam using authentic sources.
+${t.welcome.description}
 
-*What I can help with:*
-📚 Quranic verses and interpretations
-🕌 Islamic teachings and practices  
-📖 Hadith and scholarly opinions
-🤲 Prayer, worship, and daily Islamic life
-📜 Risale-i Nur teachings
+${t.welcome.howToAsk}
+${t.welcome.textMessages}
+${t.welcome.voiceMessages}
+${t.welcome.forwardMessages}
 
-*How to use:*
-Simply ask me any Islamic question in plain language. I'll search through authentic Islamic sources and provide you with a comprehensive answer.
+${t.welcome.whatICanHelp}
+${t.welcome.quranicVerses}
+${t.welcome.islamicTeachings}
+${t.welcome.hadithScholarly}
+${t.welcome.prayerWorship}
+${t.welcome.risaleNur}
 
-*Example questions:*
-• "What does Islam say about prayer?"
-• "Can you explain the concept of Tawhid?"
-• "What are the pillars of Islam?"
+${t.welcome.howItWorks}
+${t.welcome.step1}
+${t.welcome.step2}
+${t.welcome.step3}
+${t.welcome.completeResponse}
+${t.welcome.dedicatedUI}
+${t.welcome.enhancedSearch}
+${t.welcome.chatHistory}
 
-Feel free to ask me anything! 🤲`;
+${t.welcome.accessFullService}
+${t.welcome.menuButton}
+
+${t.welcome.exampleQuestions}
+${t.welcome.prayerExample}
+${t.welcome.tawhidExample}
+${t.welcome.pillarsExample}
+
+${t.welcome.feelFree}`;
 
       await sendMessage(chatId, welcomeText, 'Markdown');
       return NextResponse.json({ ok: true, message_sent: true });
     }
 
     if (userText === '/help') {
-      const helpText = `🤖 *How to use this bot:*
+      // Get user's language from Telegram data
+      const userLanguage = getUserLanguage(message.from.language_code);
+      const t = getTranslations(userLanguage);
+      
+      const helpText = `${t.help.title}
 
-*Ask any Islamic question* and I'll provide answers based on:
-📖 Quran and authentic Hadith
-🕌 Classical Islamic scholarship
-📚 Modern Islamic teachings
-📜 Risale-i Nur collection
-🎥 Educational Islamic content
+${t.help.description}
+${t.help.quranHadith}
+${t.help.classicalScholarship}
+${t.help.modernTeachings}
+${t.help.risaleNurCollection}
+${t.help.educationalContent}
 
-*Tips for better answers:*
-• Be specific in your questions
-• Ask one question at a time
-• Use clear, simple language
+${t.help.tipsTitle}
+${t.help.beSpecific}
+${t.help.oneQuestion}
+${t.help.clearLanguage}
 
-*Commands:*
-/start - Welcome message
-/help - This help message
+${t.help.commands}
+${t.help.startCommand}
+${t.help.helpCommand}
 
-May Allah guide us all! 🤲`;
+${t.help.blessing}`;
 
       await sendMessage(chatId, helpText, 'Markdown');
       return NextResponse.json({ ok: true, message_sent: true });
     }
+
+    // Get user's language for processing messages
+    const userLanguage = getUserLanguage(message.from.language_code);
+    const t = getTranslations(userLanguage);
 
     // Show typing indicator
     await sendTypingAction(chatId);
@@ -818,7 +857,7 @@ May Allah guide us all! 🤲`;
     // Send initial processing message with countdown timer
     const processingMessage = await sendMessage(
       chatId, 
-      '🔍 *Preparing to search Islamic sources...*\n⏳ Initializing search... (~15 sec)',
+      `${t.processing.preparingSearch}\n${formatText(t.processing.initializingSearch, { time: 15 })}`,
       'Markdown'
     );
 
@@ -834,7 +873,7 @@ May Allah guide us all! 🤲`;
             body: JSON.stringify({
               chat_id: chatId,
               message_id: processingMessage.result.message_id,
-              text: `🔍 *Preparing to search Islamic sources...*\n⏳ Initializing search... (~${timeRemaining} sec)`,
+              text: `${t.processing.preparingSearch}\n${formatText(t.processing.initializingSearch, { time: timeRemaining })}`,
               parse_mode: 'Markdown'
             }),
           });
@@ -847,7 +886,7 @@ May Allah guide us all! 🤲`;
     }, 1000);
 
     // Call external chat API with streaming support
-    const apiResult = await callExternalChatAPI(userText, userId, chatId.toString(), processingMessage, chatId, dbUser, countdownInterval);
+    const apiResult = await callExternalChatAPI(userText, userId, chatId.toString(), processingMessage, chatId, dbUser, countdownInterval, t);
 
     // Clear countdown timer when API call completes
     if (countdownInterval) {
@@ -864,7 +903,7 @@ May Allah guide us all! 🤲`;
         body: JSON.stringify({
           chat_id: chatId,
           message_id: processingMessage.result.message_id,
-          text: '❌ I apologize, but I encountered a technical issue while processing your question. Please try again in a moment.',
+          text: t.errors.technicalIssue,
           parse_mode: 'Markdown'
         }),
       });
@@ -935,7 +974,7 @@ May Allah guide us all! 🤲`;
         reply_markup: {
           inline_keyboard: [[
             {
-              text: "📚 Full Response & Citations",
+              text: t.buttons.fullResponse,
               web_app: {
                 url: BASE_URL
               }
