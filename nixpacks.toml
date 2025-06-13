@@ -1,0 +1,14 @@
+[phases.setup]
+nixPkgs = ["nodejs_18", "pnpm"]
+
+[phases.install]
+cmds = ["pnpm install --frozen-lockfile"]
+
+[phases.build]
+cmds = [
+  "rm -f tsconfig.tsbuildinfo",
+  "pnpm run build"
+]
+
+[start]
+cmd = "pnpm start"
