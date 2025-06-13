@@ -22,11 +22,7 @@ function getBaseUrl(): string {
     return 'http://localhost:3000';
   }
   
-  // In production, use VERCEL_URL if available, otherwise fallback to the main domain
-  if (process.env.VERCEL_URL) {
-    return `https://${process.env.VERCEL_URL}`;
-  }
-  
+  // In production, always use the main domain to avoid authentication issues
   return 'https://www.tauhidai.com';
 }
 
