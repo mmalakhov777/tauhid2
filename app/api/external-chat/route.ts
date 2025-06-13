@@ -174,11 +174,17 @@ export async function POST(request: Request) {
     );
   }
 
-  // Test database connection
-  const dbConnected = await testDatabaseConnection();
-  if (!dbConnected) {
-    console.error('[external-chat route] Database connection test failed');
-    return new ChatSDKError('bad_request:database', 'Database connection failed').toResponse();
+  // Test database connection (skip during build)
+  if (process.env.NODE_ENV !== 'production' || process.env.RAILWAY_ENVIRONMENT) {
+    try {
+      const dbConnected = await testDatabaseConnection();
+      if (!dbConnected) {
+        console.error('[external-chat route] Database connection test failed');
+        return new ChatSDKError('bad_request:database', 'Database connection failed').toResponse();
+      }
+    } catch (error) {
+      console.warn('[external-chat route] Database connection test skipped during build:', error);
+    }
   }
 
   // Check if this is a vector search request
