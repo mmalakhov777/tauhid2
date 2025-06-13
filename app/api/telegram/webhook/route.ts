@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateUUID } from '@/lib/utils';
+import { createHash } from 'crypto';
 
 const TELEGRAM_BOT_TOKEN = '7649122639:AAG50HM5qrVYh2hZ4NJj1S6PiLnBcsHEUeA';
 const TELEGRAM_API_URL = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
@@ -34,6 +35,19 @@ interface TelegramMessage {
 interface TelegramUpdate {
   update_id: number;
   message?: TelegramMessage;
+}
+
+// Generate deterministic UUID from string (for consistent chat/user IDs)
+function generateDeterministicUUID(input: string): string {
+  const hash = createHash('sha256').update(input).digest('hex');
+  // Format as UUID v4
+  return [
+    hash.substring(0, 8),
+    hash.substring(8, 12),
+    '4' + hash.substring(13, 16), // Version 4
+    ((parseInt(hash.substring(16, 17), 16) & 0x3) | 0x8).toString(16) + hash.substring(17, 20), // Variant bits
+    hash.substring(20, 32)
+  ].join('-');
 }
 
 async function sendMessage(chatId: number, text: string, parseMode: string = 'HTML') {
@@ -99,23 +113,27 @@ async function callExternalChatAPI(userMessage: string, userId: string, chatId: 
       apiUrl: EXTERNAL_CHAT_API_URL
     });
 
+    // Generate consistent UUIDs based on Telegram IDs
+    const chatUUID = generateDeterministicUUID(`telegram-chat-${chatId}`);
+    const userUUID = generateDeterministicUUID(`telegram-user-${userId}`);
+
     const requestBody = {
-      id: chatId,
-      userId: userId,
+      id: chatUUID, // Consistent UUID for this Telegram chat
+      userId: userUUID, // Consistent UUID for this Telegram user
       message: {
         id: generateUUID(),
-        role: 'user',
+        role: 'user' as const,
         content: userMessage,
         createdAt: new Date().toISOString(),
         parts: [
           {
-            type: 'text',
+            type: 'text' as const,
             text: userMessage
           }
         ]
       },
-      selectedChatModel: 'chat-model',
-      selectedVisibilityType: 'private',
+      selectedChatModel: 'chat-model' as const,
+      selectedVisibilityType: 'private' as const,
       selectedLanguage: 'en',
       selectedSources: {
         classic: true,
@@ -301,11 +319,8 @@ May Allah guide us all! 🤲`;
       'Markdown'
     );
 
-    // Generate unique chat ID for this conversation
-    const telegramChatId = `telegram-chat-${chatId}`;
-
     // Call external chat API
-    const apiResult = await callExternalChatAPI(userText, userId, telegramChatId);
+    const apiResult = await callExternalChatAPI(userText, userId, chatId.toString());
 
     if (!apiResult.success) {
       console.error('External chat API failed:', apiResult.error);
