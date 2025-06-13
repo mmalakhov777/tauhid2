@@ -231,12 +231,11 @@ export async function findOrCreateGuestUser() {
       .limit(1);
 
     if (unusedGuestUsers.length > 0) {
-      console.log('[findOrCreateGuestUser] Reusing existing unused guest user:', unusedGuestUsers[0].email);
+      // Silently reuse existing unused guest user
       return unusedGuestUsers;
     }
 
     // If no unused guest user found, create a new one
-    console.log('[findOrCreateGuestUser] Creating new guest user');
     return await createGuestUser();
   } catch (error) {
     console.error('[findOrCreateGuestUser] Error:', error);
@@ -271,7 +270,7 @@ export async function cleanupOldGuestUsers(olderThanHours: number = 24) {
     if (oldUnusedGuests.length > 0) {
       const userIds = oldUnusedGuests.map(u => u.id);
       await db.delete(user).where(inArray(user.id, userIds));
-      console.log(`[cleanupOldGuestUsers] Cleaned up ${oldUnusedGuests.length} old unused guest users`);
+      // Silently clean up old unused guest users
       return oldUnusedGuests.length;
     }
 

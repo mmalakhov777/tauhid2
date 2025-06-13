@@ -20,6 +20,11 @@ export async function middleware(request: NextRequest) {
     return new Response('pong', { status: 200 });
   }
 
+  // Allow Telegram webhook to bypass all authentication
+  if (pathname.startsWith('/api/telegram')) {
+    return NextResponse.next();
+  }
+
   // Let NextAuth handle its own API routes
   if (pathname.startsWith('/api/auth')) {
     return NextResponse.next();
