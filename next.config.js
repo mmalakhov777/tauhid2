@@ -5,6 +5,9 @@ const nextConfig = {
     // Disable PPR to prevent build-time API route analysis
     ppr: false,
   },
+  // Render.com specific optimizations
+  compress: true,
+  poweredByHeader: false,
   eslint: {
     // Disable ESLint during builds
     ignoreDuringBuilds: true,
