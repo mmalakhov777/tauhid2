@@ -884,6 +884,8 @@ ${t.help.blessing}`;
         } catch (error) {
           bindingError = error;
           console.log(`[Telegram Bot] Binding error details:`, error);
+          console.log(`[Telegram Bot] Error message:`, error instanceof Error ? error.message : 'No message');
+          console.log(`[Telegram Bot] Error cause:`, (error as any)?.cause);
         }
 
         if (bindingResult?.success) {
@@ -945,7 +947,10 @@ Welcome to the complete Islamic Knowledge Assistant experience! 🌟`;
           // Binding failed - check specific error
           let errorMessage = '';
           
-          if (bindingError && bindingError instanceof Error && bindingError.message.includes('already linked')) {
+          if (bindingError && bindingError instanceof Error && 
+              (bindingError.message.includes('already linked') || 
+               bindingError.message.includes('already linked to another user') ||
+               (bindingError as any)?.cause?.includes('already linked to another user'))) {
             // Get the existing user's email to help them
             let existingEmail = 'your existing account';
             try {
@@ -966,11 +971,7 @@ This Telegram account is already connected to another user account.
 *What you can do:*
 1. **Login with this email** on the web app
 2. If you forgot your password, use "Forgot Password" on the login page
-3. Once logged in, you'll have full access to your account
-
-*Direct login link:* ${BASE_URL}/login
-
-*Note:* For security reasons, passwords cannot be retrieved. Use the password reset option if needed.`;
+3. Once logged in, you'll have full access to your account`;
           } else {
             // Generic error for invalid/expired codes
             errorMessage = `❌ *Invalid Binding Code*
