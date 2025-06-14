@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTelegram } from '@/hooks/useTelegram';
 import { telegramAuth } from '@/app/(auth)/actions';
 import { toast } from '@/components/toast';
@@ -29,85 +29,78 @@ export const TelegramAuthButton = ({ onSuccess }: TelegramAuthButtonProps) => {
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [showEmailForm, setShowEmailForm] = useState(false);
   const [widgetLoaded, setWidgetLoaded] = useState(false);
+  const callbackSetRef = useRef(false);
   const router = useRouter();
   const { update: updateSession } = useSession();
   const { isAuthLoading, setIsAuthLoading } = useAuthLoading();
 
-  // Global callback function for Telegram Login Widget - must be set before script loads
+  // Set up the global callback function once and keep it stable
   useEffect(() => {
-    console.log('[TelegramAuthButton] Setting up global onTelegramAuth callback');
-    
-    (window as any).onTelegramAuth = async (telegramData: TelegramLoginData) => {
-      console.log('[TelegramAuthButton] onTelegramAuth callback triggered with data:', telegramData);
-      setIsAuthenticating(true);
-      setIsAuthLoading(true); // Set global loading state like TelegramAutoAuth
+    if (!callbackSetRef.current) {
+      console.log('[TelegramAuthButton] Setting up global onTelegramAuth callback (once)');
+      callbackSetRef.current = true;
       
-      try {
-        const result = await telegramAuth({
-          telegramId: telegramData.id,
-          telegramUsername: telegramData.username,
-          telegramFirstName: telegramData.first_name,
-          telegramLastName: telegramData.last_name,
-          telegramPhotoUrl: telegramData.photo_url,
-        });
-
-        if (result.status === 'success') {
-          toast({ type: 'success', description: `Welcome back, ${telegramData.first_name}!` });
-          updateSession();
-          
-          // Don't clear loading state here - let the chat component do it like TelegramAutoAuth
-          setIsAuthenticating(false);
-          router.refresh();
-          onSuccess?.();
-        } else if (result.status === 'needs_email') {
-          // New user - create them with dummy email immediately, like in TelegramAutoAuth
-          console.log('New user detected via widget, creating with dummy email...');
-          
-          const skipResult = await telegramAuth({
+      (window as any).onTelegramAuth = async (telegramData: TelegramLoginData) => {
+        console.log('[TelegramAuthButton] onTelegramAuth callback triggered with data:', telegramData);
+        setIsAuthenticating(true);
+        setIsAuthLoading(true);
+        
+        try {
+          const result = await telegramAuth({
             telegramId: telegramData.id,
             telegramUsername: telegramData.username,
             telegramFirstName: telegramData.first_name,
             telegramLastName: telegramData.last_name,
             telegramPhotoUrl: telegramData.photo_url,
-            skipEmail: true,
           });
 
-          if (skipResult.status === 'success') {
-            toast({ type: 'success', description: `Welcome, ${telegramData.first_name}! You can start chatting right away.` });
-            updateSession();
-            
-            // Don't clear loading state here - let the chat component do it like TelegramAutoAuth
+          if (result.status === 'success') {
+            toast({ type: 'success', description: `Welcome back, ${telegramData.first_name}!` });
+            await updateSession();
             setIsAuthenticating(false);
             router.refresh();
             onSuccess?.();
+          } else if (result.status === 'needs_email') {
+            console.log('New user detected via widget, creating with dummy email...');
+            
+            const skipResult = await telegramAuth({
+              telegramId: telegramData.id,
+              telegramUsername: telegramData.username,
+              telegramFirstName: telegramData.first_name,
+              telegramLastName: telegramData.last_name,
+              telegramPhotoUrl: telegramData.photo_url,
+              skipEmail: true,
+            });
+
+            if (skipResult.status === 'success') {
+              toast({ type: 'success', description: `Welcome, ${telegramData.first_name}! You can start chatting right away.` });
+              await updateSession();
+              setIsAuthenticating(false);
+              router.refresh();
+              onSuccess?.();
+            } else {
+              toast({ type: 'error', description: 'Failed to complete account setup' });
+              setIsAuthLoading(false);
+            }
           } else {
-            toast({ type: 'error', description: 'Failed to complete account setup' });
-            setIsAuthLoading(false); // Clear loading on error
+            toast({ type: 'error', description: 'Failed to authenticate with Telegram' });
+            setIsAuthLoading(false);
           }
-        } else {
-          toast({ type: 'error', description: 'Failed to authenticate with Telegram' });
-          setIsAuthLoading(false); // Clear loading on error
+        } catch (error) {
+          console.error('Telegram auth error:', error);
+          toast({ type: 'error', description: 'An error occurred during authentication' });
+          setIsAuthLoading(false);
+        } finally {
+          setIsAuthenticating(false);
         }
-      } catch (error) {
-        console.error('Telegram auth error:', error);
-        toast({ type: 'error', description: 'An error occurred during authentication' });
-        setIsAuthLoading(false); // Clear loading on error
-      } finally {
-        setIsAuthenticating(false);
-      }
-    };
+      };
+    }
+  }, []); // Empty dependency array - only run once
 
-    return () => {
-      // Cleanup
-      console.log('[TelegramAuthButton] Cleaning up onTelegramAuth callback');
-      delete (window as any).onTelegramAuth;
-    };
-  }, [updateSession, router, onSuccess, setIsAuthLoading]);
-
-  // Load Telegram Login Widget script - after callback is set
+  // Load Telegram Login Widget script
   useEffect(() => {
-    // Only load widget if not in Telegram Mini App and callback is ready
-    if (!isTelegramAvailable && !isLoading && !error && (window as any).onTelegramAuth) {
+    // Only load widget if not in Telegram Mini App
+    if (!isTelegramAvailable && !isLoading && !error && !widgetLoaded) {
       console.log('[TelegramAuthButton] Loading Telegram Login Widget...');
       
       const script = document.createElement('script');
@@ -134,12 +127,9 @@ export const TelegramAuthButton = ({ onSuccess }: TelegramAuthButtonProps) => {
         console.log('[TelegramAuthButton] Telegram widget script added to DOM');
       } else if (!container) {
         console.error('[TelegramAuthButton] Container element not found');
-      } else {
-        console.log('[TelegramAuthButton] Widget already loaded');
-        setWidgetLoaded(true);
       }
     }
-  }, [isTelegramAvailable, isLoading, error]);
+  }, [isTelegramAvailable, isLoading, error, widgetLoaded]);
 
   const handleTelegramAuth = async () => {
     if (!user) {
