@@ -642,6 +642,10 @@ async function showPaymentPackages(chatId: number, userLanguage: string = 'en') 
       }
     } catch (error) {
       console.log('[Telegram Stars] Could not fetch balance for payment menu:', error);
+      // Check if it's a migration-related error
+      if (error instanceof Error && error.message.includes('migration')) {
+        throw new Error('Payment system migration in progress');
+      }
     }
 
     const paymentText = `⭐ *Buy Additional Messages with Telegram Stars*
@@ -1245,7 +1249,27 @@ ${t.help.blessing}`;
         return NextResponse.json({ ok: true, message_sent: true, payment_menu_shown: true });
       } catch (error) {
         console.error('[Telegram Stars] Error showing payment packages:', error);
-        await sendMessage(chatId, '❌ Sorry, there was an error showing the payment options. Please try again later.', 'Markdown');
+        
+        // Check if it's a migration-related error
+        if (error instanceof Error && error.message.includes('migration')) {
+          await sendMessage(chatId, `🔧 *Payment System Updating*
+
+The payment system is currently being updated with new features!
+
+⏳ **What's happening:**
+• Database migration in progress
+• Payment features will be available soon
+• Your current messages are still working
+
+🆓 **For now:**
+• Continue using your daily trial messages
+• Payment system will be restored shortly
+• No action needed from you
+
+Thank you for your patience! 🙏`, 'Markdown');
+        } else {
+          await sendMessage(chatId, '❌ Sorry, there was an error showing the payment options. Please try again later.', 'Markdown');
+        }
         return NextResponse.json({ ok: true, error: 'Failed to show payment packages' });
       }
     }
