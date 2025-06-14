@@ -546,6 +546,7 @@ export async function POST(request: NextRequest) {
 
     // Look up user in our database by Telegram ID
     let dbUser = null;
+    let dbError = null;
     try {
       const users = await getUserByTelegramId(telegramUserId);
       dbUser = users.length > 0 ? users[0] : null;
@@ -610,7 +611,13 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ ok: true, error: 'User authentication failed' });
       }
     } catch (error) {
+      dbError = error;
       console.error('[Telegram Bot] Error looking up user in database:', error);
+      console.error('[Telegram Bot] Error details:', {
+        message: error instanceof Error ? error.message : 'Unknown error',
+        cause: (error as any)?.cause,
+        stack: error instanceof Error ? error.stack : 'No stack trace'
+      });
     }
 
     // Handle audio messages - transcribe first
@@ -774,6 +781,44 @@ export async function POST(request: NextRequest) {
     }
 
     // Handle special commands
+    if (userText === '/dbtest') {
+      // Special debug command that works even with database issues
+      const dbTestInfo = `🔧 *Database Test Information*
+
+*Telegram User Data:*
+• Telegram ID: \`${telegramUserId}\`
+• Username: @${message.from.username || 'none'}
+• First Name: ${message.from.first_name || 'none'}
+• Language: ${message.from.language_code || 'none'}
+
+*Database Lookup Result:*
+• User Found: ${!!dbUser ? 'Yes' : 'No'}
+• Database Error: ${dbError ? 'Yes' : 'No'}
+• Error Message: ${dbError instanceof Error ? dbError.message : 'None'}
+
+*Expected User Email Pattern:*
+• Should be: \`telegram_${telegramUserId}@telegram.local\`
+
+*Next Steps:*
+${!dbUser && !dbError ? '• User needs to be registered automatically' : ''}
+${dbError ? '• Database connection or migration issue' : ''}
+${dbUser ? '• User found, ready for trial balance testing' : ''}
+
+*System Status:*
+• Current Time: ${new Date().toLocaleString()}
+• Environment: ${process.env.NODE_ENV || 'unknown'}`;
+
+      await sendMessage(chatId, dbTestInfo, 'Markdown');
+      return NextResponse.json({ 
+        ok: true, 
+        message_sent: true, 
+        db_test: true,
+        user_found: !!dbUser,
+        db_error: !!dbError,
+        error_message: dbError instanceof Error ? dbError.message : null
+      });
+    }
+
     if (userText === '/debug') {
       // Debug command to show user's trial balance
       if (!dbUser || !dbUser.id) {
@@ -945,6 +990,7 @@ ${t.help.helpCommand}
 • \`/balance\` - Check your message balance
 • \`/debug\` - Show detailed debug information
 • \`/reset\` - Manually reset your daily trial balance
+• \`/dbtest\` - Test database connection and user lookup
 
 ${t.help.blessing}`;
 
