@@ -1097,7 +1097,12 @@ export async function useTelegramBindingCode(
               .set({ userId: bindingRecord.userId })
               .where(eq(suggestion.userId, existingUser.id));
 
-            // 4. Update the real user with Telegram data
+            // 4. Delete the dummy user account first (this frees up the telegramId constraint)
+            await tx
+              .delete(user)
+              .where(eq(user.id, existingUser.id));
+
+            // 5. Now update the real user with Telegram data (no constraint violation)
             await tx
               .update(user)
               .set({
@@ -1111,11 +1116,6 @@ export async function useTelegramBindingCode(
                 telegramAllowsWriteToPm: telegramData.telegramAllowsWriteToPm || false,
               })
               .where(eq(user.id, bindingRecord.userId));
-
-            // 5. Delete the dummy user account (this will cascade delete any remaining related data)
-            await tx
-              .delete(user)
-              .where(eq(user.id, existingUser.id));
 
             // 6. Mark the binding code as used
             await tx
