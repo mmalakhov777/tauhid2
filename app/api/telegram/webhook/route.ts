@@ -24,7 +24,7 @@ function getBaseUrl(): string {
   }
   
   // In production, always use the main domain to avoid authentication issues
-  return 'https://www.tauhidai.com';
+  return 'https://www.tauhid2.onrender.com';
 }
 
 const BASE_URL = getBaseUrl();
