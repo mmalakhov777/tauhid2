@@ -214,8 +214,8 @@ async function getTopKContext(
 
     const filteredResults = mappedResults
       .filter((m, index) => {
-        // Use a lower threshold for classical sources since they tend to have lower scores
-        const scoreThreshold = indexName === CLASSIC_INDEX_NAME ? 0.25 : 0.4;
+        // Use the same threshold for all sources
+        const scoreThreshold = 0.4;
         return m.text && m.score && m.score >= scoreThreshold;
       })
       .filter((result, index, array) => {
