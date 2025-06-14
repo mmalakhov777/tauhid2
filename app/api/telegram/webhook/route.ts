@@ -946,18 +946,31 @@ Welcome to the complete Islamic Knowledge Assistant experience! 🌟`;
           let errorMessage = '';
           
           if (bindingError && bindingError instanceof Error && bindingError.message.includes('already linked')) {
+            // Get the existing user's email to help them
+            let existingEmail = 'your existing account';
+            try {
+              const existingUsers = await getUserByTelegramId(telegramUserId);
+              if (existingUsers.length > 0 && existingUsers[0].email) {
+                existingEmail = existingUsers[0].email;
+              }
+            } catch (e) {
+              console.log('[Telegram Bot] Could not fetch existing user email:', e);
+            }
+            
             errorMessage = `❌ *Telegram Account Already Linked*
 
 This Telegram account is already connected to another user account.
 
-*What this means:*
-• Your Telegram ID is already registered with a different email
-• You cannot link the same Telegram to multiple accounts
+*Your existing account email:* \`${existingEmail}\`
 
 *What you can do:*
-• Use the account that's already linked to this Telegram
-• Contact support if you believe this is an error
-• Use a different Telegram account for binding`;
+1. **Login with this email** on the web app
+2. If you forgot your password, use "Forgot Password" on the login page
+3. Once logged in, you'll have full access to your account
+
+*Direct login link:* ${BASE_URL}/login
+
+*Note:* For security reasons, passwords cannot be retrieved. Use the password reset option if needed.`;
           } else {
             // Generic error for invalid/expired codes
             errorMessage = `❌ *Invalid Binding Code*
