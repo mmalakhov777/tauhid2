@@ -12,7 +12,7 @@ import './globals.css';
 import { SessionProvider } from 'next-auth/react';
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://tauhidai.com/'),
+  metadataBase: new URL('https://thd2.vercel.app/'),
   title: 'Tauhid AI',
   description: '',
 };
