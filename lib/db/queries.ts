@@ -1067,14 +1067,92 @@ export async function useTelegramBindingCode(
     // Check if this Telegram ID is already in use by another user
     const existingUsers = await getUserByTelegramId(telegramData.telegramId);
     if (existingUsers.length > 0) {
+      const existingUser = existingUsers[0];
+      
       // Check if it's the same user trying to rebind
-      if (existingUsers[0].id !== bindingRecord.userId) {
-        throw new ChatSDKError('bad_request:auth', 'This Telegram account is already linked to another user');
+      if (existingUser.id !== bindingRecord.userId) {
+        // Special case: Check if the existing user has a dummy email (telegram_*@telegram.local)
+        const isDummyEmail = existingUser.email.startsWith('telegram_') && existingUser.email.endsWith('@telegram.local');
+        
+        if (isDummyEmail) {
+          console.log(`[useTelegramBindingCode] Re-binding dummy email account ${existingUser.email} to real email ${bindingRecord.email}`);
+          
+          // This is a re-binding scenario - we need to transfer all data from dummy account to real account
+          await db.transaction(async (tx) => {
+            // 1. Transfer all chats from dummy user to real user (this automatically transfers messages and votes)
+            await tx
+              .update(chat)
+              .set({ userId: bindingRecord.userId })
+              .where(eq(chat.userId, existingUser.id));
+
+            // 2. Transfer all documents from dummy user to real user
+            await tx
+              .update(document)
+              .set({ userId: bindingRecord.userId })
+              .where(eq(document.userId, existingUser.id));
+
+            // 3. Transfer all suggestions from dummy user to real user
+            await tx
+              .update(suggestion)
+              .set({ userId: bindingRecord.userId })
+              .where(eq(suggestion.userId, existingUser.id));
+
+            // 4. Update the real user with Telegram data
+            await tx
+              .update(user)
+              .set({
+                telegramId: telegramData.telegramId,
+                telegramUsername: telegramData.telegramUsername,
+                telegramFirstName: telegramData.telegramFirstName,
+                telegramLastName: telegramData.telegramLastName,
+                telegramPhotoUrl: telegramData.telegramPhotoUrl,
+                telegramLanguageCode: telegramData.telegramLanguageCode,
+                telegramIsPremium: telegramData.telegramIsPremium || false,
+                telegramAllowsWriteToPm: telegramData.telegramAllowsWriteToPm || false,
+              })
+              .where(eq(user.id, bindingRecord.userId));
+
+            // 5. Delete the dummy user account (this will cascade delete any remaining related data)
+            await tx
+              .delete(user)
+              .where(eq(user.id, existingUser.id));
+
+            // 6. Mark the binding code as used
+            await tx
+              .update(telegramBindingCode)
+              .set({
+                isUsed: true,
+                usedAt: new Date(),
+                telegramId: telegramData.telegramId,
+                telegramUsername: telegramData.telegramUsername,
+                telegramFirstName: telegramData.telegramFirstName,
+                telegramLastName: telegramData.telegramLastName,
+                telegramPhotoUrl: telegramData.telegramPhotoUrl,
+                telegramLanguageCode: telegramData.telegramLanguageCode,
+                telegramIsPremium: telegramData.telegramIsPremium || false,
+                telegramAllowsWriteToPm: telegramData.telegramAllowsWriteToPm || false,
+              })
+              .where(eq(telegramBindingCode.id, bindingRecord.id));
+          });
+
+          console.log(`[useTelegramBindingCode] Successfully transferred data from dummy account ${existingUser.id} to real account ${bindingRecord.userId}`);
+
+          return {
+            success: true,
+            userId: bindingRecord.userId,
+            email: bindingRecord.email,
+            transferred: true, // Flag to indicate data was transferred
+            oldUserId: existingUser.id,
+          };
+        } else {
+          // Regular case: Telegram account is already linked to a real email account
+          throw new ChatSDKError('bad_request:auth', 'This Telegram account is already linked to another user');
+        }
       }
       // If it's the same user, we can proceed (they're re-binding)
     }
 
-    // Update the user with Telegram data
+    // Standard binding case: Update the user with Telegram data
     await db
       .update(user)
       .set({

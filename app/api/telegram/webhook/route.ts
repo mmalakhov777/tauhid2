@@ -881,6 +881,14 @@ ${t.help.blessing}`;
             telegramIsPremium: undefined, // Not available in webhook
             telegramAllowsWriteToPm: undefined, // Not available in webhook
           });
+          
+          console.log(`[Telegram Bot] Binding result:`, {
+            success: bindingResult?.success,
+            transferred: bindingResult?.transferred,
+            userId: bindingResult?.userId,
+            email: bindingResult?.email,
+            oldUserId: bindingResult?.oldUserId
+          });
         } catch (error) {
           bindingError = error;
           console.log(`[Telegram Bot] Binding error details:`, error);
@@ -890,7 +898,34 @@ ${t.help.blessing}`;
 
         if (bindingResult?.success) {
           // Success! Account bound
-          const successMessage = `✅ *Account Successfully Linked!*
+          let successMessage;
+          
+                      if (bindingResult.transferred) {
+              // Special message for re-binding from dummy account
+              successMessage = `✅ *Account Successfully Upgraded & Linked!*
+
+🎉 Your Telegram account has been successfully upgraded and connected to your email account: \`${bindingResult.email}\`
+
+*What happened:*
+• Your temporary Telegram-only account has been merged with your email account: \`${bindingResult.email}\`
+• All your chat history and data has been transferred
+• Your conversations are now synced across all platforms
+
+*What this means:*
+• You can now access your complete chat history from both Telegram and the web
+• Your conversations are synced across all platforms
+• You have full access to all premium features
+• All your previous chats and messages are preserved
+
+*Next steps:*
+• Continue chatting here in Telegram
+• Visit the web app for enhanced features and full chat history
+• Your account is now fully integrated!
+
+Welcome to the complete Islamic Knowledge Assistant experience! 🌟`;
+          } else {
+            // Standard binding message
+            successMessage = `✅ *Account Successfully Linked!*
 
 🎉 Your Telegram account has been successfully connected to your email account: \`${bindingResult.email}\`
 
@@ -905,6 +940,7 @@ ${t.help.blessing}`;
 • Your account is now fully integrated!
 
 Welcome to the complete Islamic Knowledge Assistant experience! 🌟`;
+          }
 
           // Edit the processing message with success
           await fetch(`${TELEGRAM_API_URL}/editMessageText`, {
@@ -928,18 +964,20 @@ Welcome to the complete Islamic Knowledge Assistant experience! 🌟`;
             }),
           });
 
-          console.log(`[Telegram Bot] Successfully bound account for user ${telegramUserId} to email ${bindingResult.email}`);
+          console.log(`[Telegram Bot] Successfully bound account for user ${telegramUserId} to email ${bindingResult.email}${bindingResult.transferred ? ' (with data transfer)' : ''}`);
           
           return NextResponse.json({ 
             ok: true, 
             message_sent: true, 
             binding_success: true,
             bound_email: bindingResult.email,
+            data_transferred: bindingResult.transferred || false,
             debug: {
               telegramUserId,
               userName,
               bindingCode: userText,
-              boundToUserId: bindingResult.userId
+              boundToUserId: bindingResult.userId,
+              oldUserId: bindingResult.oldUserId
             }
           });
 
@@ -953,16 +991,39 @@ Welcome to the complete Islamic Knowledge Assistant experience! 🌟`;
                (bindingError as any)?.cause?.includes('already linked to another user'))) {
             // Get the existing user's email to help them
             let existingEmail = 'your existing account';
+            let isDummyEmailAccount = false;
             try {
               const existingUsers = await getUserByTelegramId(telegramUserId);
               if (existingUsers.length > 0 && existingUsers[0].email) {
                 existingEmail = existingUsers[0].email;
+                isDummyEmailAccount = existingEmail.startsWith('telegram_') && existingEmail.endsWith('@telegram.local');
               }
             } catch (e) {
               console.log('[Telegram Bot] Could not fetch existing user email:', e);
             }
             
-            errorMessage = `❌ *Telegram Account Already Linked*
+            if (isDummyEmailAccount) {
+              // Special message for dummy email accounts that should be able to re-bind
+              errorMessage = `⚠️ *Re-binding Issue*
+
+There was an issue upgrading your temporary Telegram account to a full email account.
+
+*Your current account:* Temporary Telegram-only account
+*Trying to connect to:* Email account with binding code
+
+*What you can try:*
+1. **Generate a new binding code** on the web app
+2. Make sure the binding code hasn't expired (15 minutes)
+3. Try the binding process again
+
+*If the issue persists:*
+• Contact support for assistance
+• Your chat history is safe and will be preserved
+
+*Need help?* Contact support or try generating a new code.`;
+            } else {
+              // Regular case: real email account already linked
+              errorMessage = `❌ *Telegram Account Already Linked*
 
 This Telegram account is already connected to another user account.
 
@@ -972,6 +1033,7 @@ This Telegram account is already connected to another user account.
 1. **Login with this email** on the web app
 2. If you forgot your password, use "Forgot Password" on the login page
 3. Once logged in, you'll have full access to your account`;
+            }
           } else {
             // Generic error for invalid/expired codes
             errorMessage = `❌ *Invalid Binding Code*

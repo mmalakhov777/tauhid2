@@ -149,8 +149,8 @@ export const TelegramAutoAuth = () => {
               router.refresh();
             }
           } else if (result.status === 'needs_email') {
-            // New user - create them with empty email field
-            console.log('New user detected, creating with empty email...');
+            // New user - create them with dummy email immediately, no form shown
+            console.log('New user detected, creating with dummy email...');
             
             const skipResult = await telegramAuth({
               telegramId: telegramUser.id,
@@ -161,7 +161,7 @@ export const TelegramAutoAuth = () => {
               telegramLanguageCode: telegramUser.language_code,
               telegramIsPremium: telegramUser.is_premium,
               telegramAllowsWriteToPm: telegramUser.allows_write_to_pm,
-              email: '', // Keep email field empty instead of using dummy email
+              skipEmail: true,
             });
 
             if (skipResult.status === 'success') {
