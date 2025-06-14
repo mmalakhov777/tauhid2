@@ -24,7 +24,7 @@ function getBaseUrl(): string {
   }
   
   // In production, always use the main domain to avoid authentication issues
-  return 'https://thd2.vercel.app';
+  return 'https://tauhid2.onrender.com';
 }
 
 const BASE_URL = getBaseUrl();
