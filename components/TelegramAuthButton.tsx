@@ -6,6 +6,7 @@ import { telegramAuth } from '@/app/(auth)/actions';
 import { toast } from '@/components/toast';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import { useAuthLoading } from '@/contexts/AuthLoadingContext';
 import { TelegramEmailForm } from './TelegramEmailForm';
 
 interface TelegramAuthButtonProps {
@@ -30,6 +31,7 @@ export const TelegramAuthButton = ({ onSuccess }: TelegramAuthButtonProps) => {
   const [widgetLoaded, setWidgetLoaded] = useState(false);
   const router = useRouter();
   const { update: updateSession } = useSession();
+  const { isAuthLoading, setIsAuthLoading } = useAuthLoading();
 
   // Load Telegram Login Widget script
   useEffect(() => {
@@ -72,6 +74,7 @@ export const TelegramAuthButton = ({ onSuccess }: TelegramAuthButtonProps) => {
   useEffect(() => {
     (window as any).onTelegramAuth = async (telegramData: TelegramLoginData) => {
       setIsAuthenticating(true);
+      setIsAuthLoading(true); // Set global loading state like TelegramAutoAuth
       
       try {
         const result = await telegramAuth({
@@ -83,18 +86,46 @@ export const TelegramAuthButton = ({ onSuccess }: TelegramAuthButtonProps) => {
         });
 
         if (result.status === 'success') {
-          toast({ type: 'success', description: 'Successfully authenticated with Telegram!' });
+          toast({ type: 'success', description: `Welcome back, ${telegramData.first_name}!` });
           updateSession();
+          
+          // Don't clear loading state here - let the chat component do it like TelegramAutoAuth
+          setIsAuthenticating(false);
           router.refresh();
           onSuccess?.();
         } else if (result.status === 'needs_email') {
-          setShowEmailForm(true);
+          // New user - create them with dummy email immediately, like in TelegramAutoAuth
+          console.log('New user detected via widget, creating with dummy email...');
+          
+          const skipResult = await telegramAuth({
+            telegramId: telegramData.id,
+            telegramUsername: telegramData.username,
+            telegramFirstName: telegramData.first_name,
+            telegramLastName: telegramData.last_name,
+            telegramPhotoUrl: telegramData.photo_url,
+            skipEmail: true,
+          });
+
+          if (skipResult.status === 'success') {
+            toast({ type: 'success', description: `Welcome, ${telegramData.first_name}! You can start chatting right away.` });
+            updateSession();
+            
+            // Don't clear loading state here - let the chat component do it like TelegramAutoAuth
+            setIsAuthenticating(false);
+            router.refresh();
+            onSuccess?.();
+          } else {
+            toast({ type: 'error', description: 'Failed to complete account setup' });
+            setIsAuthLoading(false); // Clear loading on error
+          }
         } else {
           toast({ type: 'error', description: 'Failed to authenticate with Telegram' });
+          setIsAuthLoading(false); // Clear loading on error
         }
       } catch (error) {
         console.error('Telegram auth error:', error);
         toast({ type: 'error', description: 'An error occurred during authentication' });
+        setIsAuthLoading(false); // Clear loading on error
       } finally {
         setIsAuthenticating(false);
       }
@@ -104,7 +135,7 @@ export const TelegramAuthButton = ({ onSuccess }: TelegramAuthButtonProps) => {
       // Cleanup
       delete (window as any).onTelegramAuth;
     };
-  }, [updateSession, router, onSuccess]);
+  }, [updateSession, router, onSuccess, setIsAuthLoading]);
 
   const handleTelegramAuth = async () => {
     if (!user) {
@@ -229,10 +260,10 @@ export const TelegramAuthButton = ({ onSuccess }: TelegramAuthButtonProps) => {
   return (
     <>
       <div className="w-full">
-        {isAuthenticating && (
+        {(isAuthenticating || isAuthLoading) && (
           <div className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-100 text-blue-600 rounded-lg mb-2">
             <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-            Authenticating with Telegram...
+            {isAuthLoading && !isAuthenticating ? 'Loading Chat...' : 'Authenticating with Telegram...'}
           </div>
         )}
         
@@ -242,7 +273,7 @@ export const TelegramAuthButton = ({ onSuccess }: TelegramAuthButtonProps) => {
           style={{ minHeight: '40px' }}
         />
         
-        {!widgetLoaded && !isAuthenticating && (
+        {!widgetLoaded && !isAuthenticating && !isAuthLoading && (
           <div className="w-full p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
             <p className="font-medium">Loading Telegram Login...</p>
             <p className="text-xs mt-1">Please wait while we load the Telegram authentication widget</p>
