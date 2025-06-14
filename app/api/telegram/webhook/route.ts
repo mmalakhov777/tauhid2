@@ -867,18 +867,26 @@ ${t.help.blessing}`;
       try {
 
         // Attempt to use the binding code
-        const bindingResult = await useTelegramBindingCode(userText, {
-          telegramId: telegramUserId,
-          telegramUsername: message.from.username,
-          telegramFirstName: message.from.first_name,
-          telegramLastName: undefined, // Not available in webhook
-          telegramPhotoUrl: undefined, // Would need separate API call
-          telegramLanguageCode: message.from.language_code,
-          telegramIsPremium: undefined, // Not available in webhook
-          telegramAllowsWriteToPm: undefined, // Not available in webhook
-        });
+        let bindingResult;
+        let bindingError = null;
+        
+        try {
+          bindingResult = await useTelegramBindingCode(userText, {
+            telegramId: telegramUserId,
+            telegramUsername: message.from.username,
+            telegramFirstName: message.from.first_name,
+            telegramLastName: undefined, // Not available in webhook
+            telegramPhotoUrl: undefined, // Would need separate API call
+            telegramLanguageCode: message.from.language_code,
+            telegramIsPremium: undefined, // Not available in webhook
+            telegramAllowsWriteToPm: undefined, // Not available in webhook
+          });
+        } catch (error) {
+          bindingError = error;
+          console.log(`[Telegram Bot] Binding error details:`, error);
+        }
 
-        if (bindingResult.success) {
+        if (bindingResult?.success) {
           // Success! Account bound
           const successMessage = `✅ *Account Successfully Linked!*
 
@@ -934,8 +942,25 @@ Welcome to the complete Islamic Knowledge Assistant experience! 🌟`;
           });
 
         } else {
-          // Binding failed - invalid or expired code
-          const errorMessage = `❌ *Invalid Binding Code*
+          // Binding failed - check specific error
+          let errorMessage = '';
+          
+          if (bindingError && bindingError instanceof Error && bindingError.message.includes('already linked')) {
+            errorMessage = `❌ *Telegram Account Already Linked*
+
+This Telegram account is already connected to another user account.
+
+*What this means:*
+• Your Telegram ID is already registered with a different email
+• You cannot link the same Telegram to multiple accounts
+
+*What you can do:*
+• Use the account that's already linked to this Telegram
+• Contact support if you believe this is an error
+• Use a different Telegram account for binding`;
+          } else {
+            // Generic error for invalid/expired codes
+            errorMessage = `❌ *Invalid Binding Code*
 
 The code \`${userText}\` is not valid or has expired.
 
@@ -951,6 +976,7 @@ The code \`${userText}\` is not valid or has expired.
 4. Send it here within 15 minutes
 
 *Need help?* Contact support or try generating a new code.`;
+          }
 
           // Edit the processing message with error
           await fetch(`${TELEGRAM_API_URL}/editMessageText`, {

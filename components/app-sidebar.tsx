@@ -43,6 +43,13 @@ export function AppSidebar({ user }: { user: User | undefined }) {
   const [showTelegramEmailForm, setShowTelegramEmailForm] = useState(false);
   const [showTelegramBindingModal, setShowTelegramBindingModal] = useState(false);
   
+  // Debug logging
+  console.log('[AppSidebar Debug] User object:', user);
+  console.log('[AppSidebar Debug] User type:', user?.type);
+  console.log('[AppSidebar Debug] User email:', user?.email);
+  console.log('[AppSidebar Debug] User telegramId:', user?.telegramId);
+  console.log('[AppSidebar Debug] Is guest?', user?.type === 'guest' || user?.email?.startsWith('guest_'));
+  
   // Add custom styles for ultra-transparent glass effect
   React.useEffect(() => {
     const style = document.createElement('style');
@@ -388,9 +395,13 @@ export function AppSidebar({ user }: { user: User | undefined }) {
             </SidebarHeader>
                     <SidebarContent>
           {user && <EmailSetupBanner user={user} onClick={handleEmailSetupClick} />}
-          {user && <TelegramBindingBanner user={user} onClick={handleTelegramBindingClick} />}
+          {/* Show only ONE banner: Registration for guests OR Telegram binding for authenticated users without Telegram */}
+          {!user || user.type === 'guest' || user.email?.startsWith('guest_') ? (
+            <GuestRegistrationBanner />
+          ) : (
+            !user.telegramId && <TelegramBindingBanner user={user} onClick={handleTelegramBindingClick} />
+          )}
           <SidebarHistory user={user} />
-          <GuestRegistrationBanner />
         </SidebarContent>
             <SidebarFooter>
               <div className="flex flex-row items-center gap-2 pb-2.5">
@@ -486,9 +497,13 @@ export function AppSidebar({ user }: { user: User | undefined }) {
         </SidebarHeader>
         <SidebarContent>
           {user && <EmailSetupBanner user={user} onClick={handleEmailSetupClick} />}
-          {user && <TelegramBindingBanner user={user} onClick={handleTelegramBindingClick} />}
+          {/* Show only ONE banner: Registration for guests OR Telegram binding for authenticated users without Telegram */}
+          {!user || user.type === 'guest' || user.email?.startsWith('guest_') ? (
+            <GuestRegistrationBanner />
+          ) : (
+            !user.telegramId && <TelegramBindingBanner user={user} onClick={handleTelegramBindingClick} />
+          )}
           <SidebarHistory user={user} />
-          <GuestRegistrationBanner />
         </SidebarContent>
         <SidebarFooter>
           <div className="flex flex-row items-center gap-2 pb-2.5">

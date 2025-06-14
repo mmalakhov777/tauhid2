@@ -1064,6 +1064,16 @@ export async function useTelegramBindingCode(
       throw new ChatSDKError('bad_request:auth', 'Invalid or expired binding code');
     }
 
+    // Check if this Telegram ID is already in use by another user
+    const existingUsers = await getUserByTelegramId(telegramData.telegramId);
+    if (existingUsers.length > 0) {
+      // Check if it's the same user trying to rebind
+      if (existingUsers[0].id !== bindingRecord.userId) {
+        throw new ChatSDKError('bad_request:auth', 'This Telegram account is already linked to another user');
+      }
+      // If it's the same user, we can proceed (they're re-binding)
+    }
+
     // Update the user with Telegram data
     await db
       .update(user)
