@@ -195,7 +195,19 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
   const isSharhWiqayah = isClassical && citation.metadata?.source_file?.match(/SharhWiqayah\d+_hocr_searchtext\.txt\.gz/);
 
   // Check if this is Al-Hidaya
-  const isAlHidaya = isClassical && citation.metadata?.book_name === 'Al-Hidaya';
+  const isAlHidaya = isClassical && (citation.metadata?.book_name === 'Al-Hidaya' || citation.metadata?.source_file === 'Al_Hidaya_in_English.txt');
+
+  // Check if this is Al-Mabsut Sarakhsi
+  const isAlMabsut = isClassical && (citation.metadata?.source_file === 'Al-Mabsut_Sarakhsi_HanafiFiqh.txt' || citation.metadata?.source_file === 'Al-Mabsut_Sarakhsi_Index.txt');
+
+  // Check if this is Usul al-Fiqh Sarakhsi
+  const isUsulAlFiqhSarakhsi = isClassical && citation.metadata?.source_file === 'UsulAlFiqh_Sarakhsi_IslamicLawPrinciples.txt';
+
+  // Check if this is Nukat Ziyadat al-Ziyadat
+  const isNukatZiyadat = isClassical && citation.metadata?.source_file === 'Nukat_ZiyadatAlZiyadat_HanafiNotes.txt';
+
+  // Check if this is Sharh Siyar al-Kabir Sarakhsi
+  const isSharhSiyarAlKabir = isClassical && citation.metadata?.source_file === 'SharhSiyarAlKabir_Sarakhsi_InternationalLaw.txt';
 
   // Build YouTube embed URL with timestamp if available
   let embedUrl = '';
@@ -385,6 +397,14 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
           sourceName = 'Sharh al-Wiqayah';
         } else if (isAlHidaya) {
           sourceName = 'Al-Hidaya';
+        } else if (isAlMabsut) {
+          sourceName = 'Al-Mabsut Sarakhsi';
+        } else if (isUsulAlFiqhSarakhsi) {
+          sourceName = 'Usul al-Fiqh Sarakhsi';
+        } else if (isNukatZiyadat) {
+          sourceName = 'Nukat Ziyadat al-Ziyadat';
+        } else if (isSharhSiyarAlKabir) {
+          sourceName = 'Sharh Siyar al-Kabir Sarakhsi';
         }
       } else if (isRisale) {
         // For Risale-i Nur sources, use the book name
@@ -653,7 +673,7 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                               <div className="w-[40%] flex-shrink-0">
                                 <div className="relative w-full h-full bg-muted">
                                   <img 
-                                    src="/images/fatawa-qazi-khan.png" 
+                                    src="/images/fatawa-qazi-khan.webp" 
                                     alt="Fatawa Qazi Khan cover"
                                     className="w-full h-full object-contain"
                                   />
@@ -699,7 +719,7 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                               <div className="w-[40%] flex-shrink-0">
                                 <div className="relative w-full h-full bg-muted">
                                   <img 
-                                    src="/images/raddul-muhtaar.png" 
+                                    src="/images/raddul-muhtaar.webp" 
                                     alt="Rad-ul-Muhtar cover"
                                     className="w-full h-full object-contain"
                                   />
@@ -745,7 +765,7 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                               <div className="w-[40%] flex-shrink-0">
                                 <div className="relative w-full h-full bg-muted">
                                   <img 
-                                    src="/images/badai-as-sanai-urdu.png" 
+                                    src="/images/badai-as-sanai-urdu.webp" 
                                     alt="Badai-al-Sanai cover"
                                     className="w-full h-full object-contain"
                                   />
@@ -791,7 +811,7 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                               <div className="w-[40%] flex-shrink-0">
                                 <div className="relative w-full h-full bg-muted">
                                   <img 
-                                    src="/images/sharh-al-wiqayah.png" 
+                                    src="/images/sharh-al-wiqayah.webp" 
                                     alt="Sharh al-Wiqayah cover"
                                     className="w-full h-full object-contain"
                                   />
@@ -808,6 +828,240 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                                 {/* Book description */}
                                 <div className="text-xs text-muted-foreground italic leading-tight line-clamp-2">
                                   {SOURCE_DESCRIPTIONS['Sharh al-Wiqayah']}
+                                </div>
+                                
+                                {/* Metadata */}
+                                <div className="flex flex-col gap-0.5 text-xs text-muted-foreground mt-auto">
+                                  {/* Source info */}
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs">{safeT('citationModal.classicalIslamicText')}</span>
+                                  </div>
+                                  
+                                  {/* Volume info */}
+                                  {citation.metadata?.volume && (
+                                    <div className="text-xs">
+                                      {safeT('citationModal.volume')}: {citation.metadata.volume}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Al-Mabsut Sarakhsi */}
+                        {isAlMabsut && (
+                          <div className="rounded-lg border border-border bg-card/50 overflow-hidden shadow-lg">
+                            <div className="flex gap-0 h-32 sm:h-40">
+                              {/* Cover Image - 40% */}
+                              <div className="w-[40%] flex-shrink-0">
+                                <div className="relative w-full h-full bg-muted">
+                                  <img 
+                                    src={citation.metadata?.source_file === 'Al-Mabsut_Sarakhsi_Index.txt' ? "/images/Al-Mabsut_Sarakhsi_Index.webp" : "/images/Al-Mabsut_Sarakhsi_HanafiFiqh.webp"} 
+                                    alt="Al-Mabsut Sarakhsi cover"
+                                    className="w-full h-full object-contain"
+                                  />
+                                </div>
+                              </div>
+                              
+                              {/* Content - 60% */}
+                              <div className="flex-1 flex flex-col justify-center gap-1.5 p-3">
+                                {/* Book name as title */}
+                                <div className="text-sm font-semibold text-card-foreground leading-tight">
+                                  Al-Mabsut Sarakhsi
+                                </div>
+                                
+                                {/* Book description */}
+                                <div className="text-xs text-muted-foreground italic leading-tight line-clamp-2">
+                                  {SOURCE_DESCRIPTIONS['Al-Mabsut Sarakhsi']}
+                                </div>
+                                
+                                {/* Metadata */}
+                                <div className="flex flex-col gap-0.5 text-xs text-muted-foreground mt-auto">
+                                  {/* Source info */}
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs">{safeT('citationModal.classicalIslamicText')}</span>
+                                  </div>
+                                  
+                                  {/* Volume info */}
+                                  {citation.metadata?.volume && (
+                                    <div className="text-xs">
+                                      {safeT('citationModal.volume')}: {citation.metadata.volume}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Al-Hidaya */}
+                        {isAlHidaya && (
+                          <div className="rounded-lg border border-border bg-card/50 overflow-hidden shadow-lg">
+                            <div className="flex gap-0 h-32 sm:h-40">
+                              {/* Cover Image - 40% */}
+                              <div className="w-[40%] flex-shrink-0">
+                                <div className="relative w-full h-full bg-muted">
+                                  <img 
+                                    src={citation.metadata?.source_file === 'Al_Hidaya_in_English.txt' ? "/images/Al_Hidaya_in_English.webp" : "/images/Al-Hidaya.webp"} 
+                                    alt="Al-Hidaya cover"
+                                    className="w-full h-full object-contain"
+                                    onError={(e) => {
+                                      const target = e.target as HTMLImageElement;
+                                      target.src = '/images/fatawa-qazi-khan.webp';
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                              
+                              {/* Content - 60% */}
+                              <div className="flex-1 flex flex-col justify-center gap-1.5 p-3">
+                                {/* Book name as title */}
+                                <div className="text-sm font-semibold text-card-foreground leading-tight">
+                                  Al-Hidaya
+                                </div>
+                                
+                                {/* Book description */}
+                                <div className="text-xs text-muted-foreground italic leading-tight line-clamp-2">
+                                  {SOURCE_DESCRIPTIONS['Al-Hidaya']}
+                                </div>
+                                
+                                {/* Metadata */}
+                                <div className="flex flex-col gap-0.5 text-xs text-muted-foreground mt-auto">
+                                  {/* Source info */}
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs">{safeT('citationModal.classicalIslamicText')}</span>
+                                  </div>
+                                  
+                                  {/* Volume info */}
+                                  {citation.metadata?.volume && (
+                                    <div className="text-xs">
+                                      {safeT('citationModal.volume')}: {citation.metadata.volume}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Usul al-Fiqh Sarakhsi */}
+                        {isUsulAlFiqhSarakhsi && (
+                          <div className="rounded-lg border border-border bg-card/50 overflow-hidden shadow-lg">
+                            <div className="flex gap-0 h-32 sm:h-40">
+                              {/* Cover Image - 40% */}
+                              <div className="w-[40%] flex-shrink-0">
+                                <div className="relative w-full h-full bg-muted">
+                                  <img 
+                                    src="/images/UsulAlFiqh_Sarakhsi_IslamicLawPrinciples.webp" 
+                                    alt="Usul al-Fiqh Sarakhsi cover"
+                                    className="w-full h-full object-contain"
+                                  />
+                                </div>
+                              </div>
+                              
+                              {/* Content - 60% */}
+                              <div className="flex-1 flex flex-col justify-center gap-1.5 p-3">
+                                {/* Book name as title */}
+                                <div className="text-sm font-semibold text-card-foreground leading-tight">
+                                  Usul al-Fiqh Sarakhsi
+                                </div>
+                                
+                                {/* Book description */}
+                                <div className="text-xs text-muted-foreground italic leading-tight line-clamp-2">
+                                  {SOURCE_DESCRIPTIONS['Usul al-Fiqh Sarakhsi']}
+                                </div>
+                                
+                                {/* Metadata */}
+                                <div className="flex flex-col gap-0.5 text-xs text-muted-foreground mt-auto">
+                                  {/* Source info */}
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs">{safeT('citationModal.classicalIslamicText')}</span>
+                                  </div>
+                                  
+                                  {/* Volume info */}
+                                  {citation.metadata?.volume && (
+                                    <div className="text-xs">
+                                      {safeT('citationModal.volume')}: {citation.metadata.volume}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Nukat Ziyadat al-Ziyadat */}
+                        {isNukatZiyadat && (
+                          <div className="rounded-lg border border-border bg-card/50 overflow-hidden shadow-lg">
+                            <div className="flex gap-0 h-32 sm:h-40">
+                              {/* Cover Image - 40% */}
+                              <div className="w-[40%] flex-shrink-0">
+                                <div className="relative w-full h-full bg-muted">
+                                  <img 
+                                    src="/images/Nukat_ZiyadatAlZiyadat_HanafiNotes.webp" 
+                                    alt="Nukat Ziyadat al-Ziyadat cover"
+                                    className="w-full h-full object-contain"
+                                  />
+                                </div>
+                              </div>
+                              
+                              {/* Content - 60% */}
+                              <div className="flex-1 flex flex-col justify-center gap-1.5 p-3">
+                                {/* Book name as title */}
+                                <div className="text-sm font-semibold text-card-foreground leading-tight">
+                                  Nukat Ziyadat al-Ziyadat
+                                </div>
+                                
+                                {/* Book description */}
+                                <div className="text-xs text-muted-foreground italic leading-tight line-clamp-2">
+                                  {SOURCE_DESCRIPTIONS['Nukat Ziyadat al-Ziyadat']}
+                                </div>
+                                
+                                {/* Metadata */}
+                                <div className="flex flex-col gap-0.5 text-xs text-muted-foreground mt-auto">
+                                  {/* Source info */}
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs">{safeT('citationModal.classicalIslamicText')}</span>
+                                  </div>
+                                  
+                                  {/* Volume info */}
+                                  {citation.metadata?.volume && (
+                                    <div className="text-xs">
+                                      {safeT('citationModal.volume')}: {citation.metadata.volume}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Sharh Siyar al-Kabir Sarakhsi */}
+                        {isSharhSiyarAlKabir && (
+                          <div className="rounded-lg border border-border bg-card/50 overflow-hidden shadow-lg">
+                            <div className="flex gap-0 h-32 sm:h-40">
+                              {/* Cover Image - 40% */}
+                              <div className="w-[40%] flex-shrink-0">
+                                <div className="relative w-full h-full bg-muted">
+                                  <img 
+                                    src="/images/SharhSiyarAlKabir_Sarakhsi_InternationalLaw.webp" 
+                                    alt="Sharh Siyar al-Kabir Sarakhsi cover"
+                                    className="w-full h-full object-contain"
+                                  />
+                                </div>
+                              </div>
+                              
+                              {/* Content - 60% */}
+                              <div className="flex-1 flex flex-col justify-center gap-1.5 p-3">
+                                {/* Book name as title */}
+                                <div className="text-sm font-semibold text-card-foreground leading-tight">
+                                  Sharh Siyar al-Kabir Sarakhsi
+                                </div>
+                                
+                                {/* Book description */}
+                                <div className="text-xs text-muted-foreground italic leading-tight line-clamp-2">
+                                  {SOURCE_DESCRIPTIONS['Sharh Siyar al-Kabir Sarakhsi']}
                                 </div>
                                 
                                 {/* Metadata */}
@@ -883,12 +1137,12 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                             <div className="w-[40%] flex-shrink-0">
                                 <div className="relative w-full h-full bg-muted">
                                   <img 
-                                    src={`/images/risaleinur/${citation.metadata?.book_name || 'placeholder'}.png`}
+                                    src={`/images/risaleinur/${citation.metadata?.book_name || 'placeholder'}.webp`}
                                     alt={`${citation.metadata?.book_name?.replace(/_/g, ' ').replace(/-/g, ' ') || 'Risale-i Nur'} cover`}
                                     className="w-full h-full object-contain"
                                     onError={(e) => {
                                       const target = e.target as HTMLImageElement;
-                                      target.src = '/images/fatawa-qazi-khan.png';
+                                      target.src = '/images/fatawa-qazi-khan.webp';
                                     }}
                                   />
                                 </div>

@@ -382,7 +382,7 @@ export function SubscriptionModal({
           {currentStep !== 'purpose' && currentStep !== 'info' && (
             <div className="w-full">
               <img 
-                src="/images/limitsreached_dark.png" 
+                src="/images/limitsreached_dark.webp" 
                 alt="Limits reached" 
                 className="w-full h-64 object-cover rounded-t-2xl"
               />

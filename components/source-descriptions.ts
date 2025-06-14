@@ -29,6 +29,11 @@ export const SOURCE_DESCRIPTIONS: Record<string, string> = {
   'Rad-ul-Muhtar': 'A detailed commentary on Al-Durr al-Mukhtar by Ibn Abidin, considered one of the most authoritative works in Hanafi jurisprudence and Islamic legal methodology.',
   'Badai-al-Sanai': 'A masterwork of Hanafi jurisprudence by Al-Kasani, providing detailed explanations of Islamic legal principles and their practical applications in daily life.',
   'Sharh al-Wiqayah': 'An important commentary on Al-Wiqayah by Ubaydullah ibn Masud, offering profound insights into Hanafi legal theory and jurisprudential methodology.',
+  'Al-Mabsut Sarakhsi': 'A monumental work of Hanafi jurisprudence by Imam al-Sarakhsi, providing comprehensive coverage of Islamic legal principles and detailed analysis of jurisprudential issues.',
+  'Al-Hidaya': 'A foundational text of Hanafi jurisprudence by Burhan al-Din al-Marghinani, serving as one of the most authoritative and widely studied works in Islamic legal education and practice.',
+  'Usul al-Fiqh Sarakhsi': 'A comprehensive treatise on Islamic legal methodology by Imam al-Sarakhsi, exploring the fundamental principles and sources of Islamic jurisprudence and legal reasoning.',
+  'Nukat Ziyadat al-Ziyadat': 'A collection of scholarly notes and annotations on Hanafi jurisprudence, providing detailed commentary and additional insights on classical Islamic legal texts and rulings.',
+  'Sharh Siyar al-Kabir Sarakhsi': 'A comprehensive commentary on Islamic international law by Imam al-Sarakhsi, covering diplomatic relations, treaties, warfare ethics, and the conduct of states in Islamic jurisprudence.',
   
   // Modern Islamic sources
   'MOD': 'Contemporary Islamic scholarly works and modern interpretations of Islamic teachings.',

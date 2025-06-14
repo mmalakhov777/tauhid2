@@ -549,7 +549,7 @@ export function Chat({
           <div 
             className="fixed inset-0 z-0 dark:hidden"
             style={{
-              backgroundImage: "url('/images/bg_white_new.png')",
+                              backgroundImage: "url('/images/bg_white_new.webp')",
               backgroundSize: 'cover',
               backgroundPosition: 'center',
               backgroundRepeat: 'no-repeat',
@@ -561,7 +561,7 @@ export function Chat({
           <div 
             className="fixed inset-0 z-0 hidden dark:block"
             style={{
-              backgroundImage: "url('/images/bg_night_new.png')",
+                              backgroundImage: "url('/images/bg_night_new.webp')",
               backgroundSize: 'cover',
               backgroundPosition: 'center',
               backgroundRepeat: 'no-repeat',

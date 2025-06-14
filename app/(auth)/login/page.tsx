@@ -91,7 +91,7 @@ export default function Page() {
       <div className="flex-1 relative hidden md:block">
         <div className="absolute inset-4 rounded-3xl overflow-hidden shadow-2xl">
           <Image
-            src="/assets/loginimage.png"
+            src="/assets/loginimage.webp"
             alt="Login illustration"
             fill
             className="object-cover"

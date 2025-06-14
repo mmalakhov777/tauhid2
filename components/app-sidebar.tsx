@@ -359,7 +359,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                   >
                     <div className="rounded-md cursor-pointer flex items-center gap-3 transition-colors duration-200">
                       <Image
-                        src="/images/glasslogo.png"
+                        src="/images/glasslogo.webp"
                         alt="Logo"
                         width={350}
                         height={150}
@@ -447,7 +447,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
               >
                 <div className="rounded-md cursor-pointer flex items-center gap-3 transition-colors duration-200">
                   <Image
-                    src="/images/glasslogo.png"
+                    src="/images/glasslogo.webp"
                     alt="Logo"
                     width={350}
                     height={150}

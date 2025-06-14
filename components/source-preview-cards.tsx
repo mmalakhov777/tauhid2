@@ -21,6 +21,12 @@ export function SourcePreviewCards({
 }: SourcePreviewCardsProps) {
   const eligibleCitations = filterEligibleCitations(vectorSearchData.citations);
 
+  // Function to clean numbers from text
+  const cleanNumbers = (text: string | undefined) => {
+    if (!text) return '';
+    return text.replace(/\d+/g, '').replace(/\s+/g, ' ').trim();
+  };
+
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5 mb-2">
       {/* First 3 citations */}
@@ -35,7 +41,11 @@ export function SourcePreviewCards({
         const isRaddulMuhtar = type === 'CLS' && citation.metadata?.source_file?.startsWith('Rad-ul-Muhtar-Vol');
         const isBadaiAlSanai = type === 'CLS' && citation.metadata?.source_file?.match(/Badai-al-Sanai-Urdu-Vol-\d+_hocr_searchtext\.txt\.gz/);
         const isSharhWiqayah = type === 'CLS' && citation.metadata?.source_file?.match(/SharhWiqayah\d+_hocr_searchtext\.txt\.gz/);
-        const isAlHidaya = type === 'CLS' && citation.metadata?.book_name === 'Al-Hidaya';
+        const isAlHidaya = type === 'CLS' && (citation.metadata?.book_name === 'Al-Hidaya' || citation.metadata?.source_file === 'Al_Hidaya_in_English.txt');
+        const isAlMabsut = type === 'CLS' && (citation.metadata?.source_file === 'Al-Mabsut_Sarakhsi_HanafiFiqh.txt' || citation.metadata?.source_file === 'Al-Mabsut_Sarakhsi_Index.txt');
+        const isUsulAlFiqhSarakhsi = type === 'CLS' && citation.metadata?.source_file === 'UsulAlFiqh_Sarakhsi_IslamicLawPrinciples.txt';
+        const isNukatZiyadat = type === 'CLS' && citation.metadata?.source_file === 'Nukat_ZiyadatAlZiyadat_HanafiNotes.txt';
+        const isSharhSiyarAlKabir = type === 'CLS' && citation.metadata?.source_file === 'SharhSiyarAlKabir_Sarakhsi_InternationalLaw.txt';
         const thumbnailUrl = citation.metadata?.thumbnail_url;
         
         return (
@@ -159,6 +169,10 @@ export function SourcePreviewCards({
                       return 'IslamQA';
                     })()}
                   </div>
+                  {/* Text preview */}
+                  <div className="text-[7px] text-muted-foreground line-clamp-1 italic mb-0.5">
+                    {cleanNumbers(citation.text)}
+                  </div>
                   <div className="flex items-center gap-1 text-[8px] text-muted-foreground mt-auto">
                     <span className="truncate">Fatwa</span>
                   </div>
@@ -172,46 +186,86 @@ export function SourcePreviewCards({
                   <div className="relative h-full bg-muted">
                     {type === 'RIS' ? (
                       <img 
-                        src={`/images/risaleinur/${citation.metadata?.book_name || 'placeholder'}.png`}
+                        src={`/images/risaleinur/${citation.metadata?.book_name || 'placeholder'}.webp`}
                         alt={`${citation.metadata?.book_name?.replace(/_/g, ' ').replace(/-/g, ' ') || 'Risale-i Nur'} cover`}
                         className="w-full h-full object-cover"
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
-                          target.src = '/images/fatawa-qazi-khan.png';
+                          target.src = '/images/fatawa-qazi-khan.webp';
                         }}
                       />
                     ) : isFatawaQaziKhan ? (
                       <img 
-                        src="/images/fatawa-qazi-khan.png" 
+                        src="/images/fatawa-qazi-khan.webp" 
                         alt="Fatawa Qazi Khan cover"
                         className="w-full h-full object-cover"
                       />
                     ) : isRaddulMuhtar ? (
                       <img 
-                        src="/images/raddul-muhtaar.png" 
+                        src="/images/raddul-muhtaar.webp" 
                         alt="Rad-ul-Muhtar cover"
                         className="w-full h-full object-cover"
                       />
                     ) : isBadaiAlSanai ? (
                       <img 
-                        src="/images/badai-as-sanai-urdu.png" 
+                        src="/images/badai-as-sanai-urdu.webp" 
                         alt="Badai-al-Sanai cover"
                         className="w-full h-full object-cover"
                       />
                     ) : isSharhWiqayah ? (
                       <img 
-                        src="/images/sharh-al-wiqayah.png" 
+                        src="/images/sharh-al-wiqayah.webp" 
                         alt="Sharh al-Wiqayah cover"
                         className="w-full h-full object-cover"
                       />
                     ) : isAlHidaya ? (
                       <img 
-                        src="/images/Al-Hidaya.png" 
+                        src={citation.metadata?.source_file === 'Al_Hidaya_in_English.txt' ? "/images/Al_Hidaya_in_English.webp" : "/images/Al-Hidaya.webp"} 
                         alt="Al-Hidaya cover"
                         className="w-full h-full object-cover"
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
-                          target.src = '/images/fatawa-qazi-khan.png';
+                          target.src = '/images/fatawa-qazi-khan.webp';
+                        }}
+                      />
+                    ) : isAlMabsut ? (
+                      <img 
+                        src={citation.metadata?.source_file === 'Al-Mabsut_Sarakhsi_Index.txt' ? "/images/Al-Mabsut_Sarakhsi_Index.webp" : "/images/Al-Mabsut_Sarakhsi_HanafiFiqh.webp"} 
+                        alt="Al-Mabsut Sarakhsi cover"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = '/images/fatawa-qazi-khan.webp';
+                        }}
+                      />
+                    ) : isUsulAlFiqhSarakhsi ? (
+                      <img 
+                        src="/images/UsulAlFiqh_Sarakhsi_IslamicLawPrinciples.webp" 
+                        alt="Usul al-Fiqh Sarakhsi cover"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = '/images/fatawa-qazi-khan.webp';
+                        }}
+                      />
+                    ) : isNukatZiyadat ? (
+                      <img 
+                        src="/images/Nukat_ZiyadatAlZiyadat_HanafiNotes.webp" 
+                        alt="Nukat Ziyadat al-Ziyadat cover"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = '/images/fatawa-qazi-khan.webp';
+                        }}
+                      />
+                    ) : isSharhSiyarAlKabir ? (
+                      <img 
+                        src="/images/SharhSiyarAlKabir_Sarakhsi_InternationalLaw.webp" 
+                        alt="Sharh Siyar al-Kabir Sarakhsi cover"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = '/images/fatawa-qazi-khan.webp';
                         }}
                       />
                     ) : (
@@ -224,12 +278,16 @@ export function SourcePreviewCards({
                 
                 {/* Content - 70% */}
                 <div className="flex-1 p-2 flex flex-col justify-center">
-                  <div className="font-semibold text-card-foreground mb-1 line-clamp-2 text-xs">
+                  <div className="font-semibold text-card-foreground mb-1 line-clamp-1 text-xs">
                     {type === 'RIS' && citation.metadata?.book_name 
                       ? formatBookOrNamespace(citation.metadata.book_name)
                       : type === 'CLS' && citation.metadata?.source
                       ? citation.metadata.source
                       : citation.text?.slice(0, 50) || '[No text]'}...
+                  </div>
+                  {/* Text preview */}
+                  <div className="text-[8px] text-muted-foreground line-clamp-2 italic mb-1">
+                    {cleanNumbers(citation.text)}
                   </div>
                   <div className="flex items-center gap-1 text-[9px] text-muted-foreground mt-auto">
                     {type === 'RIS' && citation.metadata?.page_number && (
@@ -248,6 +306,18 @@ export function SourcePreviewCards({
                       <span className="truncate">Vol: {citation.metadata.volume}</span>
                     )}
                     {type === 'CLS' && isSharhWiqayah && citation.metadata?.volume && (
+                      <span className="truncate">Vol: {citation.metadata.volume}</span>
+                    )}
+                    {type === 'CLS' && isAlMabsut && citation.metadata?.volume && (
+                      <span className="truncate">Vol: {citation.metadata.volume}</span>
+                    )}
+                    {type === 'CLS' && isUsulAlFiqhSarakhsi && citation.metadata?.volume && (
+                      <span className="truncate">Vol: {citation.metadata.volume}</span>
+                    )}
+                    {type === 'CLS' && isNukatZiyadat && citation.metadata?.volume && (
+                      <span className="truncate">Vol: {citation.metadata.volume}</span>
+                    )}
+                    {type === 'CLS' && isSharhSiyarAlKabir && citation.metadata?.volume && (
                       <span className="truncate">Vol: {citation.metadata.volume}</span>
                     )}
                   </div>

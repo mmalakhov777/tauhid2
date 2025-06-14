@@ -82,12 +82,12 @@ export class ChatPage {
         process.cwd(),
         'public',
         'images',
-        'mouth of the seine, monet.jpg',
+        'mouth of the seine, monet.webp',
       );
       const imageBuffer = fs.readFileSync(filePath);
 
       await fileChooser.setFiles({
-        name: 'mouth of the seine, monet.jpg',
+        name: 'mouth of the seine, monet.webp',
         mimeType: 'image/jpeg',
         buffer: imageBuffer,
       });

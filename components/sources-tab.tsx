@@ -20,6 +20,12 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
   const [isQueryMappingExpanded, setIsQueryMappingExpanded] = useState(false);
   const eligibleCitations = filterEligibleCitations(vectorSearchData.citations);
 
+  // Function to clean numbers from text
+  const cleanNumbers = (text: string | undefined) => {
+    if (!text) return '';
+    return text.replace(/\d+/g, '').replace(/\s+/g, ' ').trim();
+  };
+
   // Separate citations by type to avoid mixing different types in same row
   const youTubeCitations = eligibleCitations.filter((item: {citation: any, i: number}) => {
     const type = determineCitationType(item.citation);
@@ -102,7 +108,11 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
               const isRaddulMuhtar = type === 'CLS' && citation.metadata?.source_file?.startsWith('Rad-ul-Muhtar-Vol');
               const isBadaiAlSanai = type === 'CLS' && citation.metadata?.source_file?.match(/Badai-al-Sanai-Urdu-Vol-\d+_hocr_searchtext\.txt\.gz/);
               const isSharhWiqayah = type === 'CLS' && citation.metadata?.source_file?.match(/SharhWiqayah\d+_hocr_searchtext\.txt\.gz/);
-              const isAlHidaya = type === 'CLS' && citation.metadata?.book_name === 'Al-Hidaya';
+              const isAlHidaya = type === 'CLS' && (citation.metadata?.book_name === 'Al-Hidaya' || citation.metadata?.source_file === 'Al_Hidaya_in_English.txt');
+              const isAlMabsut = type === 'CLS' && (citation.metadata?.source_file === 'Al-Mabsut_Sarakhsi_HanafiFiqh.txt' || citation.metadata?.source_file === 'Al-Mabsut_Sarakhsi_Index.txt');
+              const isUsulAlFiqhSarakhsi = type === 'CLS' && citation.metadata?.source_file === 'UsulAlFiqh_Sarakhsi_IslamicLawPrinciples.txt';
+              const isNukatZiyadat = type === 'CLS' && citation.metadata?.source_file === 'Nukat_ZiyadatAlZiyadat_HanafiNotes.txt';
+              const isSharhSiyarAlKabir = type === 'CLS' && citation.metadata?.source_file === 'SharhSiyarAlKabir_Sarakhsi_InternationalLaw.txt';
               
               return (
                 <div 
@@ -127,12 +137,12 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                       <div className="w-2/5 shrink-0">
                         <div className="relative size-full overflow-hidden bg-muted">
                           <img 
-                            src={`/images/risaleinur/${citation.metadata?.book_name || 'placeholder'}.png`}
+                            src={`/images/risaleinur/${citation.metadata?.book_name || 'placeholder'}.webp`}
                             alt={`${citation.metadata?.book_name?.replace(/_/g, ' ').replace(/-/g, ' ') || 'Risale-i Nur'} cover`}
                             className="size-full object-cover"
                             onError={(e) => {
                               const target = e.target as HTMLImageElement;
-                              target.src = '/images/fatawa-qazi-khan.png';
+                              target.src = '/images/fatawa-qazi-khan.webp';
                             }}
                           />
                         </div>
@@ -142,14 +152,14 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                       <div className="flex-1 flex flex-col justify-center gap-2 p-3">
                         {/* Book name as title */}
                         {citation.metadata?.book_name && (
-                          <div className="text-sm font-semibold text-card-foreground line-clamp-1">
+                          <div className="text-sm font-semibold text-card-foreground line-clamp-2">
                             {citation.metadata.book_name.replace(/_/g, ' ').replace(/-/g, ' ').split(' ').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')}
                           </div>
                         )}
                         
                         {/* Text preview */}
-                        <div className="text-[10px] text-muted-foreground line-clamp-2 italic">
-                          {citation.text?.slice(0, 80)}...
+                        <div className="text-[10px] text-muted-foreground line-clamp-4 italic">
+                          {cleanNumbers(citation.text)}
                         </div>
                         
                         {/* Metadata */}
@@ -168,7 +178,7 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                       <div className="w-2/5 shrink-0">
                         <div className="relative size-full rounded-l overflow-hidden bg-muted">
                           <img 
-                            src="/images/fatawa-qazi-khan.png" 
+                            src="/images/fatawa-qazi-khan.webp" 
                             alt="Fatawa Qazi Khan cover"
                             className="size-full object-cover object-center"
                           />
@@ -179,14 +189,14 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                       <div className="flex-1 flex flex-col justify-center gap-2 py-3 pr-3">
                         {/* Source as title */}
                         {citation.metadata?.source && (
-                          <div className="text-sm font-semibold text-card-foreground line-clamp-1">
+                          <div className="text-sm font-semibold text-card-foreground line-clamp-2">
                             {citation.metadata.source}
                           </div>
                         )}
                         
                         {/* Text preview */}
-                        <div className="text-[10px] text-muted-foreground line-clamp-2 italic">
-                          {citation.text?.slice(0, 80)}...
+                        <div className="text-[10px] text-muted-foreground line-clamp-4 italic">
+                          {cleanNumbers(citation.text)}
                         </div>
                         
                         {/* Metadata */}
@@ -204,7 +214,7 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                       <div className="w-2/5 shrink-0">
                         <div className="relative size-full rounded-l overflow-hidden bg-muted">
                           <img 
-                            src="/images/raddul-muhtaar.png" 
+                            src="/images/raddul-muhtaar.webp" 
                             alt="Rad-ul-Muhtar cover"
                             className="size-full object-cover object-center"
                           />
@@ -215,14 +225,14 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                       <div className="flex-1 flex flex-col justify-center gap-2 py-3 pr-3">
                         {/* Source as title */}
                         {citation.metadata?.source && (
-                          <div className="text-sm font-semibold text-card-foreground line-clamp-1">
+                          <div className="text-sm font-semibold text-card-foreground line-clamp-2">
                             {citation.metadata.source}
                           </div>
                         )}
                         
                         {/* Text preview */}
-                        <div className="text-[10px] text-muted-foreground line-clamp-2 italic">
-                          {citation.text?.slice(0, 80)}...
+                        <div className="text-[10px] text-muted-foreground line-clamp-4 italic">
+                          {cleanNumbers(citation.text)}
                         </div>
                         
                         {/* Metadata */}
@@ -240,7 +250,7 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                       <div className="w-2/5 shrink-0">
                         <div className="relative size-full rounded-l overflow-hidden bg-muted">
                           <img 
-                            src="/images/badai-as-sanai-urdu.png" 
+                            src="/images/badai-as-sanai-urdu.webp" 
                             alt="Badai-al-Sanai cover"
                             className="size-full object-cover object-center"
                           />
@@ -251,14 +261,14 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                       <div className="flex-1 flex flex-col justify-center gap-2 py-3 pr-3">
                         {/* Source as title */}
                         {citation.metadata?.source && (
-                          <div className="text-sm font-semibold text-card-foreground line-clamp-1">
+                          <div className="text-sm font-semibold text-card-foreground line-clamp-2">
                             {citation.metadata.source}
                           </div>
                         )}
                         
                         {/* Text preview */}
-                        <div className="text-[10px] text-muted-foreground line-clamp-2 italic">
-                          {citation.text?.slice(0, 80)}...
+                        <div className="text-[10px] text-muted-foreground line-clamp-4 italic">
+                          {cleanNumbers(citation.text)}
                         </div>
                         
                         {/* Metadata */}
@@ -276,7 +286,7 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                       <div className="w-2/5 shrink-0">
                         <div className="relative size-full rounded-l overflow-hidden bg-muted">
                           <img 
-                            src="/images/sharh-al-wiqayah.png" 
+                            src="/images/sharh-al-wiqayah.webp" 
                             alt="Sharh al-Wiqayah cover"
                             className="size-full object-cover object-center"
                           />
@@ -287,14 +297,14 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                       <div className="flex-1 flex flex-col justify-center gap-2 py-3 pr-3">
                         {/* Source as title */}
                         {citation.metadata?.source && (
-                          <div className="text-sm font-semibold text-card-foreground line-clamp-1">
+                          <div className="text-sm font-semibold text-card-foreground line-clamp-2">
                             {citation.metadata.source}
                           </div>
                         )}
                         
                         {/* Text preview */}
-                        <div className="text-[10px] text-muted-foreground line-clamp-2 italic">
-                          {citation.text?.slice(0, 80)}...
+                        <div className="text-[10px] text-muted-foreground line-clamp-4 italic">
+                          {cleanNumbers(citation.text)}
                         </div>
                         
                         {/* Metadata */}
@@ -312,12 +322,12 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                       <div className="w-2/5 shrink-0">
                         <div className="relative size-full rounded-l overflow-hidden bg-muted">
                           <img 
-                            src="/images/Al-Hidaya.png" 
+                            src={citation.metadata?.source_file === 'Al_Hidaya_in_English.txt' ? "/images/Al_Hidaya_in_English.webp" : "/images/Al-Hidaya.webp"} 
                             alt="Al-Hidaya cover"
                             className="size-full object-cover object-center"
                             onError={(e) => {
                               const target = e.target as HTMLImageElement;
-                              target.src = '/images/fatawa-qazi-khan.png';
+                              target.src = '/images/fatawa-qazi-khan.webp';
                             }}
                           />
                         </div>
@@ -327,14 +337,14 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                       <div className="flex-1 flex flex-col justify-center gap-2 py-3 pr-3">
                         {/* Source as title */}
                         {citation.metadata?.source && (
-                          <div className="text-sm font-semibold text-card-foreground line-clamp-1">
+                          <div className="text-sm font-semibold text-card-foreground line-clamp-2">
                             {citation.metadata.source}
                           </div>
                         )}
                         
                         {/* Text preview */}
-                        <div className="text-[10px] text-muted-foreground line-clamp-2 italic">
-                          {citation.text?.slice(0, 80)}...
+                        <div className="text-[10px] text-muted-foreground line-clamp-4 italic">
+                          {cleanNumbers(citation.text)}
                         </div>
                         
                         {/* Metadata */}
@@ -346,17 +356,177 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                         </div>
                       </div>
                     </div>
+                  ) : isAlMabsut ? (
+                    <div className="flex gap-3">
+                      {/* Cover Image - 40% */}
+                      <div className="w-2/5 shrink-0">
+                        <div className="relative size-full rounded-l overflow-hidden bg-muted">
+                          <img 
+                            src={citation.metadata?.source_file === 'Al-Mabsut_Sarakhsi_Index.txt' ? "/images/Al-Mabsut_Sarakhsi_Index.webp" : "/images/Al-Mabsut_Sarakhsi_HanafiFiqh.webp"} 
+                            alt="Al-Mabsut Sarakhsi cover"
+                            className="size-full object-cover object-center"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.src = '/images/fatawa-qazi-khan.webp';
+                            }}
+                          />
+                        </div>
+                      </div>
+                      
+                      {/* Content - 60% */}
+                      <div className="flex-1 flex flex-col justify-center gap-2 py-3 pr-3">
+                        {/* Source as title */}
+                        {citation.metadata?.source && (
+                          <div className="text-sm font-semibold text-card-foreground line-clamp-2">
+                            {citation.metadata.source}
+                          </div>
+                        )}
+                        
+                        {/* Text preview */}
+                        <div className="text-[10px] text-muted-foreground line-clamp-4 italic">
+                          {cleanNumbers(citation.text)}
+                        </div>
+                        
+                        {/* Metadata */}
+                        <div className="flex flex-col gap-0.5 text-[10px] text-muted-foreground mt-auto">
+                          <span className="truncate">Al-Mabsut Sarakhsi</span>
+                          {citation.metadata?.volume && (
+                            <div>Volume: {citation.metadata.volume}</div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ) : isUsulAlFiqhSarakhsi ? (
+                    <div className="flex gap-3">
+                      {/* Cover Image - 40% */}
+                      <div className="w-2/5 shrink-0">
+                        <div className="relative size-full rounded-l overflow-hidden bg-muted">
+                          <img 
+                            src="/images/UsulAlFiqh_Sarakhsi_IslamicLawPrinciples.webp" 
+                            alt="Usul al-Fiqh Sarakhsi cover"
+                            className="size-full object-cover object-center"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.src = '/images/fatawa-qazi-khan.webp';
+                            }}
+                          />
+                        </div>
+                      </div>
+                      
+                      {/* Content - 60% */}
+                      <div className="flex-1 flex flex-col justify-center gap-2 py-3 pr-3">
+                        {/* Source as title */}
+                        {citation.metadata?.source && (
+                          <div className="text-sm font-semibold text-card-foreground line-clamp-2">
+                            {citation.metadata.source}
+                          </div>
+                        )}
+                        
+                        {/* Text preview */}
+                        <div className="text-[10px] text-muted-foreground line-clamp-4 italic">
+                          {cleanNumbers(citation.text)}
+                        </div>
+                        
+                        {/* Metadata */}
+                        <div className="flex flex-col gap-0.5 text-[10px] text-muted-foreground mt-auto">
+                          <span className="truncate">Usul al-Fiqh Sarakhsi</span>
+                          {citation.metadata?.volume && (
+                            <div>Volume: {citation.metadata.volume}</div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ) : isNukatZiyadat ? (
+                    <div className="flex gap-3">
+                      {/* Cover Image - 40% */}
+                      <div className="w-2/5 shrink-0">
+                        <div className="relative size-full rounded-l overflow-hidden bg-muted">
+                          <img 
+                            src="/images/Nukat_ZiyadatAlZiyadat_HanafiNotes.webp" 
+                            alt="Nukat Ziyadat al-Ziyadat cover"
+                            className="size-full object-cover object-center"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.src = '/images/fatawa-qazi-khan.webp';
+                            }}
+                          />
+                        </div>
+                      </div>
+                      
+                      {/* Content - 60% */}
+                      <div className="flex-1 flex flex-col justify-center gap-2 py-3 pr-3">
+                        {/* Source as title */}
+                        {citation.metadata?.source && (
+                          <div className="text-sm font-semibold text-card-foreground line-clamp-2">
+                            {citation.metadata.source}
+                          </div>
+                        )}
+                        
+                        {/* Text preview */}
+                        <div className="text-[10px] text-muted-foreground line-clamp-4 italic">
+                          {cleanNumbers(citation.text)}
+                        </div>
+                        
+                        {/* Metadata */}
+                        <div className="flex flex-col gap-0.5 text-[10px] text-muted-foreground mt-auto">
+                          <span className="truncate">Nukat Ziyadat al-Ziyadat</span>
+                          {citation.metadata?.volume && (
+                            <div>Volume: {citation.metadata.volume}</div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ) : isSharhSiyarAlKabir ? (
+                    <div className="flex gap-3">
+                      {/* Cover Image - 40% */}
+                      <div className="w-2/5 shrink-0">
+                        <div className="relative size-full rounded-l overflow-hidden bg-muted">
+                          <img 
+                            src="/images/SharhSiyarAlKabir_Sarakhsi_InternationalLaw.webp" 
+                            alt="Sharh Siyar al-Kabir Sarakhsi cover"
+                            className="size-full object-cover object-center"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.src = '/images/fatawa-qazi-khan.webp';
+                            }}
+                          />
+                        </div>
+                      </div>
+                      
+                      {/* Content - 60% */}
+                      <div className="flex-1 flex flex-col justify-center gap-2 py-3 pr-3">
+                        {/* Source as title */}
+                        {citation.metadata?.source && (
+                          <div className="text-sm font-semibold text-card-foreground line-clamp-2">
+                            {citation.metadata.source}
+                          </div>
+                        )}
+                        
+                        {/* Text preview */}
+                        <div className="text-[10px] text-muted-foreground line-clamp-4 italic">
+                          {cleanNumbers(citation.text)}
+                        </div>
+                        
+                        {/* Metadata */}
+                        <div className="flex flex-col gap-0.5 text-[10px] text-muted-foreground mt-auto">
+                          <span className="truncate">Sharh Siyar al-Kabir Sarakhsi</span>
+                          {citation.metadata?.volume && (
+                            <div>Volume: {citation.metadata.volume}</div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   ) : (
                     // Other classical sources
                     <div className="p-3">
                       {/* Source text preview */}
-                      <div className="text-xs font-semibold text-card-foreground line-clamp-1">
+                      <div className="text-xs font-semibold text-card-foreground line-clamp-2">
                         {citation.metadata?.source || citation.text?.slice(0, 60) || '[No text]'}...
                       </div>
                       
                       {/* Preview */}
-                      <div className="text-[10px] text-muted-foreground line-clamp-2 mt-1">
-                        {citation.text?.slice(0, 100)}...
+                      <div className="text-[10px] text-muted-foreground line-clamp-4 mt-1">
+                        {cleanNumbers(citation.text)}
                       </div>
                       
                       {/* Metadata */}
@@ -534,13 +704,13 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                   {/* Other types */}
                   <div className="p-3">
                     {/* Source text preview */}
-                    <div className="text-xs font-semibold text-card-foreground line-clamp-1">
+                    <div className="text-xs font-semibold text-card-foreground line-clamp-2">
                       {citation.text?.slice(0, 60) || '[No text]'}...
                     </div>
                     
                     {/* Preview */}
-                    <div className="text-[10px] text-muted-foreground line-clamp-2 mt-1">
-                      {citation.text?.slice(0, 100)}...
+                    <div className="text-[10px] text-muted-foreground line-clamp-4 mt-1">
+                      {cleanNumbers(citation.text)}
                     </div>
                     
                     {/* Metadata */}
@@ -608,22 +778,15 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                     <div className="p-2 md:p-3 space-y-1 flex-1 flex flex-col">
                       <div className="text-[10px] md:text-xs font-semibold text-card-foreground flex items-center gap-1">
                         <Youtube className="size-2.5 md:size-3" />
-                        <span className="line-clamp-1">{citation.namespace?.replace(/_/g, ' ')}</span>
+                        <span className="line-clamp-2">{citation.namespace?.replace(/_/g, ' ')}</span>
                       </div>
-                      <div className="text-[9px] md:text-[10px] text-muted-foreground line-clamp-2">
-                        {citation.text?.slice(0, 60)}...
+                      <div className="text-[9px] md:text-[10px] text-muted-foreground line-clamp-3">
+                        {cleanNumbers(citation.text)}
                       </div>
                     </div>
                   )}
                   
-                  {/* YouTube content below thumbnail */}
-                  {thumbnailUrl && (
-                    <div className="p-1.5 md:p-2">
-                      <div className="text-[9px] md:text-[10px] text-muted-foreground line-clamp-2">
-                        {citation.text?.slice(0, 50)}...
-                      </div>
-                    </div>
-                  )}
+
                 </div>
               );
             })}
