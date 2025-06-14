@@ -1,135 +1,23 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { useTelegram } from '@/hooks/useTelegram';
 import { telegramAuth } from '@/app/(auth)/actions';
 import { toast } from '@/components/toast';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
-import { useAuthLoading } from '@/contexts/AuthLoadingContext';
 import { TelegramEmailForm } from './TelegramEmailForm';
 
 interface TelegramAuthButtonProps {
   onSuccess?: () => void;
 }
 
-// Telegram Login Widget data interface
-interface TelegramLoginData {
-  id: number;
-  first_name: string;
-  last_name?: string;
-  username?: string;
-  photo_url?: string;
-  auth_date: number;
-  hash: string;
-}
-
 export const TelegramAuthButton = ({ onSuccess }: TelegramAuthButtonProps) => {
   const { user, isTelegramAvailable, isLoading, error } = useTelegram();
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [showEmailForm, setShowEmailForm] = useState(false);
-  const [widgetLoaded, setWidgetLoaded] = useState(false);
-  const callbackSetRef = useRef(false);
   const router = useRouter();
   const { update: updateSession } = useSession();
-  const { isAuthLoading, setIsAuthLoading } = useAuthLoading();
-
-  // Set up the global callback function once and keep it stable
-  useEffect(() => {
-    if (!callbackSetRef.current) {
-      console.log('[TelegramAuthButton] Setting up global onTelegramAuth callback (once)');
-      callbackSetRef.current = true;
-      
-      (window as any).onTelegramAuth = async (telegramData: TelegramLoginData) => {
-        console.log('[TelegramAuthButton] onTelegramAuth callback triggered with data:', telegramData);
-        setIsAuthenticating(true);
-        setIsAuthLoading(true);
-        
-        try {
-          const result = await telegramAuth({
-            telegramId: telegramData.id,
-            telegramUsername: telegramData.username,
-            telegramFirstName: telegramData.first_name,
-            telegramLastName: telegramData.last_name,
-            telegramPhotoUrl: telegramData.photo_url,
-          });
-
-          if (result.status === 'success') {
-            toast({ type: 'success', description: `Welcome back, ${telegramData.first_name}!` });
-            await updateSession();
-            setIsAuthenticating(false);
-            router.refresh();
-            onSuccess?.();
-          } else if (result.status === 'needs_email') {
-            console.log('New user detected via widget, creating with dummy email...');
-            
-            const skipResult = await telegramAuth({
-              telegramId: telegramData.id,
-              telegramUsername: telegramData.username,
-              telegramFirstName: telegramData.first_name,
-              telegramLastName: telegramData.last_name,
-              telegramPhotoUrl: telegramData.photo_url,
-              skipEmail: true,
-            });
-
-            if (skipResult.status === 'success') {
-              toast({ type: 'success', description: `Welcome, ${telegramData.first_name}! You can start chatting right away.` });
-              await updateSession();
-              setIsAuthenticating(false);
-              router.refresh();
-              onSuccess?.();
-            } else {
-              toast({ type: 'error', description: 'Failed to complete account setup' });
-              setIsAuthLoading(false);
-            }
-          } else {
-            toast({ type: 'error', description: 'Failed to authenticate with Telegram' });
-            setIsAuthLoading(false);
-          }
-        } catch (error) {
-          console.error('Telegram auth error:', error);
-          toast({ type: 'error', description: 'An error occurred during authentication' });
-          setIsAuthLoading(false);
-        } finally {
-          setIsAuthenticating(false);
-        }
-      };
-    }
-  }, []); // Empty dependency array - only run once
-
-  // Load Telegram Login Widget script
-  useEffect(() => {
-    // Only load widget if not in Telegram Mini App
-    if (!isTelegramAvailable && !isLoading && !error && !widgetLoaded) {
-      console.log('[TelegramAuthButton] Loading Telegram Login Widget...');
-      
-      const script = document.createElement('script');
-      script.src = 'https://telegram.org/js/telegram-widget.js?22';
-      script.async = true;
-      script.setAttribute('data-telegram-login', 'tauhid_app_bot');
-      script.setAttribute('data-size', 'large');
-      script.setAttribute('data-onauth', 'onTelegramAuth');
-      script.setAttribute('data-request-access', 'write');
-      
-      script.onload = () => {
-        console.log('[TelegramAuthButton] Telegram widget script loaded successfully');
-        setWidgetLoaded(true);
-      };
-      
-      script.onerror = (error) => {
-        console.error('[TelegramAuthButton] Failed to load Telegram widget script:', error);
-      };
-      
-      // Add the script to a container
-      const container = document.getElementById('telegram-login-container');
-      if (container && !container.hasChildNodes()) {
-        container.appendChild(script);
-        console.log('[TelegramAuthButton] Telegram widget script added to DOM');
-      } else if (!container) {
-        console.error('[TelegramAuthButton] Container element not found');
-      }
-    }
-  }, [isTelegramAvailable, isLoading, error, widgetLoaded]);
 
   const handleTelegramAuth = async () => {
     if (!user) {
@@ -157,6 +45,7 @@ export const TelegramAuthButton = ({ onSuccess }: TelegramAuthButtonProps) => {
         router.refresh();
         onSuccess?.();
       } else if (result.status === 'needs_email') {
+        // User exists but needs email/password for web access
         setShowEmailForm(true);
       } else {
         toast({ type: 'error', description: 'Failed to authenticate with Telegram' });
@@ -178,6 +67,7 @@ export const TelegramAuthButton = ({ onSuccess }: TelegramAuthButtonProps) => {
     if (!user) return;
 
     try {
+      // Create user with dummy email and sign them in
       const result = await telegramAuth({
         telegramId: user.id,
         telegramUsername: user.username,
@@ -215,79 +105,40 @@ export const TelegramAuthButton = ({ onSuccess }: TelegramAuthButtonProps) => {
     );
   }
 
-  // If in Telegram Mini App, show the original button
-  if (isTelegramAvailable) {
+  if (error || !isTelegramAvailable) {
     return (
-      <>
-        <button
-          onClick={handleTelegramAuth}
-          disabled={isAuthenticating}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white rounded-lg transition-colors"
-        >
-          {isAuthenticating ? (
-            <>
-              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-              Authenticating...
-            </>
-          ) : (
-            <>
-              <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 0C5.374 0 0 5.373 0 12s5.374 12 12 12 12-5.373 12-12S18.626 0 12 0zm5.568 8.16c-.169 1.858-.896 6.728-.896 6.728-.896 6.728-1.268 7.928-1.268 7.928-.16.906-.923 1.101-1.517.683 0 0-2.271-1.702-3.414-2.559-.24-.18-.513-.54-.24-.96l2.34-2.277c.26-.252.52-.756 0-.756-.52 0-3.414 2.277-3.414 2.277-.817.533-1.75.684-1.75.684l-3.293-.906s-.414-.252-.274-.756c.14-.504.793-.756.793-.756s7.776-2.834 10.428-3.788c.793-.286 1.793-.133 1.793 1.125z"/>
-              </svg>
-              Continue with Telegram
-            </>
-          )}
-        </button>
-
-        {showEmailForm && user && (
-          <TelegramEmailForm 
-            telegramUser={user} 
-            onComplete={handleEmailFormComplete}
-            onSkip={handleEmailFormSkip}
-          />
-        )}
-      </>
+      <div className="w-full p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-700">
+        <p className="font-medium">Telegram authentication unavailable</p>
+        <p className="text-xs mt-1">This feature is only available in Telegram Mini Apps</p>
+      </div>
     );
   }
 
-  // For regular browsers, show the Telegram Login Widget
   return (
     <>
-      <div className="w-full">
-        {(isAuthenticating || isAuthLoading) && (
-          <div className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-100 text-blue-600 rounded-lg mb-2">
-            <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
-            {isAuthLoading && !isAuthenticating ? 'Loading Chat...' : 'Authenticating with Telegram...'}
-          </div>
+      <button
+        onClick={handleTelegramAuth}
+        disabled={isAuthenticating}
+        className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white rounded-lg transition-colors"
+      >
+        {isAuthenticating ? (
+          <>
+            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            Authenticating...
+          </>
+        ) : (
+          <>
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 0C5.374 0 0 5.373 0 12s5.374 12 12 12 12-5.373 12-12S18.626 0 12 0zm5.568 8.16c-.169 1.858-.896 6.728-.896 6.728-.896 6.728-1.268 7.928-1.268 7.928-.16.906-.923 1.101-1.517.683 0 0-2.271-1.702-3.414-2.559-.24-.18-.513-.54-.24-.96l2.34-2.277c.26-.252.52-.756 0-.756-.52 0-3.414 2.277-3.414 2.277-.817.533-1.75.684-1.75.684l-3.293-.906s-.414-.252-.274-.756c.14-.504.793-.756.793-.756s7.776-2.834 10.428-3.788c.793-.286 1.793-.133 1.793 1.125z"/>
+            </svg>
+            Continue with Telegram
+          </>
         )}
-        
-        <div 
-          id="telegram-login-container" 
-          className="w-full flex justify-center"
-          style={{ minHeight: '40px' }}
-          onClick={(e) => {
-            console.log('[TelegramAuthButton] Widget container clicked', e.target);
-            console.log('[TelegramAuthButton] onTelegramAuth function exists:', typeof (window as any).onTelegramAuth);
-          }}
-        />
-        
-        {!widgetLoaded && !isAuthenticating && !isAuthLoading && (
-          <div className="w-full p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
-            <p className="font-medium">Loading Telegram Login...</p>
-            <p className="text-xs mt-1">Please wait while we load the Telegram authentication widget</p>
-          </div>
-        )}
-      </div>
+      </button>
 
-      {showEmailForm && (
+      {showEmailForm && user && (
         <TelegramEmailForm 
-          telegramUser={{
-            id: 0, // Will be set by the callback
-            first_name: '',
-            last_name: '',
-            username: '',
-            photo_url: ''
-          }} 
+          telegramUser={user} 
           onComplete={handleEmailFormComplete}
           onSkip={handleEmailFormSkip}
         />

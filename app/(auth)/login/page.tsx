@@ -8,7 +8,6 @@ import Image from 'next/image';
 
 import { AuthForm } from '@/components/auth-form';
 import { SubmitButton } from '@/components/submit-button';
-import { TelegramAuthButton } from '@/components/TelegramAuthButton';
 
 import { login, type LoginActionState } from '../actions';
 import { useSession } from 'next-auth/react';
@@ -67,23 +66,6 @@ export default function Page() {
                 <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
                   Sign in to your account with email and password
                 </p>
-              </div>
-
-              {/* Telegram Login Button */}
-              <div className="space-y-4">
-                <TelegramAuthButton onSuccess={() => router.refresh()} />
-                
-                {/* Divider */}
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <span className="w-full border-t border-gray-300 dark:border-gray-600" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-white dark:bg-gray-800 px-2 text-gray-500 dark:text-gray-400">
-                      Or continue with email
-                    </span>
-                  </div>
-                </div>
               </div>
 
               {/* Email/Password Form */}

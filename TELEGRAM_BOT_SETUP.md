@@ -4,29 +4,7 @@ This is a simple Telegram echo bot that will later be enhanced to call your exte
 
 ## Bot Token
 - **Bot Token**: `7649122639:AAG50HM5qrVYh2hZ4NJj1S6PiLnBcsHEUeA`
-- **Bot Username**: `tauhid_app_bot`
-
-## Setting Up Telegram Login Widget
-
-To enable Telegram login on your website, you need to configure the domain with BotFather:
-
-### 1. Configure Domain with BotFather
-1. Open Telegram and message @BotFather
-2. Send the command: `/setdomain`
-3. Select your bot: `tauhid_app_bot`
-4. Enter your domain (for production): `tauhid2.onrender.com`
-   - For local development, you can use: `localhost:3000`
-5. BotFather will confirm the domain is set
-
-### 2. Test the Login Widget
-- The login widget will now appear on your login and register pages
-- Users can click "Login with Telegram" to authenticate
-- The widget works in regular web browsers (not just Telegram Mini Apps)
-
-### 3. Domain Requirements
-- **Production**: Must use HTTPS (HTTP will not work)
-- **Development**: localhost is allowed for testing
-- **Multiple domains**: You can set multiple domains by repeating the `/setdomain` command
+- **Bot Username**: You can find this by messaging @BotFather
 
 ## Files Created
 
