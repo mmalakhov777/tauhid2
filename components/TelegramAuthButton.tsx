@@ -33,46 +33,12 @@ export const TelegramAuthButton = ({ onSuccess }: TelegramAuthButtonProps) => {
   const { update: updateSession } = useSession();
   const { isAuthLoading, setIsAuthLoading } = useAuthLoading();
 
-  // Load Telegram Login Widget script
+  // Global callback function for Telegram Login Widget - must be set before script loads
   useEffect(() => {
-    // Only load widget if not in Telegram Mini App
-    if (!isTelegramAvailable && !isLoading && !error) {
-      console.log('[TelegramAuthButton] Loading Telegram Login Widget...');
-      
-      const script = document.createElement('script');
-      script.src = 'https://telegram.org/js/telegram-widget.js?22';
-      script.async = true;
-      script.setAttribute('data-telegram-login', 'tauhid_app_bot');
-      script.setAttribute('data-size', 'large');
-      script.setAttribute('data-onauth', 'onTelegramAuth');
-      script.setAttribute('data-request-access', 'write');
-      
-      script.onload = () => {
-        console.log('[TelegramAuthButton] Telegram widget script loaded successfully');
-        setWidgetLoaded(true);
-      };
-      
-      script.onerror = (error) => {
-        console.error('[TelegramAuthButton] Failed to load Telegram widget script:', error);
-      };
-      
-      // Add the script to a container
-      const container = document.getElementById('telegram-login-container');
-      if (container && !container.hasChildNodes()) {
-        container.appendChild(script);
-        console.log('[TelegramAuthButton] Telegram widget script added to DOM');
-      } else if (!container) {
-        console.error('[TelegramAuthButton] Container element not found');
-      } else {
-        console.log('[TelegramAuthButton] Widget already loaded');
-        setWidgetLoaded(true);
-      }
-    }
-  }, [isTelegramAvailable, isLoading, error]);
-
-  // Global callback function for Telegram Login Widget
-  useEffect(() => {
+    console.log('[TelegramAuthButton] Setting up global onTelegramAuth callback');
+    
     (window as any).onTelegramAuth = async (telegramData: TelegramLoginData) => {
+      console.log('[TelegramAuthButton] onTelegramAuth callback triggered with data:', telegramData);
       setIsAuthenticating(true);
       setIsAuthLoading(true); // Set global loading state like TelegramAutoAuth
       
@@ -133,9 +99,47 @@ export const TelegramAuthButton = ({ onSuccess }: TelegramAuthButtonProps) => {
 
     return () => {
       // Cleanup
+      console.log('[TelegramAuthButton] Cleaning up onTelegramAuth callback');
       delete (window as any).onTelegramAuth;
     };
   }, [updateSession, router, onSuccess, setIsAuthLoading]);
+
+  // Load Telegram Login Widget script - after callback is set
+  useEffect(() => {
+    // Only load widget if not in Telegram Mini App and callback is ready
+    if (!isTelegramAvailable && !isLoading && !error && (window as any).onTelegramAuth) {
+      console.log('[TelegramAuthButton] Loading Telegram Login Widget...');
+      
+      const script = document.createElement('script');
+      script.src = 'https://telegram.org/js/telegram-widget.js?22';
+      script.async = true;
+      script.setAttribute('data-telegram-login', 'tauhid_app_bot');
+      script.setAttribute('data-size', 'large');
+      script.setAttribute('data-onauth', 'onTelegramAuth');
+      script.setAttribute('data-request-access', 'write');
+      
+      script.onload = () => {
+        console.log('[TelegramAuthButton] Telegram widget script loaded successfully');
+        setWidgetLoaded(true);
+      };
+      
+      script.onerror = (error) => {
+        console.error('[TelegramAuthButton] Failed to load Telegram widget script:', error);
+      };
+      
+      // Add the script to a container
+      const container = document.getElementById('telegram-login-container');
+      if (container && !container.hasChildNodes()) {
+        container.appendChild(script);
+        console.log('[TelegramAuthButton] Telegram widget script added to DOM');
+      } else if (!container) {
+        console.error('[TelegramAuthButton] Container element not found');
+      } else {
+        console.log('[TelegramAuthButton] Widget already loaded');
+        setWidgetLoaded(true);
+      }
+    }
+  }, [isTelegramAvailable, isLoading, error]);
 
   const handleTelegramAuth = async () => {
     if (!user) {
@@ -271,6 +275,10 @@ export const TelegramAuthButton = ({ onSuccess }: TelegramAuthButtonProps) => {
           id="telegram-login-container" 
           className="w-full flex justify-center"
           style={{ minHeight: '40px' }}
+          onClick={(e) => {
+            console.log('[TelegramAuthButton] Widget container clicked', e.target);
+            console.log('[TelegramAuthButton] onTelegramAuth function exists:', typeof (window as any).onTelegramAuth);
+          }}
         />
         
         {!widgetLoaded && !isAuthenticating && !isAuthLoading && (
