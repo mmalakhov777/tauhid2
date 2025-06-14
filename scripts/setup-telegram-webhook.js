@@ -2,7 +2,7 @@ const TELEGRAM_BOT_TOKEN = '7649122639:AAG50HM5qrVYh2hZ4NJj1S6PiLnBcsHEUeA';
 const TELEGRAM_API_URL = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
 
 // You'll need to replace this with your actual Vercel URL when deployed
-const WEBHOOK_URL = process.env.WEBHOOK_URL || 'https://your-app.vercel.app/api/telegram/webhook';
+const WEBHOOK_URL = process.env.WEBHOOK_URL || 'https://thd2.vercel.app/api/telegram/webhook';
 
 async function setWebhook() {
   try {
