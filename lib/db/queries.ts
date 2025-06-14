@@ -1263,28 +1263,6 @@ export async function getUserMessageBalance(userId: string): Promise<{
       throw new ChatSDKError('bad_request:database', 'User not found');
     }
 
-    // Check if the new columns exist (migration has been run)
-    const userRecordAny = userRecord as any;
-    const hasTrialBalanceColumns = 'trialMessagesRemaining' in userRecordAny && 
-                                   'trialLastResetAt' in userRecordAny && 
-                                   'paidMessagesRemaining' in userRecordAny;
-
-    if (!hasTrialBalanceColumns) {
-      console.log('[getUserMessageBalance] Trial balance columns not found, migration needed. Using default values.');
-      
-      // Determine trial amount based on user type for new system
-      const isGuest = userRecord.email.startsWith('guest-') || userRecord.email.includes('@telegram.local');
-      const userType = isGuest ? 'guest' : 'regular';
-      const entitlements = entitlementsByUserType[userType];
-      
-      return {
-        trialMessagesRemaining: entitlements.trialMessagesPerDay, // Give full trial amount
-        paidMessagesRemaining: 0, // No paid messages yet
-        totalMessagesRemaining: entitlements.trialMessagesPerDay,
-        needsReset: false // Fresh start
-      };
-    }
-
     // Check if trial needs daily reset
     const now = new Date();
     const lastReset = userRecord.trialLastResetAt || new Date(0);
@@ -1316,15 +1294,7 @@ export async function getUserMessageBalance(userId: string): Promise<{
     };
   } catch (error) {
     console.error('Error getting user message balance:', error);
-    
-    // If there's a database error, provide fallback values to prevent system failure
-    console.log('[getUserMessageBalance] Database error, providing fallback values');
-    return {
-      trialMessagesRemaining: 2, // Default guest trial amount
-      paidMessagesRemaining: 0,
-      totalMessagesRemaining: 2,
-      needsReset: false
-    };
+    throw new ChatSDKError('bad_request:database', 'Failed to get user message balance');
   }
 }
 
@@ -1337,16 +1307,6 @@ export async function resetDailyTrialBalance(userId: string): Promise<void> {
     
     if (!userRecord) {
       throw new ChatSDKError('bad_request:database', 'User not found');
-    }
-
-    // Check if the new columns exist (migration has been run)
-    const userRecordAny = userRecord as any;
-    const hasTrialBalanceColumns = 'trialMessagesRemaining' in userRecordAny && 
-                                   'trialLastResetAt' in userRecordAny;
-
-    if (!hasTrialBalanceColumns) {
-      console.log('[resetDailyTrialBalance] Trial balance columns not found, migration needed. Skipping reset.');
-      return; // Gracefully skip if migration hasn't been run
     }
 
     // Determine trial amount based on user type
@@ -1367,8 +1327,7 @@ export async function resetDailyTrialBalance(userId: string): Promise<void> {
     }
   } catch (error) {
     console.error('Error resetting daily trial balance:', error);
-    console.log('[resetDailyTrialBalance] Gracefully handling error, skipping reset');
-    // Don't throw error to prevent system failure
+    throw new ChatSDKError('bad_request:database', 'Failed to reset daily trial balance');
   }
 }
 
@@ -1401,26 +1360,6 @@ export async function consumeUserMessage(userId: string): Promise<{
       };
     }
 
-    // Check if we can actually update the database (migration has been run)
-    const [userRecord] = await db.select().from(user).where(eq(user.id, userId));
-    if (!userRecord) {
-      throw new ChatSDKError('bad_request:database', 'User not found');
-    }
-
-    const userRecordAny = userRecord as any;
-    const hasTrialBalanceColumns = 'trialMessagesRemaining' in userRecordAny && 
-                                   'paidMessagesRemaining' in userRecordAny;
-
-    if (!hasTrialBalanceColumns) {
-      console.log('[consumeUserMessage] Trial balance columns not found, migration needed. Allowing message but not updating balance.');
-      // Allow the message to go through but don't update balance
-      return {
-        success: true,
-        remainingMessages: balance.totalMessagesRemaining - 1,
-        usedTrial: true // Assume trial for fallback
-      };
-    }
-
     // Consume from trial first, then paid
     let usedTrial = false;
     if (balance.trialMessagesRemaining > 0) {
@@ -1450,14 +1389,7 @@ export async function consumeUserMessage(userId: string): Promise<{
     };
   } catch (error) {
     console.error('Error consuming user message:', error);
-    console.log('[consumeUserMessage] Database error, allowing message to proceed with fallback');
-    
-    // Fallback: allow the message to go through
-    return {
-      success: true,
-      remainingMessages: 1, // Assume they have messages left
-      usedTrial: true
-    };
+    throw new ChatSDKError('bad_request:database', 'Failed to consume user message');
   }
 }
 
@@ -1472,19 +1404,8 @@ export async function addPaidMessages(userId: string, messageCount: number): Pro
       throw new ChatSDKError('bad_request:database', 'User not found');
     }
 
-    // Check if the new columns exist (migration has been run)
-    const userRecordAny = userRecord as any;
-    const hasPaymentColumns = 'paidMessagesRemaining' in userRecordAny && 
-                              'totalMessagesPurchased' in userRecordAny && 
-                              'lastPurchaseAt' in userRecordAny;
-
-    if (!hasPaymentColumns) {
-      console.log('[addPaidMessages] Payment columns not found, migration needed. Cannot add paid messages.');
-      throw new ChatSDKError('bad_request:database', 'Payment system not available - migration required');
-    }
-
-    const currentPaidMessages = userRecordAny.paidMessagesRemaining || 0;
-    const currentTotalPurchased = userRecordAny.totalMessagesPurchased || 0;
+    const currentPaidMessages = userRecord.paidMessagesRemaining || 0;
+    const currentTotalPurchased = userRecord.totalMessagesPurchased || 0;
 
     await db
       .update(user)

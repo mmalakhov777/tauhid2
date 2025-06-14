@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateUUID } from '@/lib/utils';
 import { createHash } from 'crypto';
-import { getUserByTelegramId, useTelegramBindingCode, getUserMessageBalance, addPaidMessages, recordStarPayment } from '@/lib/db/queries';
+import { getUserByTelegramId, useTelegramBindingCode } from '@/lib/db/queries';
 import { telegramAuth } from '@/app/(auth)/actions';
 import { getUserLanguage, getTranslations, formatText } from '@/lib/telegram-translations';
-import { PAYMENT_CONFIG } from '@/lib/ai/entitlements';
 
 const TELEGRAM_BOT_TOKEN = '7649122639:AAG50HM5qrVYh2hZ4NJj1S6PiLnBcsHEUeA';
 const TELEGRAM_API_URL = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
@@ -79,25 +78,6 @@ interface TelegramMessage {
 interface TelegramUpdate {
   update_id: number;
   message?: TelegramMessage;
-  callback_query?: {
-    id: string;
-    from: {
-      id: number;
-      is_bot: boolean;
-      first_name: string;
-      username?: string;
-      language_code?: string;
-    };
-    message?: TelegramMessage;
-    data?: string;
-  };
-  successful_payment?: {
-    currency: string;
-    total_amount: number;
-    invoice_payload: string;
-    telegram_payment_charge_id: string;
-    provider_payment_charge_id: string;
-  };
 }
 
 // Generate deterministic UUID from string (for consistent chat/user IDs)
@@ -525,359 +505,11 @@ async function callExternalChatAPI(userMessage: string, userId: string, chatId: 
   }
 }
 
-// =============================================================================
-// TELEGRAM STARS PAYMENT FUNCTIONS
-// =============================================================================
-
-async function sendInvoice(chatId: number, packageInfo: { messages: number; stars: number; bonus: number; popular: boolean }) {
-  try {
-    if (TEST_MODE) {
-      console.log(`[TEST MODE] Would send invoice to chat ${chatId}:`, packageInfo);
-      return { ok: true, result: { message_id: Date.now() } };
-    }
-
-    const totalMessages = packageInfo.messages + packageInfo.bonus;
-    const title = `${packageInfo.messages} Messages${packageInfo.bonus > 0 ? ` + ${packageInfo.bonus} Bonus` : ''}`;
-    const description = `Get ${totalMessages} additional messages for your Islamic Knowledge Assistant. Each message costs ${PAYMENT_CONFIG.STARS_PER_MESSAGE} stars.${packageInfo.bonus > 0 ? ` Includes ${packageInfo.bonus} bonus messages!` : ''}`;
-    
-    const payload = JSON.stringify({
-      packageMessages: packageInfo.messages,
-      bonusMessages: packageInfo.bonus,
-      totalStars: packageInfo.stars,
-      timestamp: Date.now()
-    });
-
-    const response = await fetch(`${TELEGRAM_API_URL}/sendInvoice`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        chat_id: chatId,
-        title: title,
-        description: description,
-        payload: payload,
-        currency: 'XTR', // Telegram Stars currency
-        prices: [
-          {
-            label: `${totalMessages} Messages`,
-            amount: packageInfo.stars
-          }
-        ],
-        photo_url: 'https://tauhid2.onrender.com/images/payment-icon.png', // Optional: Add a payment icon
-        photo_width: 512,
-        photo_height: 512,
-        need_name: false,
-        need_phone_number: false,
-        need_email: false,
-        need_shipping_address: false,
-        send_phone_number_to_provider: false,
-        send_email_to_provider: false,
-        is_flexible: false,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Failed to send invoice:', errorText);
-      throw new Error(`Telegram API error: ${response.status} - ${errorText}`);
-    }
-
-    return response.json();
-  } catch (error) {
-    console.error('Error sending invoice:', error);
-    throw error;
-  }
-}
-
-async function handleSuccessfulPayment(telegramUserId: number, paymentInfo: any, dbUser: any) {
-  try {
-    console.log('[Telegram Stars] Processing successful payment:', {
-      telegramUserId,
-      paymentChargeId: paymentInfo.telegram_payment_charge_id,
-      totalAmount: paymentInfo.total_amount,
-      payload: paymentInfo.invoice_payload
-    });
-
-    // Parse the payload to get package details
-    const payload = JSON.parse(paymentInfo.invoice_payload);
-    const totalMessages = payload.packageMessages + payload.bonusMessages;
-    const starAmount = payload.totalStars;
-
-    // Record the payment in database
-    await recordStarPayment({
-      userId: dbUser.id,
-      telegramPaymentChargeId: paymentInfo.telegram_payment_charge_id,
-      starAmount: starAmount,
-      messagesAdded: totalMessages,
-    });
-
-    // Add messages to user's balance
-    await addPaidMessages(dbUser.id, totalMessages);
-
-    console.log(`[Telegram Stars] Successfully added ${totalMessages} messages to user ${dbUser.id}`);
-
-    return {
-      success: true,
-      messagesAdded: totalMessages,
-      starAmount: starAmount
-    };
-  } catch (error) {
-    console.error('[Telegram Stars] Error processing payment:', error);
-    throw error;
-  }
-}
-
-async function showPaymentPackages(chatId: number, userLanguage: string = 'en') {
-  try {
-    const t = getTranslations(userLanguage);
-    
-    // Get user's current balance
-    let balanceInfo = '';
-    try {
-      const users = await getUserByTelegramId(chatId); // Using chatId as telegramUserId for direct messages
-      if (users.length > 0) {
-        const balance = await getUserMessageBalance(users[0].id);
-        balanceInfo = `\n💬 *Current Balance:* ${balance.totalMessagesRemaining} messages (${balance.trialMessagesRemaining} trial + ${balance.paidMessagesRemaining} paid)`;
-      }
-    } catch (error) {
-      console.log('[Telegram Stars] Could not fetch balance for payment menu:', error);
-      // Check if it's a migration-related error
-      if (error instanceof Error && error.message.includes('migration')) {
-        throw new Error('Payment system migration in progress');
-      }
-    }
-
-    const paymentText = `⭐ *Buy Additional Messages with Telegram Stars*
-
-Need more messages? Purchase additional messages using Telegram Stars!${balanceInfo}
-
-💰 *Available Packages:*
-
-${PAYMENT_CONFIG.PACKAGES.map((pkg, index) => {
-      const totalMessages = pkg.messages + pkg.bonus;
-      const starsPerMessage = (pkg.stars / totalMessages).toFixed(1);
-      const popularBadge = pkg.popular ? ' 🔥 *POPULAR*' : '';
-      const bonusText = pkg.bonus > 0 ? ` + ${pkg.bonus} bonus` : '';
-      
-      return `${index + 1}. **${pkg.messages}${bonusText} messages** - ${pkg.stars} ⭐
-   _${starsPerMessage} stars per message_${popularBadge}`;
-    }).join('\n\n')}
-
-💡 *How it works:*
-1. Choose a package below
-2. Pay with Telegram Stars
-3. Messages are added instantly to your account
-4. Use them anytime - they never expire!
-
-🌟 *Why buy more messages?*
-• Get detailed Islamic guidance
-• Access comprehensive Quran & Hadith references
-• Explore Risale-i Nur collection
-• No daily limits on purchased messages
-
-Choose a package to get started:`;
-
-    const keyboard = {
-      inline_keyboard: [
-        // Create rows of 2 packages each
-        ...PAYMENT_CONFIG.PACKAGES.reduce((rows: any[], pkg, index) => {
-          const totalMessages = pkg.messages + pkg.bonus;
-          const bonusText = pkg.bonus > 0 ? `+${pkg.bonus}` : '';
-          const popularEmoji = pkg.popular ? '🔥 ' : '';
-          
-          const button = {
-            text: `${popularEmoji}${pkg.messages}${bonusText} msgs - ${pkg.stars}⭐`,
-            callback_data: `buy_${index}`
-          };
-          
-          if (index % 2 === 0) {
-            // Start new row
-            rows.push([button]);
-          } else {
-            // Add to current row
-            rows[rows.length - 1].push(button);
-          }
-          
-          return rows;
-        }, []),
-        [
-          {
-            text: '💬 Check Balance',
-            callback_data: 'check_balance'
-          },
-          {
-            text: '❌ Cancel',
-            callback_data: 'cancel_payment'
-          }
-        ]
-      ]
-    };
-
-    const response = await fetch(`${TELEGRAM_API_URL}/sendMessage`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: paymentText,
-        parse_mode: 'Markdown',
-        reply_markup: keyboard
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Failed to send payment packages:', errorText);
-      throw new Error(`Telegram API error: ${response.status} - ${errorText}`);
-    }
-
-    return response.json();
-  } catch (error) {
-    console.error('Error showing payment packages:', error);
-    throw error;
-  }
-}
-
 export async function POST(request: NextRequest) {
   try {
     const body: TelegramUpdate = await request.json();
     
     console.log('Received Telegram update:', JSON.stringify(body, null, 2));
-
-    // Handle callback queries (inline keyboard button presses)
-    if (body.callback_query) {
-      const callbackQuery = body.callback_query;
-      const chatId = callbackQuery.message?.chat.id;
-      const telegramUserId = callbackQuery.from.id;
-      const callbackData = callbackQuery.data;
-      
-      console.log(`[Telegram Bot] Callback query from user ${telegramUserId}: ${callbackData}`);
-
-      if (!chatId || !callbackData) {
-        return NextResponse.json({ ok: true });
-      }
-
-      // Answer the callback query to remove loading state
-      await fetch(`${TELEGRAM_API_URL}/answerCallbackQuery`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          callback_query_id: callbackQuery.id,
-          text: 'Processing...'
-        }),
-      });
-
-      // Handle different callback actions
-      if (callbackData.startsWith('buy_')) {
-        // Extract package index
-        const packageIndex = parseInt(callbackData.replace('buy_', ''));
-        const packageInfo = PAYMENT_CONFIG.PACKAGES[packageIndex];
-        
-        if (packageInfo) {
-          console.log(`[Telegram Stars] User ${telegramUserId} selected package:`, packageInfo);
-          
-          // Send invoice for the selected package
-          try {
-            await sendInvoice(chatId, packageInfo);
-            console.log(`[Telegram Stars] Invoice sent successfully for package ${packageIndex}`);
-          } catch (error) {
-            console.error(`[Telegram Stars] Failed to send invoice:`, error);
-            await sendMessage(chatId, '❌ Sorry, there was an error creating the payment. Please try again later.', 'Markdown');
-          }
-        }
-      } else if (callbackData === 'check_balance') {
-        // Show user's current balance
-        try {
-          const users = await getUserByTelegramId(telegramUserId);
-          if (users.length > 0) {
-            const balance = await getUserMessageBalance(users[0].id);
-            const balanceText = `💬 *Your Current Balance*
-
-📊 **Total Messages:** ${balance.totalMessagesRemaining}
-🆓 **Trial Messages:** ${balance.trialMessagesRemaining} (resets daily)
-💰 **Paid Messages:** ${balance.paidMessagesRemaining} (never expire)
-
-${balance.needsReset ? '🔄 *Your trial balance will reset soon!*' : ''}
-
-💡 *Need more messages?* Use the buttons below to purchase additional messages with Telegram Stars.`;
-
-            await sendMessage(chatId, balanceText, 'Markdown');
-          } else {
-            await sendMessage(chatId, '❌ Could not retrieve your balance. Please try again.', 'Markdown');
-          }
-        } catch (error) {
-          console.error('[Telegram Stars] Error checking balance:', error);
-          await sendMessage(chatId, '❌ Could not retrieve your balance. Please try again.', 'Markdown');
-        }
-             } else if (callbackData === 'cancel_payment') {
-         await sendMessage(chatId, '❌ Payment cancelled. You can buy messages anytime by typing `/buy` or when you run out of messages.', 'Markdown');
-       } else if (callbackData === 'show_payment_packages') {
-         // Show payment packages
-         const userLanguage = getUserLanguage(callbackQuery.from.language_code);
-         try {
-           await showPaymentPackages(chatId, userLanguage);
-           console.log(`[Telegram Stars] Payment packages shown to user ${telegramUserId} via callback`);
-         } catch (error) {
-           console.error('[Telegram Stars] Error showing payment packages via callback:', error);
-           await sendMessage(chatId, '❌ Sorry, there was an error showing the payment options. Please try again later.', 'Markdown');
-         }
-       }
-
-      return NextResponse.json({ ok: true, callback_handled: true });
-    }
-
-    // Handle successful payments
-    if (body.successful_payment) {
-      console.log('[Telegram Stars] Successful payment received:', body.successful_payment);
-      
-      // We need to get the message that contains the successful payment
-      // This will be in the message field of the update
-      if (body.message) {
-        const chatId = body.message.chat.id;
-        const telegramUserId = body.message.from.id;
-        
-        try {
-          // Look up user in database
-          const users = await getUserByTelegramId(telegramUserId);
-          if (users.length === 0) {
-            console.error('[Telegram Stars] User not found in database for payment processing');
-            await sendMessage(chatId, '❌ Payment received but user not found. Please contact support.', 'Markdown');
-            return NextResponse.json({ ok: true, error: 'User not found' });
-          }
-          
-          const dbUser = users[0];
-          
-          // Process the payment
-          const paymentResult = await handleSuccessfulPayment(telegramUserId, body.successful_payment, dbUser);
-          
-          if (paymentResult.success) {
-            // Send success message
-            const successText = `✅ *Payment Successful!*
-
-🎉 **${paymentResult.messagesAdded} messages** have been added to your account!
-⭐ **${paymentResult.starAmount} Telegram Stars** charged
-
-💬 *Your messages are ready to use and never expire.*
-🚀 *Start chatting to get detailed Islamic guidance!*
-
-Thank you for your purchase! 🌟`;
-
-            await sendMessage(chatId, successText, 'Markdown');
-            
-            console.log(`[Telegram Stars] Payment processed successfully for user ${telegramUserId}: ${paymentResult.messagesAdded} messages added`);
-          } else {
-            await sendMessage(chatId, '❌ Payment received but there was an error adding messages to your account. Please contact support.', 'Markdown');
-          }
-        } catch (error) {
-          console.error('[Telegram Stars] Error processing successful payment:', error);
-          await sendMessage(chatId, '❌ Payment received but there was an error processing it. Please contact support.', 'Markdown');
-        }
-      }
-      
-      return NextResponse.json({ ok: true, payment_processed: true });
-    }
 
     // Check if we have a message
     if (!body.message) {
@@ -1142,34 +774,115 @@ Thank you for your purchase! 🌟`;
     }
 
     // Handle special commands
+    if (userText === '/debug') {
+      // Debug command to show user's trial balance
+      if (!dbUser || !dbUser.id) {
+        await sendMessage(chatId, '❌ Debug error: User not found in database', 'Markdown');
+        return NextResponse.json({ ok: true, message_sent: true, debug_error: true });
+      }
+      
+      try {
+        const { getUserMessageBalance } = await import('@/lib/db/queries');
+        const balance = await getUserMessageBalance(dbUser.id);
+        
+        const debugInfo = `🔧 *Debug Information*
+
+*User Details:*
+• Database ID: \`${dbUser.id}\`
+• Email: \`${dbUser.email}\`
+• Telegram ID: \`${telegramUserId}\`
+• Username: @${dbUser.telegramUsername || 'none'}
+• First Name: ${dbUser.telegramFirstName || 'none'}
+
+*Trial Balance:*
+• Trial Messages Remaining: ${balance.trialMessagesRemaining}
+• Paid Messages Remaining: ${balance.paidMessagesRemaining}
+• Total Messages Available: ${balance.totalMessagesRemaining}
+• Needs Daily Reset: ${balance.needsReset ? 'Yes' : 'No'}
+• Last Reset: ${dbUser.trialLastResetAt ? new Date(dbUser.trialLastResetAt).toLocaleString() : 'Never'}
+
+*User Type:*
+• Is Guest: ${dbUser.email.startsWith('guest-') || dbUser.email.includes('@telegram.local') ? 'Yes' : 'No'}
+• Expected Trial Messages/Day: ${dbUser.email.startsWith('guest-') || dbUser.email.includes('@telegram.local') ? '2' : '5'}
+
+*System Status:*
+• Trial Balance System: Enabled
+• Current Time: ${new Date().toLocaleString()}`;
+
+        await sendMessage(chatId, debugInfo, 'Markdown');
+        return NextResponse.json({ ok: true, message_sent: true, debug_info: true });
+      } catch (error) {
+        console.error('[Telegram Bot] Debug command error:', error);
+        await sendMessage(chatId, `❌ Debug error: ${error instanceof Error ? error.message : 'Unknown error'}`, 'Markdown');
+        return NextResponse.json({ ok: true, message_sent: true, debug_error: true });
+      }
+    }
+
+    if (userText === '/reset') {
+      // Debug command to manually reset trial balance
+      if (!dbUser || !dbUser.id) {
+        await sendMessage(chatId, '❌ Reset error: User not found in database', 'Markdown');
+        return NextResponse.json({ ok: true, message_sent: true, reset_error: true });
+      }
+      
+      try {
+        const { resetDailyTrialBalance } = await import('@/lib/db/queries');
+        await resetDailyTrialBalance(dbUser.id);
+        
+        const resetInfo = `✅ *Trial Balance Reset*
+
+Your daily trial balance has been manually reset!
+
+Use \`/debug\` to see your updated balance.`;
+
+        await sendMessage(chatId, resetInfo, 'Markdown');
+        return NextResponse.json({ ok: true, message_sent: true, balance_reset: true });
+      } catch (error) {
+        console.error('[Telegram Bot] Reset command error:', error);
+        await sendMessage(chatId, `❌ Reset error: ${error instanceof Error ? error.message : 'Unknown error'}`, 'Markdown');
+        return NextResponse.json({ ok: true, message_sent: true, reset_error: true });
+      }
+    }
+
+    if (userText === '/balance') {
+      // Simple balance check command
+      if (!dbUser || !dbUser.id) {
+        await sendMessage(chatId, '❌ Balance error: User not found in database', 'Markdown');
+        return NextResponse.json({ ok: true, message_sent: true, balance_error: true });
+      }
+      
+      try {
+        const { getUserMessageBalance } = await import('@/lib/db/queries');
+        const balance = await getUserMessageBalance(dbUser.id);
+        
+        const balanceInfo = `💰 *Your Message Balance*
+
+🎯 **Trial Messages:** ${balance.trialMessagesRemaining}
+💎 **Paid Messages:** ${balance.paidMessagesRemaining}
+📊 **Total Available:** ${balance.totalMessagesRemaining}
+
+${balance.needsReset ? '⏰ *Your trial balance will reset soon!*' : '✅ *Trial balance is current*'}
+
+${balance.totalMessagesRemaining === 0 ? '⚠️ *No messages remaining! You can purchase more with Telegram Stars.*' : ''}`;
+
+        await sendMessage(chatId, balanceInfo, 'Markdown');
+        return NextResponse.json({ ok: true, message_sent: true, balance_check: true });
+      } catch (error) {
+        console.error('[Telegram Bot] Balance command error:', error);
+        await sendMessage(chatId, `❌ Balance check error: ${error instanceof Error ? error.message : 'Unknown error'}`, 'Markdown');
+        return NextResponse.json({ ok: true, message_sent: true, balance_error: true });
+      }
+    }
+
     if (userText === '/start') {
       // Get user's language from Telegram data
       const userLanguage = getUserLanguage(message.from.language_code);
       const t = getTranslations(userLanguage);
       
-      // Get user's current balance for welcome message
-      let balanceInfo = '';
-      try {
-        if (dbUser) {
-          const balance = await getUserMessageBalance(dbUser.id);
-          const isGuest = dbUser.email.startsWith('guest-') || dbUser.email.includes('@telegram.local');
-          const userType = isGuest ? 'guest' : 'regular';
-          const dailyLimit = userType === 'guest' ? 2 : 5;
-          
-          balanceInfo = `\n💬 *Your Message Balance:*
-🆓 Trial: ${balance.trialMessagesRemaining}/${dailyLimit} messages (resets daily)
-💰 Paid: ${balance.paidMessagesRemaining} messages (never expire)
-
-`;
-        }
-      } catch (error) {
-        console.log('[Telegram Bot] Could not fetch balance for welcome message:', error);
-      }
-
       const welcomeText = `${formatText(t.welcome.greeting, { userName })}
 
 ${t.welcome.description}
-${balanceInfo}
+
 ${t.welcome.howToAsk}
 ${t.welcome.textMessages}
 ${t.welcome.voiceMessages}
@@ -1193,11 +906,6 @@ ${t.welcome.chatHistory}
 
 ${t.welcome.accessFullService}
 ${t.welcome.menuButton}
-
-💰 *Need More Messages?*
-• Type \`/buy\` to purchase additional messages with Telegram Stars
-• Type \`/balance\` to check your current message balance
-• Purchased messages never expire!
 
 ${t.welcome.exampleQuestions}
 ${t.welcome.prayerExample}
@@ -1233,77 +941,15 @@ ${t.help.commands}
 ${t.help.startCommand}
 ${t.help.helpCommand}
 
+*Debug Commands:*
+• \`/balance\` - Check your message balance
+• \`/debug\` - Show detailed debug information
+• \`/reset\` - Manually reset your daily trial balance
+
 ${t.help.blessing}`;
 
       await sendMessage(chatId, helpText, 'Markdown');
       return NextResponse.json({ ok: true, message_sent: true });
-    }
-
-    // Handle /buy command - show payment packages
-    if (userText === '/buy' || userText.toLowerCase() === 'buy messages' || userText.toLowerCase() === 'buy more messages') {
-      const userLanguage = getUserLanguage(message.from.language_code);
-      
-      try {
-        await showPaymentPackages(chatId, userLanguage);
-        console.log(`[Telegram Stars] Payment packages shown to user ${telegramUserId}`);
-        return NextResponse.json({ ok: true, message_sent: true, payment_menu_shown: true });
-      } catch (error) {
-        console.error('[Telegram Stars] Error showing payment packages:', error);
-        
-        // Check if it's a migration-related error
-        if (error instanceof Error && error.message.includes('migration')) {
-          await sendMessage(chatId, `🔧 *Payment System Updating*
-
-The payment system is currently being updated with new features!
-
-⏳ **What's happening:**
-• Database migration in progress
-• Payment features will be available soon
-• Your current messages are still working
-
-🆓 **For now:**
-• Continue using your daily trial messages
-• Payment system will be restored shortly
-• No action needed from you
-
-Thank you for your patience! 🙏`, 'Markdown');
-        } else {
-          await sendMessage(chatId, '❌ Sorry, there was an error showing the payment options. Please try again later.', 'Markdown');
-        }
-        return NextResponse.json({ ok: true, error: 'Failed to show payment packages' });
-      }
-    }
-
-    // Handle /balance command - show current balance
-    if (userText === '/balance' || userText.toLowerCase() === 'balance' || userText.toLowerCase() === 'my balance') {
-      try {
-        if (dbUser) {
-          const balance = await getUserMessageBalance(dbUser.id);
-          const balanceText = `💬 *Your Message Balance*
-
-📊 **Total Messages Available:** ${balance.totalMessagesRemaining}
-
-🆓 **Trial Messages:** ${balance.trialMessagesRemaining}
-   _Resets daily • Free messages for all users_
-
-💰 **Paid Messages:** ${balance.paidMessagesRemaining}
-   _Never expire • Purchased with Telegram Stars_
-
-${balance.needsReset ? '🔄 *Your trial balance will reset in a few hours!*\n' : ''}
-${balance.totalMessagesRemaining === 0 ? '⚠️ *You have no messages left. Use /buy to purchase more.*' : ''}
-
-💡 *Need more messages?* Type \`/buy\` to see available packages.`;
-
-          await sendMessage(chatId, balanceText, 'Markdown');
-        } else {
-          await sendMessage(chatId, '❌ Could not retrieve your balance. Please try again.', 'Markdown');
-        }
-        return NextResponse.json({ ok: true, message_sent: true, balance_shown: true });
-      } catch (error) {
-        console.error('[Telegram Bot] Error showing balance:', error);
-        await sendMessage(chatId, '❌ Could not retrieve your balance. Please try again.', 'Markdown');
-        return NextResponse.json({ ok: true, error: 'Failed to show balance' });
-      }
     }
 
     // Check if the message is an 8-digit binding code
@@ -1615,6 +1261,24 @@ If the problem persists, please contact support.`;
       }
     }, 1000);
 
+    // Log trial balance before processing message
+    if (dbUser && dbUser.id) {
+      try {
+        const { getUserMessageBalance } = await import('@/lib/db/queries');
+        const balanceBeforeMessage = await getUserMessageBalance(dbUser.id);
+        console.log('[Telegram Bot] User balance before message:', {
+          userId: dbUser.id,
+          email: dbUser.email,
+          trialRemaining: balanceBeforeMessage.trialMessagesRemaining,
+          paidRemaining: balanceBeforeMessage.paidMessagesRemaining,
+          totalRemaining: balanceBeforeMessage.totalMessagesRemaining,
+          needsReset: balanceBeforeMessage.needsReset
+        });
+      } catch (error) {
+        console.log('[Telegram Bot] Error checking balance before message:', error);
+      }
+    }
+
     // Call external chat API with streaming support
     const apiResult = await callExternalChatAPI(userText, userId, chatId.toString(), processingMessage, chatId, dbUser, countdownInterval, t);
 
@@ -1626,72 +1290,17 @@ If the problem persists, please contact support.`;
     if (!apiResult.success) {
       console.error('External chat API failed:', apiResult.error);
       
-      // Check if it's a rate limit error
-      if (apiResult.error && apiResult.error.includes('rate limit')) {
-        console.log('[Telegram Bot] Rate limit detected, showing payment options');
-        
-        // Show rate limit message with payment options
-        const rateLimitText = `⚠️ *Daily Message Limit Reached*
-
-You've used all your free messages for today!
-
-💬 **Your Options:**
-🆓 **Wait for Reset:** Your trial messages will reset in a few hours
-💰 **Buy More Messages:** Get additional messages instantly with Telegram Stars
-
-🌟 **Why buy messages?**
-• No daily limits on purchased messages
-• Messages never expire
-• Instant access to Islamic guidance
-• Support the development of this service
-
-Ready to continue your Islamic learning journey?`;
-
-        await fetch(`${TELEGRAM_API_URL}/editMessageText`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            chat_id: chatId,
-            message_id: processingMessage.result.message_id,
-            text: rateLimitText,
-            parse_mode: 'Markdown',
-            reply_markup: {
-              inline_keyboard: [
-                [
-                  {
-                    text: '⭐ Buy Messages',
-                    callback_data: 'show_payment_packages'
-                  },
-                  {
-                    text: '💬 Check Balance',
-                    callback_data: 'check_balance'
-                  }
-                ],
-                [
-                  {
-                    text: '🌐 Open Web App',
-                    web_app: {
-                      url: BASE_URL
-                    }
-                  }
-                ]
-              ]
-            }
-          }),
-        });
-      } else {
-        // Regular technical error
-        await fetch(`${TELEGRAM_API_URL}/editMessageText`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            chat_id: chatId,
-            message_id: processingMessage.result.message_id,
-            text: t.errors.technicalIssue,
-            parse_mode: 'Markdown'
-          }),
-        });
-      }
+      // Edit the processing message with error
+      await fetch(`${TELEGRAM_API_URL}/editMessageText`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          message_id: processingMessage.result.message_id,
+          text: t.errors.technicalIssue,
+          parse_mode: 'Markdown'
+        }),
+      });
 
       return NextResponse.json({ ok: true, error: apiResult.error });
     }
