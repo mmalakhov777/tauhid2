@@ -781,6 +781,69 @@ export async function POST(request: NextRequest) {
     }
 
     // Handle special commands
+    if (userText === '/migrate') {
+      // Special command to run the migration (only for your Telegram ID)
+      if (telegramUserId !== 321097981) {
+        await sendMessage(chatId, '❌ Unauthorized - This command is only available to the admin', 'Markdown');
+        return NextResponse.json({ ok: true, message_sent: true, unauthorized: true });
+      }
+
+      await sendMessage(chatId, '🚀 Starting database migration...', 'Markdown');
+
+      try {
+        // Import the migration functions directly
+        const { drizzle } = await import('drizzle-orm/postgres-js');
+        const postgres = (await import('postgres')).default;
+        const { sql } = await import('drizzle-orm');
+
+        if (!process.env.POSTGRES_URL) {
+          await sendMessage(chatId, '❌ Database connection not configured', 'Markdown');
+          return NextResponse.json({ ok: true, message_sent: true, migration_error: true });
+        }
+
+        const client = postgres(process.env.POSTGRES_URL);
+        const db = drizzle(client);
+
+        // Add the trial balance columns
+        await db.execute(sql`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "trialMessagesRemaining" INTEGER DEFAULT 0`);
+        await db.execute(sql`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "trialLastResetAt" TIMESTAMP DEFAULT NOW()`);
+        await db.execute(sql`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "paidMessagesRemaining" INTEGER DEFAULT 0`);
+        await db.execute(sql`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "totalMessagesPurchased" INTEGER DEFAULT 0`);
+        await db.execute(sql`ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "lastPurchaseAt" TIMESTAMP`);
+
+        // Initialize trial balance for existing users
+        await db.execute(sql`
+          UPDATE "User" 
+          SET 
+            "trialMessagesRemaining" = CASE 
+              WHEN "email" LIKE 'guest-%' OR "email" LIKE 'telegram_%@telegram.local' THEN 2
+              ELSE 5
+            END,
+            "trialLastResetAt" = NOW()
+          WHERE "trialMessagesRemaining" IS NULL OR "trialMessagesRemaining" = 0
+        `);
+
+        await client.end();
+
+        await sendMessage(chatId, `✅ *Migration Completed Successfully!*
+
+The trial balance system has been set up:
+• Added trial balance columns to User table
+• Initialized existing users with trial messages
+• Telegram users: 2 messages/day
+• Regular users: 5 messages/day
+
+Try \`/dbtest\` again to verify!`, 'Markdown');
+
+        return NextResponse.json({ ok: true, message_sent: true, migration_success: true });
+
+      } catch (error) {
+        console.error('[Telegram Bot] Migration error:', error);
+        await sendMessage(chatId, `❌ Migration failed: ${error instanceof Error ? error.message : 'Unknown error'}`, 'Markdown');
+        return NextResponse.json({ ok: true, message_sent: true, migration_error: true });
+      }
+    }
+
     if (userText === '/dbtest') {
       // Special debug command that works even with database issues
       const dbTestInfo = `🔧 *Database Test Information*
