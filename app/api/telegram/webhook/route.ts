@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateUUID } from '@/lib/utils';
 import { createHash } from 'crypto';
-import { getUserByTelegramId } from '@/lib/db/queries';
+import { getUserByTelegramId, useTelegramBindingCode } from '@/lib/db/queries';
 import { telegramAuth } from '@/app/(auth)/actions';
 import { getUserLanguage, getTranslations, formatText } from '@/lib/telegram-translations';
 
@@ -845,6 +845,185 @@ ${t.help.blessing}`;
 
       await sendMessage(chatId, helpText, 'Markdown');
       return NextResponse.json({ ok: true, message_sent: true });
+    }
+
+    // Check if the message is an 8-digit binding code
+    const bindingCodePattern = /^\d{8}$/;
+    if (bindingCodePattern.test(userText)) {
+      console.log(`[Telegram Bot] Detected potential binding code: ${userText}`);
+      
+      // Get user's language for messages
+      const userLanguage = getUserLanguage(message.from.language_code);
+      const t = getTranslations(userLanguage);
+      
+      // Show processing message
+      await sendTypingAction(chatId);
+      const bindingProcessingMessage = await sendMessage(
+        chatId, 
+        '🔗 *Checking binding code...*\n\nPlease wait while I verify your code.',
+        'Markdown'
+      );
+      
+      try {
+
+        // Attempt to use the binding code
+        const bindingResult = await useTelegramBindingCode(userText, {
+          telegramId: telegramUserId,
+          telegramUsername: message.from.username,
+          telegramFirstName: message.from.first_name,
+          telegramLastName: undefined, // Not available in webhook
+          telegramPhotoUrl: undefined, // Would need separate API call
+          telegramLanguageCode: message.from.language_code,
+          telegramIsPremium: undefined, // Not available in webhook
+          telegramAllowsWriteToPm: undefined, // Not available in webhook
+        });
+
+        if (bindingResult.success) {
+          // Success! Account bound
+          const successMessage = `✅ *Account Successfully Linked!*
+
+🎉 Your Telegram account has been successfully connected to your email account: \`${bindingResult.email}\`
+
+*What this means:*
+• You can now access your chat history from both Telegram and the web
+• Your conversations are synced across all platforms
+• You have full access to all premium features
+
+*Next steps:*
+• Continue chatting here in Telegram
+• Visit the web app for enhanced features and full chat history
+• Your account is now fully integrated!
+
+Welcome to the complete Islamic Knowledge Assistant experience! 🌟`;
+
+          // Edit the processing message with success
+          await fetch(`${TELEGRAM_API_URL}/editMessageText`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              message_id: bindingProcessingMessage.result.message_id,
+              text: successMessage,
+              parse_mode: 'Markdown',
+              reply_markup: {
+                inline_keyboard: [[
+                  {
+                    text: '🌐 Open Web App',
+                    web_app: {
+                      url: BASE_URL
+                    }
+                  }
+                ]]
+              }
+            }),
+          });
+
+          console.log(`[Telegram Bot] Successfully bound account for user ${telegramUserId} to email ${bindingResult.email}`);
+          
+          return NextResponse.json({ 
+            ok: true, 
+            message_sent: true, 
+            binding_success: true,
+            bound_email: bindingResult.email,
+            debug: {
+              telegramUserId,
+              userName,
+              bindingCode: userText,
+              boundToUserId: bindingResult.userId
+            }
+          });
+
+        } else {
+          // Binding failed - invalid or expired code
+          const errorMessage = `❌ *Invalid Binding Code*
+
+The code \`${userText}\` is not valid or has expired.
+
+*Possible reasons:*
+• Code has expired (codes are valid for 15 minutes)
+• Code has already been used
+• Code was typed incorrectly
+
+*To get a new code:*
+1. Go to the web app
+2. Click "Connect Telegram Account" in the sidebar
+3. Copy the new 8-digit code
+4. Send it here within 15 minutes
+
+*Need help?* Contact support or try generating a new code.`;
+
+          // Edit the processing message with error
+          await fetch(`${TELEGRAM_API_URL}/editMessageText`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              message_id: bindingProcessingMessage.result.message_id,
+              text: errorMessage,
+              parse_mode: 'Markdown',
+              reply_markup: {
+                inline_keyboard: [[
+                  {
+                    text: '🌐 Get New Code',
+                    web_app: {
+                      url: BASE_URL
+                    }
+                  }
+                ]]
+              }
+            }),
+          });
+
+          console.log(`[Telegram Bot] Binding failed for code ${userText}: Invalid or expired`);
+          
+          return NextResponse.json({ 
+            ok: true, 
+            message_sent: true, 
+            binding_failed: true,
+            error: 'Invalid or expired binding code',
+            debug: {
+              telegramUserId,
+              userName,
+              bindingCode: userText
+            }
+          });
+        }
+
+      } catch (error) {
+        console.error(`[Telegram Bot] Error processing binding code ${userText}:`, error);
+        
+        // Edit the processing message with technical error
+        const technicalErrorMessage = `⚠️ *Technical Error*
+
+Sorry, there was a technical issue while processing your binding code.
+
+*Please try again in a few moments.*
+
+If the problem persists, please contact support.`;
+
+        await fetch(`${TELEGRAM_API_URL}/editMessageText`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId,
+            message_id: bindingProcessingMessage.result.message_id,
+            text: technicalErrorMessage,
+            parse_mode: 'Markdown'
+          }),
+        });
+
+        return NextResponse.json({ 
+          ok: true, 
+          message_sent: true, 
+          binding_error: true,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          debug: {
+            telegramUserId,
+            userName,
+            bindingCode: userText
+          }
+        });
+      }
     }
 
     // Get user's language for processing messages

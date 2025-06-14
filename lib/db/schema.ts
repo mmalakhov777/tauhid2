@@ -29,6 +29,33 @@ export const user = pgTable('User', {
 
 export type User = InferSelectModel<typeof user>;
 
+// Telegram Binding Code table for email users who want to connect Telegram
+export const telegramBindingCode = pgTable('TelegramBindingCode', {
+  id: uuid('id').primaryKey().notNull().defaultRandom(),
+  userId: uuid('userId').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  email: varchar('email', { length: 255 }).notNull(),
+  bindingCode: varchar('bindingCode', { length: 8 }).notNull().unique(),
+  isUsed: boolean('isUsed').notNull().default(false),
+  expiresAt: timestamp('expiresAt').notNull(),
+  createdAt: timestamp('createdAt').notNull().defaultNow(),
+  usedAt: timestamp('usedAt'),
+  telegramId: integer('telegramId'),
+  telegramUsername: varchar('telegramUsername', { length: 32 }),
+  telegramFirstName: varchar('telegramFirstName', { length: 64 }),
+  telegramLastName: varchar('telegramLastName', { length: 64 }),
+  telegramPhotoUrl: text('telegramPhotoUrl'),
+  telegramLanguageCode: varchar('telegramLanguageCode', { length: 10 }),
+  telegramIsPremium: boolean('telegramIsPremium').default(false),
+  telegramAllowsWriteToPm: boolean('telegramAllowsWriteToPm').default(false),
+}, (table) => ({
+  userIdIdx: index('idx_telegram_binding_code_user_id').on(table.userId),
+  bindingCodeIdx: index('idx_telegram_binding_code_binding_code').on(table.bindingCode),
+  expiresAtIdx: index('idx_telegram_binding_code_expires_at').on(table.expiresAt),
+  isUsedIdx: index('idx_telegram_binding_code_is_used').on(table.isUsed),
+}));
+
+export type TelegramBindingCode = InferSelectModel<typeof telegramBindingCode>;
+
 export const chat = pgTable('Chat', {
   id: uuid('id').primaryKey().notNull().defaultRandom(),
   createdAt: timestamp('createdAt').notNull(),

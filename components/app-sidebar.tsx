@@ -10,6 +10,8 @@ import { PlusIcon, GlobeIcon } from '@/components/icons';
 import { SidebarHistory } from '@/components/sidebar-history';
 import { SidebarUserNav } from '@/components/sidebar-user-nav';
 import { EmailSetupBanner } from '@/components/EmailSetupBanner';
+import { TelegramBindingBanner } from '@/components/TelegramBindingBanner';
+import { TelegramBindingModal } from '@/components/TelegramBindingModal';
 import { GuestRegistrationBanner } from '@/components/GuestRegistrationBanner';
 import { TelegramEmailForm } from '@/components/TelegramEmailForm';
 import { Button } from '@/components/ui/button';
@@ -39,6 +41,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
   const { setOpenMobile, openMobile } = useSidebar();
   const { t, language, changeLanguage, isLoading } = useTranslations();
   const [showTelegramEmailForm, setShowTelegramEmailForm] = useState(false);
+  const [showTelegramBindingModal, setShowTelegramBindingModal] = useState(false);
   
   // Add custom styles for ultra-transparent glass effect
   React.useEffect(() => {
@@ -279,6 +282,19 @@ export function AppSidebar({ user }: { user: User | undefined }) {
     setShowTelegramEmailForm(true);
   };
 
+  const handleTelegramBindingClick = () => {
+    setShowTelegramBindingModal(true);
+  };
+
+  const handleTelegramBindingClose = () => {
+    setShowTelegramBindingModal(false);
+  };
+
+  const handleTelegramBindingSuccess = () => {
+    setShowTelegramBindingModal(false);
+    router.refresh();
+  };
+
   const handleTelegramFormComplete = () => {
     setShowTelegramEmailForm(false);
     router.refresh();
@@ -372,6 +388,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
             </SidebarHeader>
                     <SidebarContent>
           {user && <EmailSetupBanner user={user} onClick={handleEmailSetupClick} />}
+          {user && <TelegramBindingBanner user={user} onClick={handleTelegramBindingClick} />}
           <SidebarHistory user={user} />
           <GuestRegistrationBanner />
         </SidebarContent>
@@ -427,6 +444,15 @@ export function AppSidebar({ user }: { user: User | undefined }) {
             onSkip={handleTelegramFormSkip}
           />
         )}
+
+        {/* TelegramBindingModal for Mobile */}
+        {showTelegramBindingModal && user?.id && (
+          <TelegramBindingModal
+            user={{ id: user.id, email: user.email }}
+            onClose={handleTelegramBindingClose}
+            onSuccess={handleTelegramBindingSuccess}
+          />
+        )}
       </>
     );
   }
@@ -460,6 +486,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
         </SidebarHeader>
         <SidebarContent>
           {user && <EmailSetupBanner user={user} onClick={handleEmailSetupClick} />}
+          {user && <TelegramBindingBanner user={user} onClick={handleTelegramBindingClick} />}
           <SidebarHistory user={user} />
           <GuestRegistrationBanner />
         </SidebarContent>
@@ -512,6 +539,15 @@ export function AppSidebar({ user }: { user: User | undefined }) {
           telegramUser={finalTelegramUser}
           onComplete={handleTelegramFormComplete}
           onSkip={handleTelegramFormSkip}
+        />
+      )}
+
+      {/* TelegramBindingModal */}
+      {showTelegramBindingModal && user?.id && (
+        <TelegramBindingModal
+          user={{ id: user.id, email: user.email }}
+          onClose={handleTelegramBindingClose}
+          onSuccess={handleTelegramBindingSuccess}
         />
       )}
     </>

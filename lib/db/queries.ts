@@ -34,6 +34,8 @@ import {
   type VectorSearchResult,
   subscriptionResponse,
   type SubscriptionResponse,
+  messageDeprecated,
+  telegramBindingCode,
 } from './schema';
 import { generateUUID } from '../utils';
 import { generateHashedPassword } from './utils';
@@ -243,8 +245,6 @@ export async function findOrCreateGuestUser() {
     return await createGuestUser();
   }
 }
-
-
 
 export async function saveChat({
   id,
@@ -977,5 +977,171 @@ export async function deleteSubscriptionResponse({
       'bad_request:database',
       'Failed to delete subscription response',
     );
+  }
+}
+
+// Telegram Binding Code functions
+export async function createTelegramBindingCode(userId: string, email: string) {
+  // Generate 8-digit code
+  const bindingCode = Math.floor(10000000 + Math.random() * 90000000).toString();
+  
+  // Set expiration to 15 minutes from now
+  const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+
+  try {
+    // First, invalidate any existing active codes for this user
+    await db
+      .update(telegramBindingCode)
+      .set({ isUsed: true, usedAt: new Date() })
+      .where(
+        and(
+          eq(telegramBindingCode.userId, userId),
+          eq(telegramBindingCode.isUsed, false),
+          gt(telegramBindingCode.expiresAt, new Date())
+        )
+      );
+
+    // Create new binding code
+    const result = await db
+      .insert(telegramBindingCode)
+      .values({
+        userId,
+        email,
+        bindingCode,
+        expiresAt,
+      })
+      .returning({
+        id: telegramBindingCode.id,
+        bindingCode: telegramBindingCode.bindingCode,
+        expiresAt: telegramBindingCode.expiresAt,
+      });
+
+    return result[0];
+  } catch (error) {
+    console.error('Error creating Telegram binding code:', error);
+    throw new ChatSDKError('bad_request:database', 'Failed to create Telegram binding code');
+  }
+}
+
+export async function getTelegramBindingCodeByCode(code: string) {
+  try {
+    const result = await db
+      .select()
+      .from(telegramBindingCode)
+      .where(
+        and(
+          eq(telegramBindingCode.bindingCode, code),
+          eq(telegramBindingCode.isUsed, false),
+          gt(telegramBindingCode.expiresAt, new Date())
+        )
+      )
+      .limit(1);
+
+    return result[0] || null;
+  } catch (error) {
+    console.error('Error getting Telegram binding code:', error);
+    throw new ChatSDKError('bad_request:database', 'Failed to get Telegram binding code');
+  }
+}
+
+export async function useTelegramBindingCode(
+  code: string,
+  telegramData: {
+    telegramId: number;
+    telegramUsername?: string;
+    telegramFirstName: string;
+    telegramLastName?: string;
+    telegramPhotoUrl?: string;
+    telegramLanguageCode?: string;
+    telegramIsPremium?: boolean;
+    telegramAllowsWriteToPm?: boolean;
+  }
+) {
+  try {
+    // Get the binding code record
+    const bindingRecord = await getTelegramBindingCodeByCode(code);
+    if (!bindingRecord) {
+      throw new ChatSDKError('bad_request:auth', 'Invalid or expired binding code');
+    }
+
+    // Update the user with Telegram data
+    await db
+      .update(user)
+      .set({
+        telegramId: telegramData.telegramId,
+        telegramUsername: telegramData.telegramUsername,
+        telegramFirstName: telegramData.telegramFirstName,
+        telegramLastName: telegramData.telegramLastName,
+        telegramPhotoUrl: telegramData.telegramPhotoUrl,
+        telegramLanguageCode: telegramData.telegramLanguageCode,
+        telegramIsPremium: telegramData.telegramIsPremium || false,
+        telegramAllowsWriteToPm: telegramData.telegramAllowsWriteToPm || false,
+      })
+      .where(eq(user.id, bindingRecord.userId));
+
+    // Mark the binding code as used
+    await db
+      .update(telegramBindingCode)
+      .set({
+        isUsed: true,
+        usedAt: new Date(),
+        telegramId: telegramData.telegramId,
+        telegramUsername: telegramData.telegramUsername,
+        telegramFirstName: telegramData.telegramFirstName,
+        telegramLastName: telegramData.telegramLastName,
+        telegramPhotoUrl: telegramData.telegramPhotoUrl,
+        telegramLanguageCode: telegramData.telegramLanguageCode,
+        telegramIsPremium: telegramData.telegramIsPremium || false,
+        telegramAllowsWriteToPm: telegramData.telegramAllowsWriteToPm || false,
+      })
+      .where(eq(telegramBindingCode.id, bindingRecord.id));
+
+    return {
+      success: true,
+      userId: bindingRecord.userId,
+      email: bindingRecord.email,
+    };
+  } catch (error) {
+    console.error('Error using Telegram binding code:', error);
+    if (error instanceof ChatSDKError) {
+      throw error;
+    }
+    throw new ChatSDKError('bad_request:database', 'Failed to bind Telegram account');
+  }
+}
+
+export async function getActiveTelegramBindingCodeByUserId(userId: string) {
+  try {
+    const result = await db
+      .select()
+      .from(telegramBindingCode)
+      .where(
+        and(
+          eq(telegramBindingCode.userId, userId),
+          eq(telegramBindingCode.isUsed, false),
+          gt(telegramBindingCode.expiresAt, new Date())
+        )
+      )
+      .orderBy(desc(telegramBindingCode.createdAt))
+      .limit(1);
+
+    return result[0] || null;
+  } catch (error) {
+    console.error('Error getting active Telegram binding code:', error);
+    throw new ChatSDKError('bad_request:database', 'Failed to get active Telegram binding code');
+  }
+}
+
+// Cleanup expired binding codes (can be called periodically)
+export async function cleanupExpiredTelegramBindingCodes() {
+  try {
+    const result = await db
+      .delete(telegramBindingCode)
+      .where(lt(telegramBindingCode.expiresAt, new Date()));
+
+    return result;
+  } catch (error) {
+    console.error('Error cleaning up expired Telegram binding codes:', error);
+    throw new ChatSDKError('bad_request:database', 'Failed to cleanup expired binding codes');
   }
 }
