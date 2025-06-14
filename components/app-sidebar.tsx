@@ -396,10 +396,10 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                     <SidebarContent>
           {user && <EmailSetupBanner user={user} onClick={handleEmailSetupClick} />}
           {/* Show only ONE banner: Registration for guests OR Telegram binding for authenticated users without Telegram */}
-          {!user || user.type === 'guest' || user.email?.startsWith('guest_') ? (
+          {user && (user.type === 'guest' || user.email?.startsWith('guest_')) ? (
             <GuestRegistrationBanner />
           ) : (
-            !user.telegramId && <TelegramBindingBanner user={user} onClick={handleTelegramBindingClick} />
+            user && !user.telegramId && <TelegramBindingBanner user={user} onClick={handleTelegramBindingClick} />
           )}
           <SidebarHistory user={user} />
         </SidebarContent>
@@ -498,10 +498,10 @@ export function AppSidebar({ user }: { user: User | undefined }) {
         <SidebarContent>
           {user && <EmailSetupBanner user={user} onClick={handleEmailSetupClick} />}
           {/* Show only ONE banner: Registration for guests OR Telegram binding for authenticated users without Telegram */}
-          {!user || user.type === 'guest' || user.email?.startsWith('guest_') ? (
+          {user && (user.type === 'guest' || user.email?.startsWith('guest_')) ? (
             <GuestRegistrationBanner />
           ) : (
-            !user.telegramId && <TelegramBindingBanner user={user} onClick={handleTelegramBindingClick} />
+            user && !user.telegramId && <TelegramBindingBanner user={user} onClick={handleTelegramBindingClick} />
           )}
           <SidebarHistory user={user} />
         </SidebarContent>

@@ -36,11 +36,14 @@ import {
   type SubscriptionResponse,
   messageDeprecated,
   telegramBindingCode,
+  starPayment,
+  type StarPayment,
 } from './schema';
 import { generateUUID } from '../utils';
 import { generateHashedPassword } from './utils';
 import type { VisibilityType } from '@/components/visibility-selector';
 import { ChatSDKError } from '../errors';
+import { entitlementsByUserType } from '../ai/entitlements';
 
 // Optionally, if not using email/pass login, you can
 // use the Drizzle adapter for Auth.js / NextAuth
@@ -1225,11 +1228,247 @@ export async function cleanupExpiredTelegramBindingCodes() {
   try {
     const result = await db
       .delete(telegramBindingCode)
-      .where(lt(telegramBindingCode.expiresAt, new Date()));
+      .where(
+        and(
+          eq(telegramBindingCode.isUsed, false),
+          lt(telegramBindingCode.expiresAt, new Date())
+        )
+      );
 
+    console.log(`[cleanupExpiredTelegramBindingCodes] Cleaned up expired binding codes`);
     return result;
   } catch (error) {
     console.error('Error cleaning up expired Telegram binding codes:', error);
     throw new ChatSDKError('bad_request:database', 'Failed to cleanup expired binding codes');
+  }
+}
+
+// =============================================================================
+// TRIAL BALANCE SYSTEM
+// =============================================================================
+
+/**
+ * Get user's current trial and paid message balance
+ */
+export async function getUserMessageBalance(userId: string): Promise<{
+  trialMessagesRemaining: number;
+  paidMessagesRemaining: number;
+  totalMessagesRemaining: number;
+  needsReset: boolean;
+}> {
+  try {
+    const [userRecord] = await db.select().from(user).where(eq(user.id, userId));
+    
+    if (!userRecord) {
+      throw new ChatSDKError('bad_request:database', 'User not found');
+    }
+
+    // Check if trial needs daily reset
+    const now = new Date();
+    const lastReset = userRecord.trialLastResetAt || new Date(0);
+    const hoursSinceReset = (now.getTime() - lastReset.getTime()) / (1000 * 60 * 60);
+    const needsReset = hoursSinceReset >= 24;
+
+    let trialMessagesRemaining = userRecord.trialMessagesRemaining || 0;
+    
+    // If needs reset, we'll return the info but not update here (caller decides)
+    if (needsReset) {
+      // Determine trial amount based on user type
+      const isGuest = userRecord.email.startsWith('guest-') || userRecord.email.includes('@telegram.local');
+      const userType = isGuest ? 'guest' : 'regular';
+      const entitlements = entitlementsByUserType[userType];
+      
+      if (entitlements.useTrialBalance) {
+        trialMessagesRemaining = entitlements.trialMessagesPerDay;
+      }
+    }
+
+    const paidMessagesRemaining = userRecord.paidMessagesRemaining || 0;
+    const totalMessagesRemaining = trialMessagesRemaining + paidMessagesRemaining;
+
+    return {
+      trialMessagesRemaining,
+      paidMessagesRemaining,
+      totalMessagesRemaining,
+      needsReset
+    };
+  } catch (error) {
+    console.error('Error getting user message balance:', error);
+    throw new ChatSDKError('bad_request:database', 'Failed to get user message balance');
+  }
+}
+
+/**
+ * Reset user's daily trial balance
+ */
+export async function resetDailyTrialBalance(userId: string): Promise<void> {
+  try {
+    const [userRecord] = await db.select().from(user).where(eq(user.id, userId));
+    
+    if (!userRecord) {
+      throw new ChatSDKError('bad_request:database', 'User not found');
+    }
+
+    // Determine trial amount based on user type
+    const isGuest = userRecord.email.startsWith('guest-') || userRecord.email.includes('@telegram.local');
+    const userType = isGuest ? 'guest' : 'regular';
+    const entitlements = entitlementsByUserType[userType];
+    
+    if (entitlements.useTrialBalance) {
+      await db
+        .update(user)
+        .set({
+          trialMessagesRemaining: entitlements.trialMessagesPerDay,
+          trialLastResetAt: new Date(),
+        })
+        .where(eq(user.id, userId));
+
+      console.log(`[resetDailyTrialBalance] Reset trial balance for user ${userId} to ${entitlements.trialMessagesPerDay} messages`);
+    }
+  } catch (error) {
+    console.error('Error resetting daily trial balance:', error);
+    throw new ChatSDKError('bad_request:database', 'Failed to reset daily trial balance');
+  }
+}
+
+/**
+ * Consume one message from user's balance (trial first, then paid)
+ */
+export async function consumeUserMessage(userId: string): Promise<{
+  success: boolean;
+  remainingMessages: number;
+  usedTrial: boolean;
+}> {
+  try {
+    const balance = await getUserMessageBalance(userId);
+    
+    // Reset trial balance if needed
+    if (balance.needsReset) {
+      await resetDailyTrialBalance(userId);
+      // Get updated balance
+      const updatedBalance = await getUserMessageBalance(userId);
+      balance.trialMessagesRemaining = updatedBalance.trialMessagesRemaining;
+      balance.totalMessagesRemaining = updatedBalance.totalMessagesRemaining;
+    }
+
+    // Check if user has any messages left
+    if (balance.totalMessagesRemaining <= 0) {
+      return {
+        success: false,
+        remainingMessages: 0,
+        usedTrial: false
+      };
+    }
+
+    // Consume from trial first, then paid
+    let usedTrial = false;
+    if (balance.trialMessagesRemaining > 0) {
+      // Use trial message
+      await db
+        .update(user)
+        .set({
+          trialMessagesRemaining: balance.trialMessagesRemaining - 1,
+        })
+        .where(eq(user.id, userId));
+      usedTrial = true;
+    } else if (balance.paidMessagesRemaining > 0) {
+      // Use paid message
+      await db
+        .update(user)
+        .set({
+          paidMessagesRemaining: balance.paidMessagesRemaining - 1,
+        })
+        .where(eq(user.id, userId));
+      usedTrial = false;
+    }
+
+    return {
+      success: true,
+      remainingMessages: balance.totalMessagesRemaining - 1,
+      usedTrial
+    };
+  } catch (error) {
+    console.error('Error consuming user message:', error);
+    throw new ChatSDKError('bad_request:database', 'Failed to consume user message');
+  }
+}
+
+/**
+ * Add paid messages to user's balance
+ */
+export async function addPaidMessages(userId: string, messageCount: number): Promise<void> {
+  try {
+    const [userRecord] = await db.select().from(user).where(eq(user.id, userId));
+    
+    if (!userRecord) {
+      throw new ChatSDKError('bad_request:database', 'User not found');
+    }
+
+    const currentPaidMessages = userRecord.paidMessagesRemaining || 0;
+    const currentTotalPurchased = userRecord.totalMessagesPurchased || 0;
+
+    await db
+      .update(user)
+      .set({
+        paidMessagesRemaining: currentPaidMessages + messageCount,
+        totalMessagesPurchased: currentTotalPurchased + messageCount,
+        lastPurchaseAt: new Date(),
+      })
+      .where(eq(user.id, userId));
+
+    console.log(`[addPaidMessages] Added ${messageCount} paid messages to user ${userId}`);
+  } catch (error) {
+    console.error('Error adding paid messages:', error);
+    throw new ChatSDKError('bad_request:database', 'Failed to add paid messages');
+  }
+}
+
+/**
+ * Record a Telegram Stars payment
+ */
+export async function recordStarPayment({
+  userId,
+  telegramPaymentChargeId,
+  starAmount,
+  messagesAdded,
+}: {
+  userId: string;
+  telegramPaymentChargeId: string;
+  starAmount: number;
+  messagesAdded: number;
+}): Promise<StarPayment> {
+  try {
+    const [payment] = await db
+      .insert(starPayment)
+      .values({
+        userId,
+        telegramPaymentChargeId,
+        starAmount,
+        messagesAdded,
+        status: 'completed',
+      })
+      .returning();
+
+    console.log(`[recordStarPayment] Recorded payment: ${starAmount} stars for ${messagesAdded} messages`);
+    return payment;
+  } catch (error) {
+    console.error('Error recording star payment:', error);
+    throw new ChatSDKError('bad_request:database', 'Failed to record star payment');
+  }
+}
+
+/**
+ * Get user's payment history
+ */
+export async function getUserPaymentHistory(userId: string): Promise<StarPayment[]> {
+  try {
+    return await db
+      .select()
+      .from(starPayment)
+      .where(eq(starPayment.userId, userId))
+      .orderBy(desc(starPayment.createdAt));
+  } catch (error) {
+    console.error('Error getting user payment history:', error);
+    throw new ChatSDKError('bad_request:database', 'Failed to get user payment history');
   }
 }

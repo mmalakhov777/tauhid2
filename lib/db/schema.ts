@@ -25,6 +25,13 @@ export const user = pgTable('User', {
   telegramLanguageCode: varchar('telegramLanguageCode', { length: 10 }),
   telegramIsPremium: boolean('telegramIsPremium').default(false),
   telegramAllowsWriteToPm: boolean('telegramAllowsWriteToPm').default(false),
+  // Trial balance system
+  trialMessagesRemaining: integer('trialMessagesRemaining').default(0),
+  trialLastResetAt: timestamp('trialLastResetAt').defaultNow(),
+  // Paid message balance system  
+  paidMessagesRemaining: integer('paidMessagesRemaining').default(0),
+  totalMessagesPurchased: integer('totalMessagesPurchased').default(0),
+  lastPurchaseAt: timestamp('lastPurchaseAt'),
 });
 
 export type User = InferSelectModel<typeof user>;
@@ -55,6 +62,23 @@ export const telegramBindingCode = pgTable('TelegramBindingCode', {
 }));
 
 export type TelegramBindingCode = InferSelectModel<typeof telegramBindingCode>;
+
+// Star Payment table for tracking Telegram Stars purchases
+export const starPayment = pgTable('StarPayment', {
+  id: uuid('id').primaryKey().notNull().defaultRandom(),
+  userId: uuid('userId').notNull().references(() => user.id, { onDelete: 'cascade' }),
+  telegramPaymentChargeId: varchar('telegramPaymentChargeId', { length: 255 }).notNull().unique(),
+  starAmount: integer('starAmount').notNull(),
+  messagesAdded: integer('messagesAdded').notNull(),
+  status: varchar('status', { length: 20 }).notNull().default('completed'),
+  createdAt: timestamp('createdAt').notNull().defaultNow(),
+}, (table) => ({
+  userIdIdx: index('idx_star_payment_user_id').on(table.userId),
+  statusIdx: index('idx_star_payment_status').on(table.status),
+  createdAtIdx: index('idx_star_payment_created_at').on(table.createdAt),
+}));
+
+export type StarPayment = InferSelectModel<typeof starPayment>;
 
 export const chat = pgTable('Chat', {
   id: uuid('id').primaryKey().notNull().defaultRandom(),

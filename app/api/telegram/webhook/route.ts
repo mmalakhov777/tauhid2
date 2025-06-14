@@ -906,21 +906,11 @@ ${t.help.blessing}`;
 
 🎉 Your Telegram account has been successfully upgraded and connected to your email account: \`${bindingResult.email}\`
 
-*What happened:*
-• Your temporary Telegram-only account has been merged with your email account: \`${bindingResult.email}\`
-• All your chat history and data has been transferred
-• Your conversations are now synced across all platforms
-
 *What this means:*
 • You can now access your complete chat history from both Telegram and the web
 • Your conversations are synced across all platforms
 • You have full access to all premium features
 • All your previous chats and messages are preserved
-
-*Next steps:*
-• Continue chatting here in Telegram
-• Visit the web app for enhanced features and full chat history
-• Your account is now fully integrated!
 
 Welcome to the complete Islamic Knowledge Assistant experience! 🌟`;
           } else {

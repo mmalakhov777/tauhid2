@@ -4,22 +4,41 @@ import type { ChatModel } from './models';
 interface Entitlements {
   maxMessagesPerDay: number;
   availableChatModelIds: Array<ChatModel['id']>;
+  // Trial balance system
+  trialMessagesPerDay: number;
+  useTrialBalance: boolean;
 }
+
+// Payment configuration for Telegram Stars
+export const PAYMENT_CONFIG = {
+  STARS_PER_MESSAGE: 5,           // 1 message = 5 stars
+  MINIMUM_MESSAGES: 20,           // Minimum purchase: 20 messages
+  PACKAGES: [
+    { messages: 20, stars: 100, popular: false, bonus: 0 },
+    { messages: 50, stars: 250, popular: true, bonus: 0 },
+    { messages: 100, stars: 500, popular: false, bonus: 5 },
+    { messages: 200, stars: 1000, popular: false, bonus: 20 }
+  ]
+};
 
 export const entitlementsByUserType: Record<UserType, Entitlements> = {
   /*
-   * For users without an account
+   * For users without an account (unregistered)
    */
   guest: {
-    maxMessagesPerDay: 50,
+    maxMessagesPerDay: 50,  // Legacy limit (not used with trial balance)
+    trialMessagesPerDay: 2, // NEW: 2 messages per day trial
+    useTrialBalance: true,  // NEW: Use trial balance system
     availableChatModelIds: ['chat-model', 'chat-model-reasoning'],
   },
 
   /*
-   * For users with an account
+   * For users with an account (registered)
    */
   regular: {
-    maxMessagesPerDay: 200,
+    maxMessagesPerDay: 200, // Legacy limit (not used with trial balance)
+    trialMessagesPerDay: 5, // NEW: 5 messages per day trial
+    useTrialBalance: true,  // NEW: Use trial balance system
     availableChatModelIds: ['chat-model', 'chat-model-reasoning'],
   },
 

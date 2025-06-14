@@ -120,13 +120,32 @@ export async function POST(request: Request) {
 
     const userType: UserType = session.user.type;
 
-    const messageCount = await getMessageCountByUserId({
-      id: session.user.id,
-      differenceInHours: 24,
-    });
+    // NEW: Use trial balance system instead of legacy message counting
+    const entitlements = entitlementsByUserType[userType];
+    
+    if (entitlements.useTrialBalance) {
+      // Import the new balance functions
+      const { consumeUserMessage } = await import('@/lib/db/queries');
+      
+      // Try to consume a message from user's balance
+      const consumeResult = await consumeUserMessage(session.user.id);
+      
+      if (!consumeResult.success) {
+        // User has no messages left - return rate limit error
+        return new ChatSDKError('rate_limit:chat').toResponse();
+      }
+      
+      console.log(`[Chat API] User ${session.user.id} consumed message. Remaining: ${consumeResult.remainingMessages}, Used trial: ${consumeResult.usedTrial}`);
+    } else {
+      // LEGACY: Fall back to old message counting system
+      const messageCount = await getMessageCountByUserId({
+        id: session.user.id,
+        differenceInHours: 24,
+      });
 
-    if (messageCount > entitlementsByUserType[userType].maxMessagesPerDay) {
-      return new ChatSDKError('rate_limit:chat').toResponse();
+      if (messageCount > entitlements.maxMessagesPerDay) {
+        return new ChatSDKError('rate_limit:chat').toResponse();
+      }
     }
 
     const chat = await getChatById({ id });
