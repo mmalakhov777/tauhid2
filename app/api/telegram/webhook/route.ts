@@ -1218,6 +1218,13 @@ Choose a package to buy more messages:
 💰 Paid messages never expire and stack with your daily trial messages`;
 
         // Send message with inline keyboard
+        console.log('[Telegram Bot] Sending purchase menu with payload:', {
+          chat_id: chatId,
+          text: purchaseMessage.substring(0, 100) + '...',
+          parse_mode: 'Markdown',
+          inline_keyboard_rows: inlineKeyboard.length
+        });
+
         const response = await fetch(`${TELEGRAM_API_URL}/sendMessage`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1231,13 +1238,49 @@ Choose a package to buy more messages:
           }),
         });
 
+        console.log('[Telegram Bot] Telegram API response status:', response.status, response.statusText);
+
         const result = await response.json();
+        console.log('[Telegram Bot] Telegram API response body:', result);
         
         if (!result.ok) {
           console.error('[Telegram Bot] Failed to send purchase menu:', result);
           
-          // Fallback: Send simple text message without inline keyboard
-          const fallbackMessage = `🌟 *Purchase Messages with Telegram Stars*
+          // Try with HTML formatting instead of Markdown
+          console.log('[Telegram Bot] Retrying with HTML formatting...');
+          
+          const htmlMessage = `🌟 <b>Purchase Messages with Telegram Stars</b>
+
+Choose a package to buy more messages:
+
+1. <b>20 Messages</b> - 100 ⭐
+2. <b>50 Messages</b> - 250 ⭐ 🔥
+3. <b>105 Messages</b> (100 + 5 bonus) - 500 ⭐
+4. <b>220 Messages</b> (200 + 20 bonus) - 1000 ⭐
+
+💡 <i>Telegram Stars</i> can be purchased directly in Telegram
+📱 Tap any package below to create an invoice
+💰 Paid messages never expire and stack with your daily trial messages`;
+
+          const retryResponse = await fetch(`${TELEGRAM_API_URL}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              text: htmlMessage,
+              parse_mode: 'HTML',
+              reply_markup: {
+                inline_keyboard: inlineKeyboard
+              }
+            }),
+          });
+
+          const retryResult = await retryResponse.json();
+          console.log('[Telegram Bot] HTML retry result:', retryResult);
+
+          if (!retryResult.ok) {
+            // Final fallback: Send simple text message without inline keyboard
+            const fallbackMessage = `🌟 Purchase Messages with Telegram Stars
 
 Available packages:
 • 20 Messages - 100 ⭐
@@ -1245,11 +1288,14 @@ Available packages:
 • 105 Messages - 500 ⭐ (+5 bonus)
 • 220 Messages - 1000 ⭐ (+20 bonus)
 
-💡 To purchase, your bot needs payment permissions enabled in @BotFather.
-📱 Contact support if you need help setting up payments.`;
+Contact support to purchase messages.`;
 
-          await sendMessage(chatId, fallbackMessage, 'Markdown');
-          return NextResponse.json({ ok: true, message_sent: true, purchase_fallback: true });
+            await sendMessage(chatId, fallbackMessage);
+            return NextResponse.json({ ok: true, message_sent: true, purchase_fallback: true });
+          } else {
+            console.log('[Telegram Bot] HTML retry successful');
+            return NextResponse.json({ ok: true, message_sent: true, purchase_menu: true, retry_html: true });
+          }
         }
 
         console.log('[Telegram Bot] Purchase menu sent successfully:', {
