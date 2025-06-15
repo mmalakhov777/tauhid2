@@ -7,6 +7,7 @@ import {
   streamText,
 } from 'ai';
 import { type RequestHints, systemPrompt } from '@/lib/ai/prompts';
+import { type UserType } from '@/app/(auth)/auth';
 import {
   createStreamId,
   deleteChatById,
@@ -20,6 +21,7 @@ import {
   testDatabaseConnection,
   getUser,
   createUser,
+  consumeUserMessage,
 } from '@/lib/db/queries';
 import { user } from '@/lib/db/schema';
 import { eq } from 'drizzle-orm';
@@ -101,7 +103,7 @@ function validateApiKey(request: Request): boolean {
 }
 
 // Ensure external API user exists in database and return user data
-async function getOrCreateExternalApiUser(): Promise<{ id: string; type: 'premium' }> {
+async function getOrCreateExternalApiUser(): Promise<{ id: string; type: UserType }> {
   try {
     let existingUsers = await getUser(EXTERNAL_API_USER_EMAIL);
     if (existingUsers.length === 0) {
@@ -118,7 +120,7 @@ async function getOrCreateExternalApiUser(): Promise<{ id: string; type: 'premiu
     
     return {
       id: existingUsers[0].id,
-      type: 'premium' as const
+      type: 'regular' as const
     };
   } catch (error) {
     console.error('[external-chat] Failed to ensure external API user exists:', error);
@@ -127,7 +129,7 @@ async function getOrCreateExternalApiUser(): Promise<{ id: string; type: 'premiu
 }
 
 // Get or create user by ID - for custom user IDs
-async function getOrCreateUserById(userId: string): Promise<{ id: string; type: 'premium' }> {
+async function getOrCreateUserById(userId: string): Promise<{ id: string; type: UserType }> {
   try {
     // First try to find user by ID directly
     const existingUsers = await db.select().from(user).where(eq(user.id, userId));
@@ -135,7 +137,7 @@ async function getOrCreateUserById(userId: string): Promise<{ id: string; type: 
     if (existingUsers.length > 0) {
       return {
         id: existingUsers[0].id,
-        type: 'premium' as const
+        type: 'regular' as const
       };
     }
     
@@ -154,7 +156,7 @@ async function getOrCreateUserById(userId: string): Promise<{ id: string; type: 
     
     return {
       id: userId,
-      type: 'premium' as const
+      type: 'regular' as const
     };
   } catch (error) {
     console.error('[external-chat] Failed to get or create user by ID:', error);
@@ -248,10 +250,28 @@ export async function POST(request: Request) {
       providedUserId: userId
     });
 
-    const userType = session.user.type;
+    const userType: UserType = session.user.type;
 
-    // Skip message count check for API users (they have premium access)
+    // NEW: Use trial balance system for external API users too
+    const { entitlementsByUserType } = await import('@/lib/ai/entitlements');
+    const entitlements = entitlementsByUserType[userType] || entitlementsByUserType['regular'];
     
+    if (entitlements.useTrialBalance) {
+      // Try to consume a message from user's balance
+      const consumeResult = await consumeUserMessage(session.user.id);
+      
+      if (!consumeResult.success) {
+        // User has no messages left - return rate limit error
+        console.log(`[External Chat API] User ${session.user.id} has no messages remaining`);
+        return new ChatSDKError('rate_limit:chat').toResponse();
+      }
+      
+      console.log(`[External Chat API] User ${session.user.id} consumed message. Remaining: ${consumeResult.remainingMessages}, Used trial: ${consumeResult.usedTrial}`);
+    } else {
+      // LEGACY: For users not using trial balance system, allow unlimited access
+      console.log(`[External Chat API] User ${session.user.id} using legacy system - unlimited access`);
+    }
+
     const chat = await getChatById({ id });
 
     if (!chat) {
