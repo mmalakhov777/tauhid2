@@ -202,6 +202,20 @@ export function Chat({
         if (error.type === 'rate_limit' && error.surface === 'chat') {
           console.log('[chat.tsx] 🚫 Rate limit hit, showing subscription modal');
           
+          // Refresh user stats before showing subscription modal
+          if (session?.user?.id) {
+            fetch('/api/user/stats')
+              .then(response => response.json())
+              .then(data => {
+                if (!data.error) {
+                  setUserStats(data);
+                }
+              })
+              .catch(error => {
+                console.error('Error refreshing user stats:', error);
+              });
+          }
+          
           // Show subscription modal when user has no messages remaining
           setShowSubscriptionModal(true);
         } else {

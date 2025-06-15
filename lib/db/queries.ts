@@ -132,8 +132,17 @@ export async function getUserByTelegramId(telegramId: number): Promise<Array<Use
 export async function createUser(email: string, password: string) {
   const hashedPassword = generateHashedPassword(password);
 
+  // Get regular user entitlements to set proper trial balance
+  const entitlements = entitlementsByUserType['regular'];
+
   try {
-    return await db.insert(user).values({ email, password: hashedPassword });
+    return await db.insert(user).values({ 
+      email, 
+      password: hashedPassword,
+      // Initialize with proper trial balance for regular users
+      trialMessagesRemaining: entitlements.useTrialBalance ? entitlements.trialMessagesPerDay : 0,
+      trialLastResetAt: new Date(),
+    });
   } catch (error) {
     throw new ChatSDKError('bad_request:database', 'Failed to create user');
   }
@@ -154,6 +163,10 @@ export async function createUserWithTelegram(
 ) {
   const hashedPassword = generateHashedPassword('telegram_auth');
 
+  // Determine user type based on email (telegram users get regular entitlements)
+  const userType = 'regular';
+  const entitlements = entitlementsByUserType[userType];
+
   try {
     return await db.insert(user).values({ 
       email, 
@@ -166,6 +179,9 @@ export async function createUserWithTelegram(
       telegramLanguageCode: telegramData.telegramLanguageCode,
       telegramIsPremium: telegramData.telegramIsPremium || false,
       telegramAllowsWriteToPm: telegramData.telegramAllowsWriteToPm || false,
+      // Initialize with proper trial balance for telegram users
+      trialMessagesRemaining: entitlements.useTrialBalance ? entitlements.trialMessagesPerDay : 0,
+      trialLastResetAt: new Date(),
     });
   } catch (error) {
     throw new ChatSDKError('bad_request:database', 'Failed to create user with Telegram data');
@@ -196,8 +212,17 @@ export async function createGuestUser() {
   const email = `guest-${Date.now()}`;
   const password = generateHashedPassword(generateUUID());
 
+  // Get guest user entitlements to set proper trial balance
+  const entitlements = entitlementsByUserType['guest'];
+
   try {
-    return await db.insert(user).values({ email, password }).returning({
+    return await db.insert(user).values({ 
+      email, 
+      password,
+      // Initialize with proper trial balance for guest users
+      trialMessagesRemaining: entitlements.useTrialBalance ? entitlements.trialMessagesPerDay : 0,
+      trialLastResetAt: new Date(),
+    }).returning({
       id: user.id,
       email: user.email,
     });
