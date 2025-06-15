@@ -1185,6 +1185,12 @@ ${balance.totalMessagesRemaining === 0 ? '⚠️ *No messages remaining! Use /bu
       try {
         const { PAYMENT_CONFIG } = await import('@/lib/ai/entitlements');
         
+        console.log('[Telegram Bot] Processing /buy command:', {
+          telegramUserId,
+          chatId,
+          packagesAvailable: PAYMENT_CONFIG.PACKAGES.length
+        });
+        
         let purchaseMessage = `🌟 *Purchase Messages with Telegram Stars*
 
 Choose a package to buy more messages:
@@ -1212,7 +1218,7 @@ Choose a package to buy more messages:
 💰 Paid messages never expire and stack with your daily trial messages`;
 
         // Send message with inline keyboard
-        await fetch(`${TELEGRAM_API_URL}/sendMessage`, {
+        const response = await fetch(`${TELEGRAM_API_URL}/sendMessage`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -1223,6 +1229,33 @@ Choose a package to buy more messages:
               inline_keyboard: inlineKeyboard
             }
           }),
+        });
+
+        const result = await response.json();
+        
+        if (!result.ok) {
+          console.error('[Telegram Bot] Failed to send purchase menu:', result);
+          
+          // Fallback: Send simple text message without inline keyboard
+          const fallbackMessage = `🌟 *Purchase Messages with Telegram Stars*
+
+Available packages:
+• 20 Messages - 100 ⭐
+• 50 Messages - 250 ⭐ (Popular)
+• 105 Messages - 500 ⭐ (+5 bonus)
+• 220 Messages - 1000 ⭐ (+20 bonus)
+
+💡 To purchase, your bot needs payment permissions enabled in @BotFather.
+📱 Contact support if you need help setting up payments.`;
+
+          await sendMessage(chatId, fallbackMessage, 'Markdown');
+          return NextResponse.json({ ok: true, message_sent: true, purchase_fallback: true });
+        }
+
+        console.log('[Telegram Bot] Purchase menu sent successfully:', {
+          telegramUserId,
+          chatId,
+          packagesShown: PAYMENT_CONFIG.PACKAGES.length
         });
 
         return NextResponse.json({ ok: true, message_sent: true, purchase_menu: true });
