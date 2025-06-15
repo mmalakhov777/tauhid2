@@ -71,7 +71,18 @@ export function Chat({
   
   // Subscription modal state
   const [showSubscriptionModal, setShowSubscriptionModal] = useState(false);
-  const [userStats, setUserStats] = useState<{ messagesLast24h: number; totalMessages: number } | null>(null);
+  const [userStats, setUserStats] = useState<{ 
+    messagesLast24h: number; 
+    totalMessages: number;
+    trialBalance?: {
+      trialMessagesRemaining: number;
+      paidMessagesRemaining: number;
+      totalMessagesRemaining: number;
+      needsReset: boolean;
+      trialMessagesPerDay: number;
+      useTrialBalance: boolean;
+    } | null;
+  } | null>(null);
 
   // Fetch user stats for subscription modal
   useEffect(() => {
@@ -187,11 +198,11 @@ export function Chat({
           userType: session?.user?.type
         });
         
-        // Check if it's a rate limit error
+        // Check if it's a rate limit error (no messages remaining)
         if (error.type === 'rate_limit' && error.surface === 'chat') {
           console.log('[chat.tsx] 🚫 Rate limit hit, showing subscription modal');
           
-          // Show subscription modal instead of toast
+          // Show subscription modal when user has no messages remaining
           setShowSubscriptionModal(true);
         } else {
           toast({
@@ -530,8 +541,15 @@ export function Chat({
   // Get user entitlements for subscription modal
   const userType = session?.user?.type || 'guest';
   const entitlements = entitlementsByUserType[userType];
-  const currentUsage = userStats?.messagesLast24h || 0;
-  const maxLimit = entitlements.maxMessagesPerDay;
+  
+  // Use trial balance system if available, otherwise fall back to legacy
+  const useTrialBalance = userStats?.trialBalance?.useTrialBalance || false;
+  const currentUsage = useTrialBalance 
+    ? (userStats?.trialBalance?.trialMessagesPerDay || 0) - (userStats?.trialBalance?.trialMessagesRemaining || 0)
+    : userStats?.messagesLast24h || 0;
+  const maxLimit = useTrialBalance 
+    ? userStats?.trialBalance?.trialMessagesPerDay || 0
+    : entitlements.maxMessagesPerDay;
 
   return (
     <>
