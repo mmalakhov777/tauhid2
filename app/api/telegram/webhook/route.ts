@@ -719,12 +719,12 @@ export async function POST(request: NextRequest) {
 
         const selectedPackage = PAYMENT_CONFIG.PACKAGES[packageIndex];
         
-        // Validate amount and currency
-        if (preCheckoutQuery.currency !== 'XTR' || preCheckoutQuery.total_amount !== selectedPackage.stars) {
+        // Validate amount and currency (amount is in smallest units, so multiply by 100)
+        if (preCheckoutQuery.currency !== 'XTR' || preCheckoutQuery.total_amount !== selectedPackage.stars * 100) {
           console.error('[Telegram Bot] Payment validation failed:', {
             expectedCurrency: 'XTR',
             receivedCurrency: preCheckoutQuery.currency,
-            expectedAmount: selectedPackage.stars,
+            expectedAmount: selectedPackage.stars * 100,
             receivedAmount: preCheckoutQuery.total_amount
           });
           
@@ -842,20 +842,21 @@ export async function POST(request: NextRequest) {
         const { addPaidMessages } = await import('@/lib/db/queries');
         await addPaidMessages(dbUser.id, totalMessages);
 
-        // Record the payment transaction
+        // Record the payment transaction (convert amount back from smallest units)
         const { recordStarPayment } = await import('@/lib/db/queries');
         await recordStarPayment({
           userId: dbUser.id,
           telegramPaymentChargeId: successfulPayment.telegram_payment_charge_id,
-          starAmount: successfulPayment.total_amount,
+          starAmount: Math.round(successfulPayment.total_amount / 100),
           messagesAdded: totalMessages,
         });
 
-        // Send confirmation message
+        // Send confirmation message (convert amount back from smallest units)
+        const starsAmount = Math.round(successfulPayment.total_amount / 100);
         const confirmationMessage = `✅ *Payment Successful!*
 
 **Package:** ${totalMessages} Messages (${selectedPackage.messages}${selectedPackage.bonus > 0 ? ` + ${selectedPackage.bonus} bonus` : ''})
-**Price:** ${successfulPayment.total_amount} ⭐ Telegram Stars
+**Price:** ${starsAmount} ⭐ Telegram Stars
 **Transaction ID:** \`${successfulPayment.telegram_payment_charge_id}\`
 
 🎉 **${totalMessages} messages** have been added to your account!
@@ -1464,7 +1465,7 @@ Available packages:
             currency: 'XTR', // Telegram Stars currency
             prices: [{
               label: `${totalMessages} Messages`,
-              amount: selectedPackage.stars
+              amount: selectedPackage.stars * 100  // Multiply by 100 for Telegram Stars
             }],
             start_parameter: `buy_${packageIndex}`
           }),
