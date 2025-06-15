@@ -208,8 +208,10 @@ export async function POST(request: Request) {
       return new ChatSDKError('bad_request:api', 'Invalid chat ID format').toResponse();
     }
 
+    const authStartTime = Date.now();
     const authSpan = mainTrace.span({
       name: "authentication",
+      startTime: new Date(authStartTime),
       input: { 
         chatId: id,
         requestedAt: new Date().toISOString()
@@ -220,10 +222,10 @@ export async function POST(request: Request) {
 
     if (!session?.user) {
       safeTrace(() => authSpan.update({ 
+        endTime: new Date(),
         output: { 
           authenticated: false, 
-          error: "No session",
-          duration: Date.now() - startTime
+          error: "No session"
         }
       }));
       return new ChatSDKError('unauthorized:chat').toResponse();
@@ -231,12 +233,12 @@ export async function POST(request: Request) {
 
     const userType: UserType = session.user.type;
     safeTrace(() => authSpan.update({ 
+      endTime: new Date(),
       output: { 
         authenticated: true, 
         userId: session.user.id,
         userType: userType,
-        userEmail: session.user.email?.substring(0, 20) + '...',
-        duration: Date.now() - startTime
+        userEmail: session.user.email?.substring(0, 20) + '...'
       }
     }));
 
@@ -254,7 +256,7 @@ export async function POST(request: Request) {
         selectedChatModel,
         selectedVisibilityType,
         selectedLanguage,
-        selectedSources: selectedSources?.join(',') || 'all',
+        selectedSources: selectedSources ? Object.entries(selectedSources).filter(([_, enabled]) => enabled).map(([source, _]) => source).join(',') || 'all' : 'all',
         messageLength,
         hasAttachments: !!(message.experimental_attachments?.length),
         attachmentCount: message.experimental_attachments?.length || 0,
@@ -265,16 +267,21 @@ export async function POST(request: Request) {
     // NEW: Use trial balance system instead of legacy message counting
     const entitlements = entitlementsByUserType[userType];
     
+    const rateLimitStartTime = Date.now();
     const rateLimitSpan = mainTrace.span({
       name: "rate-limit-check",
+      startTime: new Date(rateLimitStartTime),
       input: { 
         userType, 
         useTrialBalance: entitlements.useTrialBalance,
         maxMessagesPerDay: entitlements.maxMessagesPerDay,
-        trialMessagesPerDay: entitlements.trialMessagesPerDay,
-        checkStartTime: Date.now()
+        trialMessagesPerDay: entitlements.trialMessagesPerDay
       }
     });
+
+    // Store consumption info for potential refund
+    let messageConsumed = false;
+    let usedTrialForRefund = false;
 
     if (entitlements.useTrialBalance) {
       // Import the new balance functions
@@ -289,6 +296,7 @@ export async function POST(request: Request) {
       if (!consumeResult.success) {
         // User has no messages left - return rate limit error
         safeTrace(() => rateLimitSpan.update({ 
+          endTime: new Date(),
           output: { 
             rateLimited: true, 
             remainingMessages: 0,
@@ -299,7 +307,6 @@ export async function POST(request: Request) {
               totalMessagesRemaining: currentBalance.totalMessagesRemaining,
               needsReset: currentBalance.needsReset
             },
-            duration: Date.now() - startTime,
             entitlements: {
               trialMessagesPerDay: entitlements.trialMessagesPerDay,
               useTrialBalance: entitlements.useTrialBalance
@@ -309,8 +316,13 @@ export async function POST(request: Request) {
         return new ChatSDKError('rate_limit:chat').toResponse();
       }
       
+      // Store consumption info for potential refund
+      messageConsumed = true;
+      usedTrialForRefund = consumeResult.usedTrial;
+      
       console.log(`[Chat API] User ${session.user.id} consumed message. Remaining: ${consumeResult.remainingMessages}, Used trial: ${consumeResult.usedTrial}`);
       safeTrace(() => rateLimitSpan.update({ 
+        endTime: new Date(),
         output: { 
           rateLimited: false,
           remainingMessages: consumeResult.remainingMessages,
@@ -325,7 +337,6 @@ export async function POST(request: Request) {
             remainingMessages: consumeResult.remainingMessages,
             messageType: consumeResult.usedTrial ? 'trial' : 'paid'
           },
-          duration: Date.now() - startTime,
           entitlements: {
             trialMessagesPerDay: entitlements.trialMessagesPerDay,
             useTrialBalance: entitlements.useTrialBalance
@@ -434,6 +445,15 @@ export async function POST(request: Request) {
 
       // Filter out citations with minimal metadata before sending to frontend
       const filteredCitations = searchResults.citations.filter((c: any) => {
+        // IMPORTANT: Allow fatwa citations to pass through FIRST (regardless of namespace)
+        if (c.metadata && (c.metadata.content_type === 'islamqa_fatwa' || 
+            c.metadata.type === 'fatwa' || 
+            c.metadata.type === 'FAT' ||
+            c.metadata.source_link || 
+            c.metadata.url)) {
+          return true; // Keep fatwa citations
+        }
+        
         // Check for classic sources with only answer/question/text
         if (!c.namespace && c.metadata) {
           const metadataKeys = Object.keys(c.metadata);
@@ -455,7 +475,7 @@ export async function POST(request: Request) {
         modern: filteredCitations.filter((c: any) => c.metadata?.type === 'modern' || c.metadata?.type === 'MOD').length,
         risale: filteredCitations.filter((c: any) => c.metadata?.type === 'risale' || c.metadata?.type === 'RIS' || (c.namespace && ['Sozler-Bediuzzaman_Said_Nursi', 'Mektubat-Bediuzzaman_Said_Nursi', 'lemalar-bediuzzaman_said_nursi'].includes(c.namespace))).length,
         youtube: filteredCitations.filter((c: any) => c.metadata?.type === 'youtube' || c.metadata?.type === 'YT' || (c.namespace && ['4455', 'Islam_The_Ultimate_Peace', '2238', 'Islamic_Guidance'].includes(c.namespace))).length,
-        fatwa: filteredCitations.filter((c: any) => c.metadata?.type === 'fatwa' || c.metadata?.type === 'FAT').length
+        fatwa: filteredCitations.filter((c: any) => c.metadata?.type === 'fatwa' || c.metadata?.type === 'FAT' || c.metadata?.content_type === 'islamqa_fatwa').length
       };
 
       const searchDuration = Date.now() - vectorSearchStartTime;
@@ -477,6 +497,9 @@ export async function POST(request: Request) {
         }
       }));
 
+      const vectorSearchEndTime = Date.now();
+      const vectorSearchTotalDuration = vectorSearchEndTime - startTime;
+      
       safeTrace(() => mainTrace.update({ 
         output: { 
           success: true,
@@ -485,7 +508,20 @@ export async function POST(request: Request) {
           citationsCount: filteredCitations.length,
           citationsBySource: citationAnalysis,
           searchDurationMs: searchDuration,
-          totalDurationMs: Date.now() - startTime
+          totalDurationMs: vectorSearchTotalDuration,
+          endTime: vectorSearchEndTime,
+          endTimestamp: new Date(vectorSearchEndTime).toISOString(),
+          latencyMs: vectorSearchTotalDuration,
+          durationMs: vectorSearchTotalDuration,
+          // Timing summary for vector search only trace
+          timing: {
+            startTime: startTime,
+            endTime: vectorSearchEndTime,
+            durationMs: vectorSearchTotalDuration,
+            latencyMs: vectorSearchTotalDuration,
+            startTimestamp: new Date(startTime).toISOString(),
+            endTimestamp: new Date(vectorSearchEndTime).toISOString()
+          }
         }
       }));
 
@@ -610,6 +646,15 @@ REMEMBER: ${languageName} ONLY - NO EXCEPTIONS!`;
         
         // Filter out citations with minimal metadata before sending to frontend
         const filteredCitations = searchResults.citations.filter((c: any) => {
+          // IMPORTANT: Allow fatwa citations to pass through FIRST (regardless of namespace)
+          if (c.metadata && (c.metadata.content_type === 'islamqa_fatwa' || 
+              c.metadata.type === 'fatwa' || 
+              c.metadata.type === 'FAT' ||
+              c.metadata.source_link || 
+              c.metadata.url)) {
+            return true; // Keep fatwa citations
+          }
+          
           // Check for classic sources with only answer/question/text
           if (!c.namespace && c.metadata) {
             const metadataKeys = Object.keys(c.metadata);
@@ -634,7 +679,7 @@ REMEMBER: ${languageName} ONLY - NO EXCEPTIONS!`;
           modern: filteredCitations.filter((c: any) => c.metadata?.type === 'modern' || c.metadata?.type === 'MOD').length,
           risale: filteredCitations.filter((c: any) => c.metadata?.type === 'risale' || c.metadata?.type === 'RIS' || (c.namespace && ['Sozler-Bediuzzaman_Said_Nursi', 'Mektubat-Bediuzzaman_Said_Nursi', 'lemalar-bediuzzaman_said_nursi', 'Hasir_Risalesi-Bediuzzaman_Said_Nursi', 'Otuz_Uc_Pencere-Bediuzzaman_Said_Nursi', 'Hastalar_Risalesi-Bediuzzaman_Said_Nursi', 'ihlas_risaleleri-bediuzzaman_said_nursi', 'enne_ve_zerre_risalesi-bediuzzaman_said_nursi', 'tabiat_risalesi-bediuzzaman_said_nursi', 'kader_risalesi-bediuzzaman_said_nursi'].includes(c.namespace))).length,
           youtube: filteredCitations.filter((c: any) => c.metadata?.type === 'youtube' || c.metadata?.type === 'YT' || (c.namespace && ['4455', 'Islam_The_Ultimate_Peace', '2238', 'Islamic_Guidance', '2004', 'MercifulServant', '1572', 'Towards_Eternity'].includes(c.namespace))).length,
-          fatwa: filteredCitations.filter((c: any) => c.metadata?.type === 'fatwa' || c.metadata?.type === 'FAT').length
+          fatwa: filteredCitations.filter((c: any) => c.metadata?.type === 'fatwa' || c.metadata?.type === 'FAT' || c.metadata?.content_type === 'islamqa_fatwa').length
         };
         
         // Store vector search data to save after assistant message is created
@@ -666,7 +711,7 @@ REMEMBER: ${languageName} ONLY - NO EXCEPTIONS!`;
       const modernContexts = allContexts.filter((ctx: any) => ctx.metadata?.type === 'modern' || ctx.metadata?.type === 'MOD');
       const risaleContexts = allContexts.filter((ctx: any) => ctx.metadata?.type === 'risale' || ctx.metadata?.type === 'RIS' || (ctx.namespace && ['Sozler-Bediuzzaman_Said_Nursi', 'Mektubat-Bediuzzaman_Said_Nursi', 'lemalar-bediuzzaman_said_nursi', 'Hasir_Risalesi-Bediuzzaman_Said_Nursi', 'Otuz_Uc_Pencere-Bediuzzaman_Said_Nursi', 'Hastalar_Risalesi-Bediuzzaman_Said_Nursi', 'ihlas_risaleleri-bediuzzaman_said_nursi', 'enne_ve_zerre_risalesi-bediuzzaman_said_nursi', 'tabiat_risalesi-bediuzzaman_said_nursi', 'kader_risalesi-bediuzzaman_said_nursi'].includes(ctx.namespace)));
       const youtubeContexts = allContexts.filter((ctx: any) => ctx.metadata?.type === 'youtube' || ctx.metadata?.type === 'YT' || (ctx.namespace && ['4455', 'Islam_The_Ultimate_Peace', '2238', 'Islamic_Guidance', '2004', 'MercifulServant', '1572', 'Towards_Eternity'].includes(ctx.namespace)));
-      const fatwaContexts = allContexts.filter((ctx: any) => ctx.metadata?.type === 'fatwa' || ctx.metadata?.type === 'FAT');
+      const fatwaContexts = allContexts.filter((ctx: any) => ctx.metadata?.type === 'fatwa' || ctx.metadata?.type === 'FAT' || ctx.metadata?.content_type === 'islamqa_fatwa');
       
       const totalCitations = classicContexts.length + modernContexts.length + risaleContexts.length + youtubeContexts.length + fatwaContexts.length;
       
@@ -811,6 +856,20 @@ Do not add any additional text, explanations, or formatting. Just return that ex
                     // Extract the complete response text
                     const fullResponseText = assistantMessage.parts?.map((part: any) => part.text || '').join('') || '';
                     
+                    // Check if this is the "Sorry I do not have enough information" response
+                    const isInsufficientInfoResponse = fullResponseText.trim() === "Sorry I do not have enough information to provide grounded response";
+                    
+                    // Refund message if user got insufficient info response
+                    if (isInsufficientInfoResponse && messageConsumed && entitlements.useTrialBalance) {
+                      try {
+                        const { refundUserMessage } = await import('@/lib/db/queries');
+                        await refundUserMessage(session.user.id, usedTrialForRefund);
+                        console.log(`[Chat API] Refunded message for user ${session.user.id} due to insufficient info response. Was trial: ${usedTrialForRefund}`);
+                      } catch (refundError) {
+                        console.error('Failed to refund message:', refundError);
+                      }
+                    }
+                    
                     // Extract citations from the response
                     const citationMatches = fullResponseText.match(/\[CIT\d+\]/g) || [];
                     const uniqueCitations = [...new Set(citationMatches)] as string[];
@@ -877,14 +936,16 @@ Do not add any additional text, explanations, or formatting. Just return that ex
                         vectorSearchSaved,
                         hasAttachments: !!(assistantMessage.experimental_attachments?.length),
                         attachmentCount: assistantMessage.experimental_attachments?.length || 0,
-                        // NEW: Complete response with sources
+                        // NEW: Complete response with sources and refund info
                         finalResponse: {
                           fullText: fullResponseText.substring(0, 1000) + (fullResponseText.length > 1000 ? '...' : ''),
                           citationsUsed: uniqueCitations,
                           citationCount: uniqueCitations.length,
                           citationSourceMap,
                           hasContext: usedContext.length > 0,
-                          contextSourceCount: usedContext.length
+                          contextSourceCount: usedContext.length,
+                          isInsufficientInfoResponse,
+                          messageRefunded: isInsufficientInfoResponse && messageConsumed
                         }
                       }
                     }));
@@ -961,6 +1022,23 @@ Do not add any additional text, explanations, or formatting. Just return that ex
                     const responseLength = assistantMessage.parts?.reduce((acc: number, part: any) => 
                       acc + (part.text?.length || 0), 0) || 0;
 
+                    // Extract the complete response text for fallback provider too
+                    const fullResponseTextFallback = assistantMessage.parts?.map((part: any) => part.text || '').join('') || '';
+                    
+                    // Check if this is the "Sorry I do not have enough information" response
+                    const isInsufficientInfoResponse = fullResponseTextFallback.trim() === "Sorry I do not have enough information to provide grounded response";
+                    
+                    // Refund message if user got insufficient info response
+                    if (isInsufficientInfoResponse && messageConsumed && entitlements.useTrialBalance) {
+                      try {
+                        const { refundUserMessage } = await import('@/lib/db/queries');
+                        await refundUserMessage(session.user.id, usedTrialForRefund);
+                        console.log(`[Chat API Fallback] Refunded message for user ${session.user.id} due to insufficient info response. Was trial: ${usedTrialForRefund}`);
+                      } catch (refundError) {
+                        console.error('Failed to refund message (fallback):', refundError);
+                      }
+                    }
+
                     // Save only the assistant message (user message already saved)
                     await saveMessages({
                       messages: [
@@ -993,8 +1071,6 @@ Do not add any additional text, explanations, or formatting. Just return that ex
                       }
                     }
 
-                    // Extract the complete response text for fallback provider too
-                    const fullResponseTextFallback = assistantMessage.parts?.map((part: any) => part.text || '').join('') || '';
                     const citationMatchesFallback = fullResponseTextFallback.match(/\[CIT\d+\]/g) || [];
                     const uniqueCitationsFallback = [...new Set(citationMatchesFallback)] as string[];
                     const usedContextFallback = messageId ? getContextByMessageId(messageId) : [];
@@ -1026,14 +1102,16 @@ Do not add any additional text, explanations, or formatting. Just return that ex
                         vectorSearchSaved,
                         hasAttachments: !!(assistantMessage.experimental_attachments?.length),
                         attachmentCount: assistantMessage.experimental_attachments?.length || 0,
-                        // NEW: Complete response with sources for fallback provider
+                        // NEW: Complete response with sources and refund info for fallback provider
                         finalResponse: {
                           fullText: fullResponseTextFallback.substring(0, 1000) + (fullResponseTextFallback.length > 1000 ? '...' : ''),
                           citationsUsed: uniqueCitationsFallback,
                           citationCount: uniqueCitationsFallback.length,
                           citationSourceMap: citationSourceMapFallback,
                           hasContext: usedContextFallback.length > 0,
-                          contextSourceCount: usedContextFallback.length
+                          contextSourceCount: usedContextFallback.length,
+                          isInsufficientInfoResponse,
+                          messageRefunded: isInsufficientInfoResponse && messageConsumed
                         }
                       }
                     }));
@@ -1095,6 +1173,7 @@ Do not add any additional text, explanations, or formatting. Just return that ex
     }
 
     const finalProcessingTime = Date.now() - startTime;
+    const endTime = Date.now();
     
     safeTrace(() => mainTrace.update({ 
       output: { 
@@ -1110,7 +1189,7 @@ Do not add any additional text, explanations, or formatting. Just return that ex
         systemPromptLength: modifiedSystemPrompt.length,
         conversationLength: messages.length,
         selectedLanguage: selectedLanguage || 'en',
-        selectedSources: selectedSources?.join(',') || 'all',
+        selectedSources: selectedSources ? Object.entries(selectedSources).filter(([_, enabled]) => enabled).map(([source, _]) => source).join(',') || 'all' : 'all',
         messageLength,
         hasAttachments: !!(message.experimental_attachments?.length),
         attachmentCount: message.experimental_attachments?.length || 0,
@@ -1142,12 +1221,28 @@ Do not add any additional text, explanations, or formatting. Just return that ex
       return new Response(stream, { headers });
     }
   } catch (error) {
+    const errorEndTime = Date.now();
+    const errorTotalDuration = errorEndTime - startTime;
+    
     safeTrace(() => mainTrace.update({ 
       output: { 
         error: error instanceof Error ? error.message : String(error),
         errorType: error instanceof ChatSDKError ? 'ChatSDKError' : 'UnexpectedError',
         stack: error instanceof Error ? error.stack : undefined,
-        success: false
+        success: false,
+        endTime: errorEndTime,
+        endTimestamp: new Date(errorEndTime).toISOString(),
+        latencyMs: errorTotalDuration,
+        durationMs: errorTotalDuration,
+        // Timing summary for error trace
+        timing: {
+          startTime: startTime,
+          endTime: errorEndTime,
+          durationMs: errorTotalDuration,
+          latencyMs: errorTotalDuration,
+          startTimestamp: new Date(startTime).toISOString(),
+          endTimestamp: new Date(errorEndTime).toISOString()
+        }
       }
     }));
 
@@ -1171,14 +1266,19 @@ Do not add any additional text, explanations, or formatting. Just return that ex
 }
 
 export async function GET(request: Request) {
+  const getStartTime = Date.now();
+  
   const mainTrace = langfuse.trace({
     name: "chat-get-request",
     input: { 
       url: request.url,
-      method: request.method 
+      method: request.method,
+      startTime: getStartTime,
+      startTimestamp: new Date(getStartTime).toISOString()
     },
     metadata: { 
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      requestStartTime: getStartTime
     }
   });
 
@@ -1213,11 +1313,27 @@ export async function GET(request: Request) {
         success: true
       }
     }));
+    const citationsEndTime = Date.now();
+    const citationsDuration = citationsEndTime - getStartTime;
+    
     safeTrace(() => mainTrace.update({ 
       output: { 
         success: true,
         type: "citations-retrieval",
-        citationsCount: citations.length
+        citationsCount: citations.length,
+        endTime: citationsEndTime,
+        endTimestamp: new Date(citationsEndTime).toISOString(),
+        latencyMs: citationsDuration,
+        durationMs: citationsDuration,
+        // Timing summary for citations retrieval
+        timing: {
+          startTime: getStartTime,
+          endTime: citationsEndTime,
+          durationMs: citationsDuration,
+          latencyMs: citationsDuration,
+          startTimestamp: new Date(getStartTime).toISOString(),
+          endTimestamp: new Date(citationsEndTime).toISOString()
+        }
       }
     }));
     
@@ -1231,11 +1347,26 @@ export async function GET(request: Request) {
   }
 
   if (!streamContext) {
+    const noStreamEndTime = Date.now();
+    const noStreamDuration = noStreamEndTime - getStartTime;
+    
     safeTrace(() => mainTrace.update({ 
       output: { 
         success: true,
         type: "no-stream-context",
-        status: 204
+        status: 204,
+        endTime: noStreamEndTime,
+        endTimestamp: new Date(noStreamEndTime).toISOString(),
+        latencyMs: noStreamDuration,
+        durationMs: noStreamDuration,
+        timing: {
+          startTime: getStartTime,
+          endTime: noStreamEndTime,
+          durationMs: noStreamDuration,
+          latencyMs: noStreamDuration,
+          startTimestamp: new Date(getStartTime).toISOString(),
+          endTimestamp: new Date(noStreamEndTime).toISOString()
+        }
       }
     }));
     return new Response(null, { status: 204 });

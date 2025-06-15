@@ -28,8 +28,7 @@ if (process.env.NODE_ENV === 'production' && !process.env.RAILWAY_EMBEDDING_SERV
   console.error('RAILWAY_EMBEDDING_SERVICE_URL is required in production but not set');
 }
 
-// Log the service URL being used (without exposing sensitive info)
-console.log(`[vector-search] Using embedding service: ${RAILWAY_EMBEDDING_SERVICE_URL.includes('localhost') ? 'localhost' : 'external service'}`);
+
 
 // Index names
 const CLASSIC_INDEX_NAME = process.env.PINECONE_CLASSIC_INDEX || 'cls-books';
@@ -91,8 +90,6 @@ async function getEmbedding(text: string, parentTrace?: LangfuseTraceClient): Pr
   });
 
   try {
-    console.log(`[vector-search] Requesting embedding from: ${RAILWAY_EMBEDDING_SERVICE_URL}/embed`);
-    
     const response = await fetch(`${RAILWAY_EMBEDDING_SERVICE_URL}/embed`, {
       method: 'POST',
       headers: {
@@ -101,11 +98,8 @@ async function getEmbedding(text: string, parentTrace?: LangfuseTraceClient): Pr
       body: JSON.stringify({ text }),
     });
 
-    console.log(`[vector-search] Embedding service response status: ${response.status}`);
-
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`[vector-search] Embedding service error: ${response.status} - ${errorText}`);
       safeTrace(() => span?.update({ 
         output: { error: `${response.status} - ${errorText}` }
       }));
@@ -114,22 +108,17 @@ async function getEmbedding(text: string, parentTrace?: LangfuseTraceClient): Pr
 
     const data = await response.json();
     if (!data.success || !data.embedding) {
-      console.error('[vector-search] Invalid embedding response:', data);
       safeTrace(() => span?.update({ 
         output: { error: "Invalid embedding response" }
       }));
       throw new Error('Invalid embedding response');
     }
 
-    console.log(`[vector-search] Successfully received embedding with ${data.embedding.length} dimensions`);
     safeTrace(() => span?.update({ 
       output: { dimensions: data.embedding.length, success: true }
     }));
     return data.embedding;
   } catch (error) {
-    console.error('Error getting embedding from Railway service:', error);
-    console.error('Service URL:', RAILWAY_EMBEDDING_SERVICE_URL);
-    console.error('Error details:', error instanceof Error ? error.message : String(error));
     safeTrace(() => span?.update({ 
       output: { error: error instanceof Error ? error.message : String(error) }
     }));
@@ -141,38 +130,50 @@ async function improveUserQueries(
   query: string, 
   history: string,
   selectedChatModel: string,
-  parentTrace?: LangfuseTraceClient
+  parentTrace?: LangfuseTraceClient,
+  previousAttempts?: string[]
 ): Promise<string[]> {
   const span = parentTrace?.span({
     name: "improve-user-queries",
     input: { 
       query: query.substring(0, 200) + (query.length > 200 ? '...' : ''),
       historyLength: history.length,
-      selectedChatModel 
+      selectedChatModel,
+      attemptNumber: previousAttempts ? previousAttempts.length + 1 : 1
     },
     metadata: { service: "railway-embedding" }
   });
 
   try {
-    console.log(`[vector-search] Requesting query improvement from: ${RAILWAY_EMBEDDING_SERVICE_URL}/improve-queries`);
+    // Build the request body with previous attempts if available
+    let requestBody: any = { 
+      query, 
+      history, 
+      selectedChatModel 
+    };
+
+    // Include previous attempts to help the LLM try different approaches
+    if (previousAttempts && previousAttempts.length > 0) {
+      const attemptNumber = previousAttempts.length + 1;
+      const previousAttemptsText = previousAttempts.map((attempt, index) => 
+        `Attempt ${index + 1}: ${attempt}`
+      ).join('\n');
+      
+      requestBody.previousAttempts = previousAttemptsText;
+      requestBody.attemptNumber = attemptNumber;
+      requestBody.instructions = `This is attempt ${attemptNumber}/3. Previous attempts found no results:\n${previousAttemptsText}\n\nPlease try a completely different approach with different keywords, synonyms, or broader/narrower terms. Be creative and think of alternative ways to express the same concept.`;
+    }
     
     const response = await fetch(`${RAILWAY_EMBEDDING_SERVICE_URL}/improve-queries`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ 
-        query, 
-        history, 
-        selectedChatModel 
-      }),
+      body: JSON.stringify(requestBody),
     });
-
-    console.log(`[vector-search] Query improvement service response status: ${response.status}`);
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`[vector-search] Query improvement service error: ${response.status} - ${errorText}`);
       safeTrace(() => span?.update({ 
         output: { error: `${response.status} - ${errorText}`, fallback: true }
       }));
@@ -181,33 +182,23 @@ async function improveUserQueries(
 
     const data = await response.json();
     if (!data.success || !data.improvedQueries) {
-      console.error('[vector-search] Invalid query improvement response:', data);
       safeTrace(() => span?.update({ 
         output: { error: "Invalid query improvement response", fallback: true }
       }));
       throw new Error('Invalid query improvement response');
     }
 
-    console.log('[vector-search] Improved queries from Railway service:', {
-      originalQuery: query,
-      historyLength: history.length,
-      improvedQueries: data.improvedQueries
-    });
-
     safeTrace(() => span?.update({ 
       output: { 
         improvedQueries: data.improvedQueries,
         count: data.improvedQueries.length,
+        attemptNumber: previousAttempts ? previousAttempts.length + 1 : 1,
         success: true 
       }
     }));
 
     return data.improvedQueries;
   } catch (error) {
-    console.error('Error improving queries via Railway service:', error);
-    console.error('Service URL:', RAILWAY_EMBEDDING_SERVICE_URL);
-    console.error('Falling back to original query repeated 3 times');
-    
     const fallbackQueries = [query, query, query];
     safeTrace(() => span?.update({ 
       output: { 
@@ -310,12 +301,6 @@ async function getTopKContext(
 
     return filteredResults;
   } catch (error) {
-    console.error(`[vector-search] ❌ Error querying index ${indexName}:`, {
-      error: error instanceof Error ? error.message : String(error),
-      query: query.substring(0, 100),
-      k,
-      timestamp: new Date().toISOString()
-    });
     return [];
   }
 }
@@ -377,12 +362,6 @@ async function getTopKContextAllNamespaces(
     
     return finalResults;
   } catch (error) {
-    console.error(`[vector-search] ❌ Error querying namespaces in ${indexName}:`, {
-      error: error instanceof Error ? error.message : String(error),
-      query: query.substring(0, 100),
-      namespacesCount: namespaces.length,
-      timestamp: new Date().toISOString()
-    });
     return [];
   }
 }
@@ -478,6 +457,24 @@ export function buildConversationHistory(messages: any[]): string {
     }
   }
   return history.trim();
+}
+
+// Helper function to check if we have sufficient results
+function hasSufficientResults(
+  classicContexts: VectorSearchResult[],
+  modernContexts: VectorSearchResult[],
+  risaleContexts: VectorSearchResult[],
+  youtubeContexts: VectorSearchResult[],
+  fatwaContexts: VectorSearchResult[]
+): boolean {
+  const totalResults = classicContexts.length + modernContexts.length + 
+                      risaleContexts.length + youtubeContexts.length + fatwaContexts.length;
+  
+  // Consider we have sufficient results if we have at least 3 results total
+  // OR at least 1 high-quality result from classic/risale/fatwa sources
+  const hasHighQualityResults = classicContexts.length > 0 || risaleContexts.length > 0 || fatwaContexts.length > 0;
+  
+  return totalResults >= 3 || hasHighQualityResults;
 }
 
 // Optimized function with parallel processing
@@ -598,15 +595,7 @@ async function performAllVectorSearches(
       fatwaContexts: dedup(fatwaResults, 'Fatwa')
     };
 
-    // Compact stats
-    console.log('[vector-search] Results:', {
-      CLS: finalResults.classicContexts.length,
-      RIS: finalResults.risaleContexts.length,
-      YT: finalResults.youtubeContexts.length,
-      FAT: finalResults.fatwaContexts.length,
-      total: finalResults.classicContexts.length + finalResults.risaleContexts.length + 
-             finalResults.youtubeContexts.length + finalResults.fatwaContexts.length
-    });
+
 
     safeTrace(() => span?.update({ 
       output: { 
@@ -626,17 +615,125 @@ async function performAllVectorSearches(
     return finalResults;
     
   } catch (error) {
-    console.error('[vector-search] ❌ Error in parallel vector searches:', {
-      error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
-      improvedQueriesCount: improvedQueries.length,
-      timestamp: new Date().toISOString()
-    });
-    
     safeTrace(() => span?.update({ 
       output: { 
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined
+      }
+    }));
+    
+    throw error;
+  }
+}
+
+// Enhanced function with retry mechanism
+async function performAllVectorSearchesWithRetry(
+  originalQuery: string,
+  conversationHistory: string,
+  selectedChatModel: string,
+  selectedSources?: SourceSelection,
+  parentTrace?: LangfuseTraceClient,
+  maxAttempts: number = 3
+): Promise<{
+  classicContexts: VectorSearchResult[];
+  modernContexts: VectorSearchResult[];
+  risaleContexts: VectorSearchResult[];
+  youtubeContexts: VectorSearchResult[];
+  fatwaContexts: VectorSearchResult[];
+  finalImprovedQueries: string[];
+  totalAttempts: number;
+}> {
+  const span = parentTrace?.span({
+    name: "vector-searches-with-retry",
+    input: { 
+      originalQuery: originalQuery.substring(0, 200) + (originalQuery.length > 200 ? '...' : ''),
+      maxAttempts,
+      selectedSources 
+    },
+    metadata: { 
+      searchType: "retry-vector-search"
+    }
+  });
+
+  let previousAttempts: string[] = [];
+  let finalResults: any = null;
+  let finalImprovedQueries: string[] = [];
+
+  try {
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      // Get improved queries for this attempt
+      const improvedQueries = await improveUserQueries(
+        originalQuery, 
+        conversationHistory, 
+        selectedChatModel, 
+        parentTrace,
+        attempt > 1 ? previousAttempts : undefined
+      );
+      
+      finalImprovedQueries = improvedQueries;
+      
+      // Perform the vector searches
+      const searchResults = await performAllVectorSearches(improvedQueries, selectedSources, parentTrace);
+      
+      // Check if we have sufficient results
+      const hasSufficient = hasSufficientResults(
+        searchResults.classicContexts,
+        searchResults.modernContexts,
+        searchResults.risaleContexts,
+        searchResults.youtubeContexts,
+        searchResults.fatwaContexts
+      );
+      
+      const totalResults = searchResults.classicContexts.length + searchResults.modernContexts.length + 
+                          searchResults.risaleContexts.length + searchResults.youtubeContexts.length + 
+                          searchResults.fatwaContexts.length;
+      
+      if (hasSufficient || attempt === maxAttempts) {
+        // We have sufficient results or this is our last attempt
+        finalResults = { ...searchResults, finalImprovedQueries, totalAttempts: attempt };
+        
+        safeTrace(() => span?.update({ 
+          output: { 
+            success: true,
+            totalAttempts: attempt,
+            finalResultsCount: {
+              classic: searchResults.classicContexts.length,
+              modern: searchResults.modernContexts.length,
+              risale: searchResults.risaleContexts.length,
+              youtube: searchResults.youtubeContexts.length,
+              fatwa: searchResults.fatwaContexts.length,
+              total: totalResults
+            },
+            hasSufficientResults: hasSufficient
+          }
+        }));
+        
+        break;
+      } else {
+        // Not sufficient results, prepare for next attempt
+        // Store this attempt's queries for the next iteration
+        previousAttempts.push(improvedQueries.join(', '));
+        
+        // Add a small delay before retry to avoid overwhelming the service
+        if (attempt < maxAttempts) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
+    }
+    
+    if (!finalResults) {
+      throw new Error('Failed to get results after all attempts');
+    }
+    
+    return finalResults;
+    
+  } catch (error) {
+    safeTrace(() => span?.update({ 
+      output: { 
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        maxAttempts,
+        previousAttempts: previousAttempts.length
       }
     }));
     
@@ -664,13 +761,16 @@ export async function performVectorSearchWithProgress(
   improvedQueries: string[];
   contextBlock: string;
 }> {
+  const searchStartTime = Date.now();
+  
   const span = parentTrace?.span({
     name: "vector-search-with-progress",
+    startTime: new Date(searchStartTime), // Langfuse expects datetime object
     input: { 
       userMessage: userMessage.substring(0, 200) + (userMessage.length > 200 ? '...' : ''),
       conversationHistoryLength: conversationHistory.length,
       selectedChatModel,
-      selectedSources 
+      selectedSources
     },
     metadata: { 
       hasProgress: !!onProgress,
@@ -683,32 +783,31 @@ export async function performVectorSearchWithProgress(
   }
   
   try {
-    const improvedQueries = await improveUserQueries(userMessage, conversationHistory, selectedChatModel, parentTrace);
+    // Use the sophisticated retry mechanism
+    const searchResults = await performAllVectorSearchesWithRetry(
+      userMessage, 
+      conversationHistory, 
+      selectedChatModel, 
+      selectedSources, 
+      parentTrace
+    );
     
-    if (onProgress) {
-      onProgress({ step: 1, improvedQueries });
-    }
+    const { classicContexts, modernContexts, risaleContexts, youtubeContexts, fatwaContexts, finalImprovedQueries, totalAttempts } = searchResults;
     
-    if (onProgress) {
-      onProgress({ step: 2, improvedQueries });
-    }
-    
-    const { classicContexts, modernContexts, risaleContexts, youtubeContexts, fatwaContexts } = 
-      await performAllVectorSearches(improvedQueries, selectedSources, parentTrace);
-    
-    // Send search results count
+    // Send search results count with attempt info
     const searchResultsCount = {
       classic: classicContexts.length,
       modern: modernContexts.length,
       risale: risaleContexts.length,
       youtube: youtubeContexts.length,
-      fatwa: fatwaContexts.length
+      fatwa: fatwaContexts.length,
+      totalAttempts
     };
     
     if (onProgress) {
       onProgress({
         step: 2,
-        improvedQueries,
+        improvedQueries: finalImprovedQueries,
         searchResults: searchResultsCount
       });
     }
@@ -724,25 +823,30 @@ export async function performVectorSearchWithProgress(
     if (onProgress) {
       onProgress({
         step: 3,
-        improvedQueries,
+        improvedQueries: finalImprovedQueries,
         searchResults: searchResultsCount
       });
     }
 
+    const searchEndTime = Date.now();
+    const searchDuration = searchEndTime - searchStartTime;
+    
     const result = {
       messageId,
       citations: allContexts,
-      improvedQueries,
+      improvedQueries: finalImprovedQueries,
       contextBlock
     };
 
     safeTrace(() => span?.update({ 
+      endTime: new Date(searchEndTime), // Langfuse expects datetime object
       output: { 
         messageId,
         citationsCount: allContexts.length,
-        improvedQueriesCount: improvedQueries.length,
+        improvedQueriesCount: finalImprovedQueries.length,
         searchResultsCount,
         contextBlockLength: contextBlock.length,
+        totalAttempts,
         success: true
       }
     }));
@@ -750,18 +854,15 @@ export async function performVectorSearchWithProgress(
     return result;
     
   } catch (error) {
-    console.error('[vector-search] ❌ Error in vector search process:', {
-      error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
-      userMessage: userMessage.substring(0, 100),
-      selectedChatModel,
-      timestamp: new Date().toISOString()
-    });
+    const errorEndTime = Date.now();
+    const errorDuration = errorEndTime - searchStartTime;
     
     safeTrace(() => span?.update({ 
+      endTime: new Date(errorEndTime), // Langfuse expects datetime object
       output: { 
         error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined
+        stack: error instanceof Error ? error.stack : undefined,
+        success: false
       }
     }));
     

@@ -101,15 +101,8 @@ function formatDatabaseError(error: any, operation: string) {
 export async function testDatabaseConnection() {
   try {
     const result = await db.execute('SELECT 1');
-    console.log('[DB] Database connection test successful');
     return true;
   } catch (error) {
-    console.error('[DB] Database connection test failed:', {
-      error,
-      errorMessage: error instanceof Error ? error.message : 'Unknown error',
-      errorCode: (error as any)?.code,
-      postgresUrl: process.env.POSTGRES_URL ? 'Set (hidden)' : 'Not set'
-    });
     return false;
   }
 }
@@ -243,7 +236,6 @@ export async function findOrCreateGuestUser() {
     // If no unused guest user found, create a new one
     return await createGuestUser();
   } catch (error) {
-    console.error('[findOrCreateGuestUser] Error:', error);
     // Fallback to creating a new guest user
     return await createGuestUser();
   }
@@ -260,14 +252,7 @@ export async function saveChat({
   title: string;
   visibility: VisibilityType;
 }) {
-  console.log('[saveChat] Attempting to insert chat:', {
-    id,
-    userId,
-    title,
-    visibility,
-    titleLength: title?.length,
-    createdAt: new Date().toISOString()
-  });
+
 
   // Retry logic for connection errors
   let retries = 3;
@@ -278,11 +263,6 @@ export async function saveChat({
       // First check if chat already exists (race condition handling)
       const existingChat = await getChatById({ id });
       if (existingChat) {
-        console.log('[saveChat] Chat already exists, skipping insert:', {
-          id,
-          existingUserId: existingChat.userId,
-          requestedUserId: userId
-        });
         // If chat exists but belongs to different user, throw error
         if (existingChat.userId !== userId) {
           throw new ChatSDKError('forbidden:chat', 'Chat belongs to another user');
@@ -297,26 +277,14 @@ export async function saveChat({
         title,
         visibility,
       };
-      console.log('[saveChat] About to insert with values:', insertValues);
       
       const result = await db.insert(chat).values(insertValues);
-      console.log('[saveChat] Chat inserted successfully:', result);
-      
-      // Immediately verify what was inserted
-      const verifyChat = await getChatById({ id });
-      console.log('[saveChat] Verification - what was actually inserted:', {
-        id: verifyChat?.id,
-        visibility: verifyChat?.visibility,
-        title: verifyChat?.title,
-        userId: verifyChat?.userId
-      });
       return result;
     } catch (error) {
       lastError = error;
       
       // Check if it's a connection error and we have retries left
       if (isConnectionError(error) && retries > 1) {
-        console.log(`[saveChat] Connection error, retrying... (${retries - 1} retries left)`);
         retries--;
         // Wait a bit before retrying
         await new Promise(resolve => setTimeout(resolve, 1000));
@@ -325,31 +293,17 @@ export async function saveChat({
 
       // Check if it's a unique constraint violation
       if ((error as any)?.code === '23505' || (error as any)?.message?.includes('duplicate key')) {
-        console.log('[saveChat] Duplicate key error, attempting to fetch existing chat');
         try {
           const existingChat = await getChatById({ id });
           if (existingChat && existingChat.userId === userId) {
-            console.log('[saveChat] Found existing chat for same user, returning it');
             return existingChat;
           }
         } catch (fetchError) {
-          console.error('[saveChat] Failed to fetch existing chat after duplicate key error:', fetchError);
+          // Continue to throw the original error
         }
       }
 
-      // Format and log the error
-      const errorInfo = formatDatabaseError(error, 'saveChat');
-      console.error('[saveChat] Final error details:', {
-        ...errorInfo,
-        chatData: {
-          id,
-          userId,
-          title,
-          visibility,
-          createdAt: new Date().toISOString()
-        },
-        retriesLeft: retries - 1
-      });
+
 
       // If it's a connection error, throw a more specific error
       if (isConnectionError(error)) {
@@ -463,43 +417,22 @@ export async function getChatsByUserId({
 }
 
 export async function getChatById({ id }: { id: string }) {
-  console.log('[getChatById] Fetching chat:', { id });
-  
   let retries = 3;
   let lastError: any;
 
   while (retries > 0) {
     try {
       const [selectedChat] = await db.select().from(chat).where(eq(chat.id, id));
-      console.log('[getChatById] Chat query result:', {
-        id,
-        found: !!selectedChat,
-        chatData: selectedChat ? {
-          id: selectedChat.id,
-          userId: selectedChat.userId,
-          title: selectedChat.title,
-          visibility: selectedChat.visibility,
-          createdAt: selectedChat.createdAt
-        } : null
-      });
       return selectedChat;
     } catch (error) {
       lastError = error;
       
       // Check if it's a connection error and we have retries left
       if (isConnectionError(error) && retries > 1) {
-        console.log(`[getChatById] Connection error, retrying... (${retries - 1} retries left)`);
         retries--;
         await new Promise(resolve => setTimeout(resolve, 500));
         continue;
       }
-
-      const errorInfo = formatDatabaseError(error, 'getChatById');
-      console.error('[getChatById] Final error details:', {
-        ...errorInfo,
-        id,
-        retriesLeft: retries - 1
-      });
 
       if (isConnectionError(error)) {
         throw new ChatSDKError('bad_request:database', 'Database connection lost while fetching chat');
@@ -521,11 +454,59 @@ export async function saveMessages({
 }: {
   messages: Array<DBMessage>;
 }) {
-  try {
-    return await db.insert(message).values(messages);
-  } catch (error) {
-    throw new ChatSDKError('bad_request:database', 'Failed to save messages');
+
+  // Retry logic for connection errors
+  let retries = 3;
+  let lastError: any;
+
+  while (retries > 0) {
+    try {
+      // Validate messages before insertion
+      for (const msg of messages) {
+        if (!msg.id || !msg.chatId || !msg.role || !msg.parts || !msg.attachments || !msg.createdAt) {
+          throw new ChatSDKError('bad_request:database', 'Invalid message structure');
+        }
+      }
+
+      const result = await db.insert(message).values(messages);
+      
+      return result;
+    } catch (error) {
+      lastError = error;
+      
+      // Check if it's a connection error and we have retries left
+      if (isConnectionError(error) && retries > 1) {
+        retries--;
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        continue;
+      }
+
+      // Check if it's a unique constraint violation
+      if ((error as any)?.code === '23505' || (error as any)?.message?.includes('duplicate key')) {
+        throw new ChatSDKError('bad_request:database', 'Message with this ID already exists');
+      }
+
+      // Check if it's a foreign key constraint violation
+      if ((error as any)?.code === '23503' || (error as any)?.message?.includes('foreign key')) {
+        throw new ChatSDKError('bad_request:database', 'Referenced chat does not exist');
+      }
+
+
+
+      // If it's a connection error, throw a more specific error
+      if (isConnectionError(error)) {
+        throw new ChatSDKError('bad_request:database', 'Database connection lost. Please try again.');
+      }
+
+      throw new ChatSDKError('bad_request:database', 'Failed to save messages');
+    }
   }
+
+  // If we've exhausted all retries
+  if (isConnectionError(lastError)) {
+    throw new ChatSDKError('bad_request:database', 'Database connection lost after multiple retries. Please try again later.');
+  }
+  throw new ChatSDKError('bad_request:database', 'Failed to save messages');
 }
 
 export async function getMessagesByChatId({ id }: { id: string }) {
@@ -1149,7 +1130,7 @@ export async function useTelegramBindingCode(
           };
         } else {
           // Regular case: Telegram account is already linked to a real email account
-          throw new ChatSDKError('bad_request:auth', 'This Telegram account is already linked to another user');
+        throw new ChatSDKError('bad_request:auth', 'This Telegram account is already linked to another user');
         }
       }
       // If it's the same user, we can proceed (they're re-binding)
@@ -1420,6 +1401,44 @@ export async function addPaidMessages(userId: string, messageCount: number): Pro
   } catch (error) {
     console.error('Error adding paid messages:', error);
     throw new ChatSDKError('bad_request:database', 'Failed to add paid messages');
+  }
+}
+
+/**
+ * Refund a message to user's balance (when they get "Sorry I do not have enough information" response)
+ */
+export async function refundUserMessage(userId: string, wasTrialMessage: boolean): Promise<void> {
+  try {
+    const [userRecord] = await db.select().from(user).where(eq(user.id, userId));
+    
+    if (!userRecord) {
+      throw new ChatSDKError('bad_request:database', 'User not found');
+    }
+
+    if (wasTrialMessage) {
+      // Refund trial message
+      const currentTrialMessages = userRecord.trialMessagesRemaining || 0;
+      await db
+        .update(user)
+        .set({
+          trialMessagesRemaining: currentTrialMessages + 1,
+        })
+        .where(eq(user.id, userId));
+      console.log(`[refundUserMessage] Refunded 1 trial message to user ${userId}`);
+    } else {
+      // Refund paid message
+      const currentPaidMessages = userRecord.paidMessagesRemaining || 0;
+      await db
+        .update(user)
+        .set({
+          paidMessagesRemaining: currentPaidMessages + 1,
+        })
+        .where(eq(user.id, userId));
+      console.log(`[refundUserMessage] Refunded 1 paid message to user ${userId}`);
+    }
+  } catch (error) {
+    console.error('Error refunding user message:', error);
+    throw new ChatSDKError('bad_request:database', 'Failed to refund user message');
   }
 }
 

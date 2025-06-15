@@ -53,7 +53,7 @@ export function SourcePreviewCards({
             key={`preview-${citation.id || i}`}
             className={cn(
               "rounded-md border border-border bg-card/50 cursor-pointer hover:bg-card/70 transition-all duration-200 shadow-sm hover:shadow-md overflow-hidden w-full",
-              isYouTube ? "flex flex-col h-20" : isIslamQA ? "flex h-10" : "flex h-20"
+              isYouTube ? "flex flex-col h-20" : "flex h-20"
             )}
             onClick={() => {
               console.log('🎯 Preview card clicked - Citation Index:', i);
@@ -146,8 +146,8 @@ export function SourcePreviewCards({
                 </div>
                 
                 {/* Content - 70% */}
-                <div className="flex-1 p-1 flex flex-col justify-center">
-                  <div className="font-semibold text-card-foreground mb-0.5 line-clamp-1 text-[10px]">
+                <div className="flex-1 p-2 flex flex-col justify-center">
+                  <div className="font-semibold text-card-foreground mb-1 text-xs">
                     {(() => {
                       // Extract domain name for title
                       const getUrlFromCitation = (citation: any) => {
@@ -169,12 +169,12 @@ export function SourcePreviewCards({
                       return 'IslamQA';
                     })()}
                   </div>
-                  {/* Text preview */}
-                  <div className="text-[7px] text-muted-foreground line-clamp-1 italic mb-0.5">
+                  {/* Text preview - Show more question text */}
+                  <div className="text-[9px] text-muted-foreground line-clamp-3 italic mb-1">
                     {cleanNumbers(citation.text)}
                   </div>
-                  <div className="flex items-center gap-1 text-[8px] text-muted-foreground mt-auto">
-                    <span className="truncate">Fatwa</span>
+                  <div className="flex items-center gap-1 text-[9px] text-muted-foreground mt-auto">
+                    <span className="truncate">Fatwa Website</span>
                   </div>
                 </div>
               </>

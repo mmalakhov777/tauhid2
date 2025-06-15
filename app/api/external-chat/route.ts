@@ -354,6 +354,10 @@ export async function POST(request: Request) {
     const { entitlementsByUserType } = await import('@/lib/ai/entitlements');
     const entitlements = entitlementsByUserType[userType] || entitlementsByUserType['regular'];
     
+    // Store consumption info for potential refund
+    let messageConsumed = false;
+    let usedTrialForRefund = false;
+    
     if (entitlements.useTrialBalance) {
       // Try to consume a message from user's balance
       const consumeResult = await consumeUserMessage(session.user.id);
@@ -384,6 +388,10 @@ export async function POST(request: Request) {
         
         return new ChatSDKError('rate_limit:chat').toResponse();
       }
+      
+      // Store consumption info for potential refund
+      messageConsumed = true;
+      usedTrialForRefund = consumeResult.usedTrial;
       
       console.log(`[External Chat API] User ${session.user.id} consumed message. Remaining: ${consumeResult.remainingMessages}, Used trial: ${consumeResult.usedTrial}`);
       
@@ -550,6 +558,15 @@ export async function POST(request: Request) {
       // Filter out citations with minimal metadata before sending to frontend
       const filteredCitations = searchResults.citations.filter((c: any) => {
         if (!c.namespace && c.metadata) {
+          // IMPORTANT: Allow fatwa citations to pass through
+          if (c.metadata.content_type === 'islamqa_fatwa' || 
+              c.metadata.type === 'fatwa' || 
+              c.metadata.type === 'FAT' ||
+              c.metadata.source_link || 
+              c.metadata.url) {
+            return true; // Keep fatwa citations
+          }
+          
           const metadataKeys = Object.keys(c.metadata);
           const specificKeys = ['answer', 'question', 'text'];
           const hasExactlySpecificKeys =
@@ -711,6 +728,15 @@ REMEMBER: ${languageName} ONLY - NO EXCEPTIONS!`;
         // Filter out citations with minimal metadata before sending to frontend
         const filteredCitations = searchResults.citations.filter((c: any) => {
           if (!c.namespace && c.metadata) {
+            // IMPORTANT: Allow fatwa citations to pass through
+            if (c.metadata.content_type === 'islamqa_fatwa' || 
+                c.metadata.type === 'fatwa' || 
+                c.metadata.type === 'FAT' ||
+                c.metadata.source_link || 
+                c.metadata.url) {
+              return true; // Keep fatwa citations
+            }
+            
             const metadataKeys = Object.keys(c.metadata);
             const specificKeys = ['answer', 'question', 'text'];
             const hasExactlySpecificKeys =
@@ -986,6 +1012,20 @@ Do not add any additional text, explanations, or formatting. Just return that ex
                       }
                     }
 
+                    // Check if this is the "Sorry I do not have enough information" response
+                    const isInsufficientInfoResponse = finalResponseText.trim() === "Sorry I do not have enough information to provide grounded response";
+                    
+                    // Refund message if user got insufficient info response
+                    if (isInsufficientInfoResponse && messageConsumed && entitlements.useTrialBalance) {
+                      try {
+                        const { refundUserMessage } = await import('@/lib/db/queries');
+                        await refundUserMessage(session.user.id, usedTrialForRefund);
+                        console.log(`[External Chat API] Refunded message for user ${session.user.id} due to insufficient info response. Was trial: ${usedTrialForRefund}`);
+                      } catch (refundError) {
+                        console.error('Failed to refund message (external):', refundError);
+                      }
+                    }
+
                     // Extract citations used in the response
                     const citationMatches = finalResponseText.match(/\[CIT\d+\]/g) || [];
                     const uniqueCitations = [...new Set(citationMatches)];
@@ -1029,7 +1069,9 @@ Do not add any additional text, explanations, or formatting. Just return that ex
                         },
                         streamingDuration: Date.now() - startTime,
                         provider: 'primary',
-                        apiType: 'external'
+                        apiType: 'external',
+                        isInsufficientInfoResponse,
+                        messageRefunded: isInsufficientInfoResponse && messageConsumed
                       }
                     }));
 
@@ -1146,6 +1188,20 @@ Do not add any additional text, explanations, or formatting. Just return that ex
                       }
                     }
 
+                    // Check if this is the "Sorry I do not have enough information" response
+                    const isInsufficientInfoResponse = finalResponseText.trim() === "Sorry I do not have enough information to provide grounded response";
+                    
+                    // Refund message if user got insufficient info response
+                    if (isInsufficientInfoResponse && messageConsumed && entitlements.useTrialBalance) {
+                      try {
+                        const { refundUserMessage } = await import('@/lib/db/queries');
+                        await refundUserMessage(session.user.id, usedTrialForRefund);
+                        console.log(`[External Chat API Fallback] Refunded message for user ${session.user.id} due to insufficient info response. Was trial: ${usedTrialForRefund}`);
+                      } catch (refundError) {
+                        console.error('Failed to refund message (external fallback):', refundError);
+                      }
+                    }
+
                     // Extract citations used in the response
                     const citationMatches = finalResponseText.match(/\[CIT\d+\]/g) || [];
                     const uniqueCitations: string[] = [...new Set(citationMatches)];
@@ -1189,7 +1245,9 @@ Do not add any additional text, explanations, or formatting. Just return that ex
                         },
                         streamingDuration: Date.now() - startTime,
                         provider: 'fallback',
-                        apiType: 'external'
+                        apiType: 'external',
+                        isInsufficientInfoResponse,
+                        messageRefunded: isInsufficientInfoResponse && messageConsumed
                       }
                     }));
 
