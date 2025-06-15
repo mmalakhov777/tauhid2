@@ -579,7 +579,7 @@ async function handleCallbackQuery(callbackQuery: TelegramCallbackQuery) {
       }),
     });
 
-    // Handle purchase callback
+    // Handle purchase button presses
     if (callbackData.startsWith('buy_')) {
       const packageIndex = parseInt(callbackData.replace('buy_', ''));
       
@@ -592,27 +592,29 @@ async function handleCallbackQuery(callbackQuery: TelegramCallbackQuery) {
       }
 
       const dbUser = users[0];
-      const { PAYMENT_CONFIG } = await import('@/lib/ai/entitlements');
       
-      if (packageIndex < 0 || packageIndex >= PAYMENT_CONFIG.PACKAGES.length) {
-        await sendMessage(chatId, '❌ Invalid package selected. Please try again.', 'Markdown');
-        return NextResponse.json({ ok: true, error: 'Invalid package' });
-      }
-
-      const selectedPackage = PAYMENT_CONFIG.PACKAGES[packageIndex];
-      const totalMessages = selectedPackage.messages + selectedPackage.bonus;
-      const bonusText = selectedPackage.bonus > 0 ? ` (${selectedPackage.messages} + ${selectedPackage.bonus} bonus)` : '';
-      
-      console.log('[Telegram Bot] Creating invoice for package:', {
-        telegramUserId,
-        chatId,
-        packageIndex,
-        totalMessages,
-        stars: selectedPackage.stars
-      });
-
       try {
+        const { PAYMENT_CONFIG } = await import('@/lib/ai/entitlements');
+        
+        if (packageIndex < 0 || packageIndex >= PAYMENT_CONFIG.PACKAGES.length) {
+          await sendMessage(chatId, '❌ Invalid package selected. Please try again.', 'Markdown');
+          return NextResponse.json({ ok: true, message_sent: true, invalid_package: true });
+        }
+
+        const selectedPackage = PAYMENT_CONFIG.PACKAGES[packageIndex];
+        const totalMessages = selectedPackage.messages + selectedPackage.bonus;
+        const bonusText = selectedPackage.bonus > 0 ? ` (${selectedPackage.messages} + ${selectedPackage.bonus} bonus)` : '';
+        
+        console.log('[Telegram Bot] Creating invoice for package via button:', {
+          telegramUserId,
+          chatId,
+          packageIndex,
+          totalMessages,
+          stars: selectedPackage.stars
+        });
+
         // Create Telegram Stars invoice using sendInvoice
+        // Payload must be 1-128 characters, so we'll use a simple format
         const invoicePayload = `pkg_${packageIndex}_${telegramUserId}_${selectedPackage.stars}`;
 
         const invoiceResponse = await fetch(`${TELEGRAM_API_URL}/sendInvoice`, {
@@ -639,12 +641,12 @@ async function handleCallbackQuery(callbackQuery: TelegramCallbackQuery) {
         console.log('[Telegram Bot] Invoice API response body:', invoiceResult);
         
         if (!invoiceResult.ok) {
-          console.error('[Telegram Bot] Failed to create invoice:', invoiceResult);
+          console.error('[Telegram Bot] Failed to create invoice via button:', invoiceResult);
           await sendMessage(chatId, `❌ Failed to create invoice: ${invoiceResult.description || 'Unknown error'}`, 'Markdown');
-          return NextResponse.json({ ok: true, invoice_error: true });
+          return NextResponse.json({ ok: true, message_sent: true, invoice_error: true });
         }
 
-        console.log('[Telegram Bot] Invoice created successfully:', {
+        console.log('[Telegram Bot] Invoice created successfully via button:', {
           telegramUserId,
           chatId,
           packageIndex,
@@ -652,16 +654,17 @@ async function handleCallbackQuery(callbackQuery: TelegramCallbackQuery) {
         });
 
         return NextResponse.json({ ok: true, callback_handled: true, invoice_created: true });
-
       } catch (error) {
-        console.error('[Telegram Bot] Invoice creation error:', error);
-        await sendMessage(chatId, '❌ Failed to create invoice. Please try again later.', 'Markdown');
-        return NextResponse.json({ ok: true, invoice_error: true });
+        console.error('[Telegram Bot] Invoice creation error via button:', error);
+        await sendMessage(chatId, `❌ Invoice creation error: ${error instanceof Error ? error.message : 'Unknown error'}`, 'Markdown');
+        return NextResponse.json({ ok: true, message_sent: true, invoice_error: true });
       }
     }
 
+    // Handle other callback queries
     console.log('[Telegram Bot] Unknown callback data:', callbackData);
-    return NextResponse.json({ ok: true });
+    await sendMessage(chatId, '💡 Unknown action. Use `/buy` to purchase messages.', 'Markdown');
+    return NextResponse.json({ ok: true, callback_handled: true });
 
   } catch (error) {
     console.error('[Telegram Bot] Callback query error:', error);
@@ -1405,22 +1408,27 @@ ${balance.totalMessagesRemaining === 0 ? '⚠️ *No messages remaining! Use /bu
         // Create purchase message with inline keyboard
         const purchaseMessage = `🌟 *Purchase Messages with Telegram Stars*
 
-Choose a package to buy more messages:
+Available packages:
+
+1. **20 Messages** - 100 ⭐
+2. **50 Messages** - 250 ⭐ 🔥 (Popular)
+3. **105 Messages** (100 + 5 bonus) - 500 ⭐
+4. **220 Messages** (200 + 20 bonus) - 1000 ⭐
 
 💡 *Telegram Stars* can be purchased directly in Telegram
-💰 Paid messages never expire and stack with your daily trial messages
-📱 Tap any package below to create an invoice`;
+📱 Tap any package below to create an invoice
+💰 Paid messages never expire and stack with your daily trial messages`;
 
-        // Create inline keyboard with purchase options
+        // Create inline keyboard with purchase buttons
         const inlineKeyboard: Array<Array<{text: string, callback_data: string}>> = [];
         
         PAYMENT_CONFIG.PACKAGES.forEach((pkg, index) => {
           const totalMessages = pkg.messages + pkg.bonus;
-          const bonusText = pkg.bonus > 0 ? ` (+${pkg.bonus} bonus)` : '';
+          const bonusText = pkg.bonus > 0 ? ` + ${pkg.bonus} bonus` : '';
           const popularText = pkg.popular ? ' 🔥' : '';
           
           inlineKeyboard.push([{
-            text: `${totalMessages} Messages${bonusText} - ${pkg.stars} ⭐${popularText}`,
+            text: `${totalMessages} Messages - ${pkg.stars} ⭐${popularText}`,
             callback_data: `buy_${index}`
           }]);
         });
@@ -1443,11 +1451,11 @@ Choose a package to buy more messages:
         
         if (!result.ok) {
           console.error('[Telegram Bot] Failed to send purchase menu:', result);
-          await sendMessage(chatId, '❌ Failed to show purchase options. Please try again.', 'Markdown');
+          await sendMessage(chatId, `❌ Failed to show purchase menu: ${result.description || 'Unknown error'}`, 'Markdown');
           return NextResponse.json({ ok: true, message_sent: true, purchase_error: true });
         }
 
-        console.log('[Telegram Bot] Purchase menu sent successfully:', {
+        console.log('[Telegram Bot] Purchase menu with buttons sent successfully:', {
           telegramUserId,
           chatId,
           packagesShown: PAYMENT_CONFIG.PACKAGES.length,
@@ -1462,7 +1470,82 @@ Choose a package to buy more messages:
       }
     }
 
+    // Handle package selection (1, 2, 3, 4)
+    if (userText && ['1', '2', '3', '4'].includes(userText.trim())) {
+      // Check if user exists in database
+      if (!dbUser || !dbUser.id) {
+        await sendMessage(chatId, '❌ Purchase error: User not found in database', 'Markdown');
+        return NextResponse.json({ ok: true, message_sent: true, purchase_error: true });
+      }
 
+      try {
+        const { PAYMENT_CONFIG } = await import('@/lib/ai/entitlements');
+        const packageIndex = parseInt(userText.trim()) - 1;
+        
+        if (packageIndex < 0 || packageIndex >= PAYMENT_CONFIG.PACKAGES.length) {
+          await sendMessage(chatId, '❌ Invalid package number. Please send 1, 2, 3, or 4.', 'Markdown');
+          return NextResponse.json({ ok: true, message_sent: true, invalid_package: true });
+        }
+
+        const selectedPackage = PAYMENT_CONFIG.PACKAGES[packageIndex];
+        const totalMessages = selectedPackage.messages + selectedPackage.bonus;
+        const bonusText = selectedPackage.bonus > 0 ? ` (${selectedPackage.messages} + ${selectedPackage.bonus} bonus)` : '';
+        
+        console.log('[Telegram Bot] Creating invoice for package:', {
+          telegramUserId,
+          chatId,
+          packageIndex,
+          totalMessages,
+          stars: selectedPackage.stars
+        });
+
+        // Create Telegram Stars invoice using sendInvoice
+        // Payload must be 1-128 characters, so we'll use a simple format
+        const invoicePayload = `pkg_${packageIndex}_${telegramUserId}_${selectedPackage.stars}`;
+
+        const invoiceResponse = await fetch(`${TELEGRAM_API_URL}/sendInvoice`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId,
+            title: `${totalMessages} Messages${bonusText}`,
+            description: `Purchase ${totalMessages} messages for your Tauhid AI chatbot. Messages never expire and stack with your daily trial messages.`,
+            payload: invoicePayload,
+            provider_token: '', // Empty for Telegram Stars
+            currency: 'XTR', // Telegram Stars currency
+            prices: [{
+              label: `${totalMessages} Messages`,
+              amount: selectedPackage.stars
+            }],
+            start_parameter: `buy_${packageIndex}`
+          }),
+        });
+
+        console.log('[Telegram Bot] Invoice API response status:', invoiceResponse.status, invoiceResponse.statusText);
+
+        const invoiceResult = await invoiceResponse.json();
+        console.log('[Telegram Bot] Invoice API response body:', invoiceResult);
+        
+        if (!invoiceResult.ok) {
+          console.error('[Telegram Bot] Failed to create invoice:', invoiceResult);
+          await sendMessage(chatId, `❌ Failed to create invoice: ${invoiceResult.description || 'Unknown error'}`, 'Markdown');
+          return NextResponse.json({ ok: true, message_sent: true, invoice_error: true });
+        }
+
+        console.log('[Telegram Bot] Invoice created successfully:', {
+          telegramUserId,
+          chatId,
+          packageIndex,
+          messageId: invoiceResult.result.message_id
+        });
+
+        return NextResponse.json({ ok: true, message_sent: true, invoice_created: true });
+      } catch (error) {
+        console.error('[Telegram Bot] Invoice creation error:', error);
+        await sendMessage(chatId, `❌ Invoice creation error: ${error instanceof Error ? error.message : 'Unknown error'}`, 'Markdown');
+        return NextResponse.json({ ok: true, message_sent: true, invoice_error: true });
+      }
+    }
 
     if (userText === '/start') {
       // Get user's language from Telegram data
