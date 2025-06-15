@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PAYMENT_CONFIG } from '@/lib/ai/entitlements';
+import { PAYMENT_CONFIG, PaymentPlanHelpers } from '@/lib/ai/entitlements';
 import { getUser, addPaidMessages, recordStarPayment } from '@/lib/db/queries';
 import { generateUUID } from '@/lib/utils';
 
@@ -25,15 +25,15 @@ export async function POST(request: NextRequest) {
     const { telegramUserId, packageIndex } = body;
 
     // Validate package index
-    if (packageIndex < 0 || packageIndex >= PAYMENT_CONFIG.PACKAGES.length) {
+    if (!PaymentPlanHelpers.isValidPackageIndex(packageIndex)) {
       return NextResponse.json(
         { error: 'Invalid package index' },
         { status: 400 }
       );
     }
 
-    const selectedPackage = PAYMENT_CONFIG.PACKAGES[packageIndex];
-    const totalMessages = selectedPackage.messages + selectedPackage.bonus;
+    const selectedPackage = PaymentPlanHelpers.getPackage(packageIndex)!;
+    const totalMessages = PaymentPlanHelpers.getTotalMessages(packageIndex);
 
     // Find user by Telegram ID
     const users = await getUser(`telegram_${telegramUserId}@telegram.local`);
@@ -156,12 +156,9 @@ export async function PUT(request: NextRequest) {
     let packageUsed = null;
 
     // Find which package was purchased
-    for (const pkg of PAYMENT_CONFIG.PACKAGES) {
-      if (pkg.stars === starsSpent) {
-        messagesAdded = pkg.messages + pkg.bonus;
-        packageUsed = pkg;
-        break;
-      }
+    packageUsed = PaymentPlanHelpers.findPackageByStars(starsSpent);
+    if (packageUsed) {
+      messagesAdded = packageUsed.messages + packageUsed.bonus;
     }
 
     if (messagesAdded === 0) {
