@@ -1401,9 +1401,30 @@ ${balance.totalMessagesRemaining === 0 ? '⚠️ *No messages remaining! Use /bu
           packagesAvailable: PAYMENT_CONFIG.PACKAGES.length
         });
         
-        // Get centralized purchase message and keyboard buttons
-        const purchaseMessage = PaymentPlanHelpers.getPurchaseMenuText();
-        const keyboardButtons = PaymentPlanHelpers.getAllKeyboardButtons();
+        // Create the purchase message with dynamic numbers but fixed text
+        const packageList = PAYMENT_CONFIG.PACKAGES.map((pkg, index) => {
+          const totalMessages = pkg.messages + pkg.bonus;
+          const bonusText = pkg.bonus > 0 ? ` (${pkg.messages} + ${pkg.bonus} bonus)` : '';
+          const popularText = pkg.popular ? ' (Popular)' : '';
+          
+          return `${pkg.emoji} **${totalMessages} Messages**${bonusText} - ${pkg.stars} ⭐${popularText}`;
+        }).join('\n');
+
+        const purchaseMessage = `🌟 *Purchase Messages with Telegram Stars*
+
+Available packages:
+
+${packageList}
+
+💡 *Telegram Stars* can be purchased directly in Telegram
+📱 Tap a button below to create an invoice
+💰 Paid messages never expire and stack with your daily trial messages`;
+
+        // Create keyboard buttons with dynamic numbers
+        const keyboardButtons = PAYMENT_CONFIG.PACKAGES.map((pkg, index) => {
+          const totalMessages = pkg.messages + pkg.bonus;
+          return [`${pkg.emoji} ${totalMessages} Messages - ${pkg.stars} ⭐`];
+        });
 
         await sendMessageWithReplyKeyboard(chatId, purchaseMessage, keyboardButtons, 'Markdown');
 
@@ -1425,10 +1446,19 @@ ${balance.totalMessagesRemaining === 0 ? '⚠️ *No messages remaining! Use /bu
     let packageIndex = -1;
     
     if (userText) {
-      const { PaymentPlanHelpers } = await import('@/lib/ai/entitlements');
+      const { PAYMENT_CONFIG } = await import('@/lib/ai/entitlements');
       
-      // Check if it's a keyboard button selection
-      packageIndex = PaymentPlanHelpers.findPackageByButtonText(userText);
+      // Check if it's a keyboard button selection by matching the pattern
+      for (let i = 0; i < PAYMENT_CONFIG.PACKAGES.length; i++) {
+        const pkg = PAYMENT_CONFIG.PACKAGES[i];
+        const totalMessages = pkg.messages + pkg.bonus;
+        const expectedButtonText = `${pkg.emoji} ${totalMessages} Messages - ${pkg.stars} ⭐`;
+        
+        if (userText.trim() === expectedButtonText) {
+          packageIndex = i;
+          break;
+        }
+      }
       
       // Also support legacy number selection (1, 2, 3, 4)
       if (packageIndex === -1 && ['1', '2', '3', '4'].includes(userText.trim())) {
@@ -1444,15 +1474,15 @@ ${balance.totalMessagesRemaining === 0 ? '⚠️ *No messages remaining! Use /bu
       }
 
       try {
-        const { PAYMENT_CONFIG, PaymentPlanHelpers } = await import('@/lib/ai/entitlements');
+        const { PAYMENT_CONFIG } = await import('@/lib/ai/entitlements');
         
-        if (!PaymentPlanHelpers.isValidPackageIndex(packageIndex)) {
+        if (packageIndex < 0 || packageIndex >= PAYMENT_CONFIG.PACKAGES.length) {
           await sendMessage(chatId, '❌ Invalid package number. Please send 1, 2, 3, or 4.', 'Markdown');
           return NextResponse.json({ ok: true, message_sent: true, invalid_package: true });
         }
 
-        const selectedPackage = PaymentPlanHelpers.getPackage(packageIndex)!;
-        const totalMessages = PaymentPlanHelpers.getTotalMessages(packageIndex);
+        const selectedPackage = PAYMENT_CONFIG.PACKAGES[packageIndex];
+        const totalMessages = selectedPackage.messages + selectedPackage.bonus;
         const bonusText = selectedPackage.bonus > 0 ? ` (${selectedPackage.messages} + ${selectedPackage.bonus} bonus)` : '';
         
         console.log('===== CREATING TELEGRAM STARS INVOICE =====');

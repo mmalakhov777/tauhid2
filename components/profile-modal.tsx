@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { createPortal } from 'react-dom';
 import { useTelegram } from '@/hooks/useTelegram';
 import { guestRegex } from '@/lib/constants';
-import { entitlementsByUserType } from '@/lib/ai/entitlements';
+import { entitlementsByUserType, PAYMENT_CONFIG } from '@/lib/ai/entitlements';
 import { useTranslations } from '@/lib/i18n';
 import {
   User,
@@ -567,10 +567,14 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
                           🌟 Available Packages
                         </div>
                         <div className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
-                          <div>• 20 Messages - 100 ⭐ Telegram Stars</div>
-                          <div>• 50 Messages - 250 ⭐ Telegram Stars (Popular)</div>
-                          <div>• 105 Messages - 500 ⭐ Telegram Stars (+5 bonus)</div>
-                          <div>• 220 Messages - 1000 ⭐ Telegram Stars (+20 bonus)</div>
+                          {PAYMENT_CONFIG.PACKAGES.map((pkg, index) => {
+                            const totalMessages = pkg.messages + pkg.bonus;
+                            const bonusText = pkg.bonus > 0 ? ` (+${pkg.bonus} bonus)` : '';
+                            const popularText = pkg.popular ? ' (Popular)' : '';
+                            return (
+                              <div key={index}>• {totalMessages} Messages - {pkg.stars} ⭐ Telegram Stars{bonusText}{popularText}</div>
+                            );
+                          })}
                         </div>
                         <div className="mt-2 text-xs text-blue-600 dark:text-blue-400">
                           💡 Connect your Telegram account to purchase with Telegram Stars
