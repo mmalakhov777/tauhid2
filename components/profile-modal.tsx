@@ -536,6 +536,51 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
                 </div>
               </CustomCard>
 
+              {/* Purchase Messages Section */}
+              {userStats?.trialBalance?.useTrialBalance && (
+                <CustomCard className="border-blue-300 bg-blue-50 dark:border-blue-700 dark:bg-blue-900/30">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 text-blue-800 dark:text-blue-200">
+                      <Star className="h-4 w-4 sm:h-5 sm:w-5" />
+                      <span className="font-medium">Purchase More Messages</span>
+                    </div>
+                    
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                      Need more messages? {isTelegramUser ? 'Use the /buy command in Telegram to purchase with Telegram Stars.' : 'Purchase additional messages that never expire.'}
+                    </p>
+                    
+                    {isTelegramUser ? (
+                      <div className="bg-blue-100 dark:bg-blue-800/50 p-3 rounded-lg">
+                        <div className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
+                          💬 Telegram Purchase
+                        </div>
+                        <div className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
+                          <div>• Open your Telegram chat with the bot</div>
+                          <div>• Send the command: <code className="bg-blue-200 dark:bg-blue-700 px-1 rounded">/buy</code></div>
+                          <div>• Choose a package and pay with Telegram Stars</div>
+                          <div>• Messages are added instantly!</div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-blue-100 dark:bg-blue-800/50 p-3 rounded-lg">
+                        <div className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
+                          🌟 Available Packages
+                        </div>
+                        <div className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
+                          <div>• 20 Messages - 100 ⭐ Telegram Stars</div>
+                          <div>• 50 Messages - 250 ⭐ Telegram Stars (Popular)</div>
+                          <div>• 105 Messages - 500 ⭐ Telegram Stars (+5 bonus)</div>
+                          <div>• 220 Messages - 1000 ⭐ Telegram Stars (+20 bonus)</div>
+                        </div>
+                        <div className="mt-2 text-xs text-blue-600 dark:text-blue-400">
+                          💡 Connect your Telegram account to purchase with Telegram Stars
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CustomCard>
+              )}
+
               {/* Guest User Info */}
               {isGuest && (
                 <CustomCard className="border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-900/30">
