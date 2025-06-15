@@ -33,6 +33,14 @@ interface UserStats {
   messagesLast24h: number;
   totalMessages: number;
   joinDate: string;
+  trialBalance?: {
+    trialMessagesRemaining: number;
+    paidMessagesRemaining: number;
+    totalMessagesRemaining: number;
+    needsReset: boolean;
+    trialMessagesPerDay: number;
+    useTrialBalance: boolean;
+  } | null;
 }
 
 // Custom Badge Component - Self-Contained
@@ -165,7 +173,12 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
     }
   }, [open, user?.id]);
 
-  const usagePercentage = userStats 
+  // Calculate usage percentage based on trial balance system
+  const usagePercentage = userStats?.trialBalance?.useTrialBalance 
+    ? Math.max(0, Math.min(100, 
+        ((userStats.trialBalance.trialMessagesPerDay - userStats.trialBalance.trialMessagesRemaining) / userStats.trialBalance.trialMessagesPerDay) * 100
+      ))
+    : userStats 
     ? Math.min((userStats.messagesLast24h / entitlements.maxMessagesPerDay) * 100, 100)
     : 0;
 
@@ -301,15 +314,62 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
                     </CustomBadge>
                   </div>
                   
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-gray-900 dark:text-white">{t('profileModal.messagesToday')}</span>
-                      <span className="font-medium text-gray-900 dark:text-white">
-                        {loading ? '...' : userStats?.messagesLast24h || 0} / {entitlements.maxMessagesPerDay}
-                      </span>
+                  {/* NEW: Trial Balance System Display */}
+                  {userStats?.trialBalance?.useTrialBalance ? (
+                    <div className="space-y-3">
+                      {/* Trial Messages */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-gray-900 dark:text-white">Trial Messages Today</span>
+                          <span className="font-medium text-gray-900 dark:text-white">
+                            {loading ? '...' : userStats.trialBalance.trialMessagesRemaining} / {userStats.trialBalance.trialMessagesPerDay}
+                          </span>
+                        </div>
+                        <CustomProgress value={usagePercentage} />
+                        {userStats.trialBalance.needsReset && (
+                          <div className="text-xs text-amber-600 dark:text-amber-400">
+                            ⏰ Trial balance will reset soon
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Paid Messages (if any) */}
+                      {userStats.trialBalance.paidMessagesRemaining > 0 && (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-xs">
+                            <span className="text-gray-900 dark:text-white flex items-center gap-1">
+                              <Star className="h-3 w-3 text-yellow-500" />
+                              Paid Messages
+                            </span>
+                            <span className="font-medium text-gray-900 dark:text-white">
+                              {userStats.trialBalance.paidMessagesRemaining}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Total Available */}
+                      <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-medium text-gray-900 dark:text-white">Total Messages Available</span>
+                          <span className="font-bold text-blue-600 dark:text-blue-400">
+                            {userStats.trialBalance.totalMessagesRemaining}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <CustomProgress value={usagePercentage} />
-                  </div>
+                  ) : (
+                    /* LEGACY: Old message counting system */
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-gray-900 dark:text-white">{t('profileModal.messagesToday')}</span>
+                        <span className="font-medium text-gray-900 dark:text-white">
+                          {loading ? '...' : userStats?.messagesLast24h || 0} / {entitlements.maxMessagesPerDay}
+                        </span>
+                      </div>
+                      <CustomProgress value={usagePercentage} />
+                    </div>
+                  )}
                 </div>
               </CustomCard>
 
@@ -411,22 +471,55 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
                   {loading ? (
                     <div className="text-center text-xs text-gray-600 dark:text-gray-400">{t('profileModal.loading')}</div>
                   ) : userStats ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div className="text-center p-2 sm:p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                        <div className="text-lg sm:text-xl font-semibold text-blue-600 dark:text-blue-400">{userStats.messagesLast24h}</div>
-                        <div className="text-xs text-gray-600 dark:text-gray-400">{t('profileModal.last24h')}</div>
-                      </div>
-                      <div className="text-center p-2 sm:p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                        <div className="text-lg sm:text-xl font-semibold text-green-600 dark:text-green-400">{userStats.totalMessages}</div>
-                        <div className="text-xs text-gray-600 dark:text-gray-400">{t('profileModal.total')}</div>
-                      </div>
-                      <div className="text-center p-2 sm:p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-                        <div className="text-lg sm:text-xl font-semibold text-purple-600 dark:text-purple-400">
-                          {Math.floor((Date.now() - new Date(userStats.joinDate).getTime()) / (1000 * 60 * 60 * 24))}
+                    <>
+                      {/* NEW: Trial Balance System Stats */}
+                      {userStats.trialBalance?.useTrialBalance ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                          <div className="text-center p-2 sm:p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                            <div className="text-lg sm:text-xl font-semibold text-blue-600 dark:text-blue-400">
+                              {userStats.trialBalance.trialMessagesRemaining}
+                            </div>
+                            <div className="text-xs text-gray-600 dark:text-gray-400">Trial Left</div>
+                          </div>
+                          <div className="text-center p-2 sm:p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                            <div className="text-lg sm:text-xl font-semibold text-yellow-600 dark:text-yellow-400">
+                              {userStats.trialBalance.paidMessagesRemaining}
+                            </div>
+                            <div className="text-xs text-gray-600 dark:text-gray-400">Paid Left</div>
+                          </div>
+                          <div className="text-center p-2 sm:p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                            <div className="text-lg sm:text-xl font-semibold text-green-600 dark:text-green-400">
+                              {userStats.trialBalance.totalMessagesRemaining}
+                            </div>
+                            <div className="text-xs text-gray-600 dark:text-gray-400">Total Available</div>
+                          </div>
+                          <div className="text-center p-2 sm:p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                            <div className="text-lg sm:text-xl font-semibold text-purple-600 dark:text-purple-400">
+                              {userStats.totalMessages}
+                            </div>
+                            <div className="text-xs text-gray-600 dark:text-gray-400">All Time</div>
+                          </div>
                         </div>
-                        <div className="text-xs text-gray-600 dark:text-gray-400">{t('profileModal.days')}</div>
-                      </div>
-                    </div>
+                      ) : (
+                        /* LEGACY: Old stats display */
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div className="text-center p-2 sm:p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                            <div className="text-lg sm:text-xl font-semibold text-blue-600 dark:text-blue-400">{userStats.messagesLast24h}</div>
+                            <div className="text-xs text-gray-600 dark:text-gray-400">{t('profileModal.last24h')}</div>
+                          </div>
+                          <div className="text-center p-2 sm:p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                            <div className="text-lg sm:text-xl font-semibold text-green-600 dark:text-green-400">{userStats.totalMessages}</div>
+                            <div className="text-xs text-gray-600 dark:text-gray-400">{t('profileModal.total')}</div>
+                          </div>
+                          <div className="text-center p-2 sm:p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+                            <div className="text-lg sm:text-xl font-semibold text-purple-600 dark:text-purple-400">
+                              {Math.floor((Date.now() - new Date(userStats.joinDate).getTime()) / (1000 * 60 * 60 * 24))}
+                            </div>
+                            <div className="text-xs text-gray-600 dark:text-gray-400">{t('profileModal.days')}</div>
+                          </div>
+                        </div>
+                      )}
+                    </>
                   ) : (
                     <div className="text-center text-xs text-gray-600 dark:text-gray-400">{t('profileModal.noStatsAvailable')}</div>
                   )}
