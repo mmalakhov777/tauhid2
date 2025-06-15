@@ -894,7 +894,6 @@ export async function POST(request: NextRequest) {
 
 **Package:** ${totalMessages} Messages (${selectedPackage.messages}${selectedPackage.bonus > 0 ? ` + ${selectedPackage.bonus} bonus` : ''})
 **Price:** ${starsAmount} ⭐ Telegram Stars
-**Transaction ID:** \`${successfulPayment.telegram_payment_charge_id}\`
 
 🎉 **${totalMessages} messages** have been added to your account!
 💰 Your paid messages never expire and work alongside your daily trial messages.

@@ -180,7 +180,6 @@ export async function POST(request: NextRequest) {
 **Purchase Details:**
 • Package: ${purchasedPackage.messages} messages${purchasedPackage.bonus > 0 ? ` + ${purchasedPackage.bonus} bonus` : ''}
 • Cost: ${payment.total_amount} ⭐ Telegram Stars
-• Transaction ID: \`${payment.telegram_payment_charge_id}\`
 
 💰 Your paid messages never expire and work alongside your daily trial messages.
 📊 Use /balance to check your current message balance.
@@ -206,7 +205,7 @@ Thank you for your purchase! 🌟`;
 
       } catch (error) {
         console.error('[Payment Webhook] Error processing payment:', error);
-        await sendMessage(chatId, '❌ Payment received but failed to add messages. Please contact support with transaction ID: `' + payment.telegram_payment_charge_id + '`', 'Markdown');
+        await sendMessage(chatId, '❌ Payment received but failed to add messages. Please contact support with your payment details.', 'Markdown');
         return NextResponse.json({ ok: true, error: 'Payment processing failed' });
       }
     }
