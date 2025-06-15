@@ -635,7 +635,22 @@ export async function POST(request: NextRequest) {
   try {
     const body: TelegramUpdate = await request.json();
     
-    console.log('Received Telegram update:', JSON.stringify(body, null, 2));
+    console.log('===== TELEGRAM WEBHOOK RECEIVED =====');
+    console.log('Environment check:', {
+      hasTelegramToken: !!TELEGRAM_BOT_TOKEN,
+      tokenLength: TELEGRAM_BOT_TOKEN?.length,
+      telegramApiUrl: TELEGRAM_API_URL,
+      testMode: TEST_MODE
+    });
+    console.log('Full update body:', JSON.stringify(body, null, 2));
+    console.log('Update type analysis:', {
+      hasMessage: !!body.message,
+      hasCallbackQuery: !!body.callback_query,
+      hasPreCheckoutQuery: !!body.pre_checkout_query,
+      hasSuccessfulPayment: !!(body.message?.successful_payment),
+      messageText: body.message?.text,
+      callbackData: body.callback_query?.data
+    });
 
     // Handle callback queries (inline button presses)
     if (body.callback_query) {
@@ -646,9 +661,11 @@ export async function POST(request: NextRequest) {
     if (body.pre_checkout_query) {
       try {
         const preCheckoutQuery = body.pre_checkout_query;
-        console.log('[Telegram Bot] Processing pre-checkout query:', {
+        console.log('===== PRE-CHECKOUT QUERY RECEIVED =====');
+        console.log('[Telegram Bot] Pre-checkout query details:', {
           queryId: preCheckoutQuery.id,
           userId: preCheckoutQuery.from.id,
+          userInfo: preCheckoutQuery.from,
           currency: preCheckoutQuery.currency,
           totalAmount: preCheckoutQuery.total_amount,
           payload: preCheckoutQuery.invoice_payload
@@ -742,21 +759,34 @@ export async function POST(request: NextRequest) {
         }
 
         // All validations passed - approve the payment
-        await fetch(`${TELEGRAM_API_URL}/answerPreCheckoutQuery`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            pre_checkout_query_id: preCheckoutQuery.id,
-            ok: true
-          }),
+        console.log('===== APPROVING PRE-CHECKOUT QUERY =====');
+        const approvalBody = {
+          pre_checkout_query_id: preCheckoutQuery.id,
+          ok: true
+        };
+        
+        console.log('[Telegram Bot] Sending approval request:', {
+          url: `${TELEGRAM_API_URL}/answerPreCheckoutQuery`,
+          body: approvalBody
         });
 
-        console.log('[Telegram Bot] Pre-checkout query approved:', {
+        const approvalResponse = await fetch(`${TELEGRAM_API_URL}/answerPreCheckoutQuery`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(approvalBody),
+        });
+
+        console.log('[Telegram Bot] Approval response status:', approvalResponse.status, approvalResponse.statusText);
+        const approvalResult = await approvalResponse.json();
+        console.log('[Telegram Bot] Approval response body:', approvalResult);
+
+        console.log('[Telegram Bot] Pre-checkout query approved successfully:', {
           queryId: preCheckoutQuery.id,
           userId: preCheckoutQuery.from.id,
           packageIndex,
           stars: selectedPackage.stars,
-          messages: selectedPackage.messages + selectedPackage.bonus
+          messages: selectedPackage.messages + selectedPackage.bonus,
+          approvalSuccess: approvalResult.ok
         });
 
         return NextResponse.json({ ok: true, pre_checkout_approved: true });
@@ -792,13 +822,20 @@ export async function POST(request: NextRequest) {
         const chatId = body.message.chat.id;
         const telegramUserId = body.message.from.id;
         
-        console.log('[Telegram Bot] Processing successful payment:', {
+        console.log('===== SUCCESSFUL PAYMENT RECEIVED =====');
+        console.log('[Telegram Bot] Successful payment details:', {
           userId: telegramUserId,
           chatId,
           currency: successfulPayment.currency,
           totalAmount: successfulPayment.total_amount,
           telegramChargeId: successfulPayment.telegram_payment_charge_id,
-          payload: successfulPayment.invoice_payload
+          providerChargeId: successfulPayment.provider_payment_charge_id,
+          payload: successfulPayment.invoice_payload,
+          messageInfo: {
+            messageId: body.message.message_id,
+            date: body.message.date,
+            fromUser: body.message.from
+          }
         });
 
         // Parse the payload to get package information
@@ -1441,37 +1478,47 @@ Available packages:
         const totalMessages = selectedPackage.messages + selectedPackage.bonus;
         const bonusText = selectedPackage.bonus > 0 ? ` (${selectedPackage.messages} + ${selectedPackage.bonus} bonus)` : '';
         
-        console.log('[Telegram Bot] Creating invoice for package:', {
+        console.log('===== CREATING TELEGRAM STARS INVOICE =====');
+        console.log('[Telegram Bot] Invoice creation details:', {
           telegramUserId,
           chatId,
           packageIndex,
           totalMessages,
-          stars: selectedPackage.stars
+          stars: selectedPackage.stars,
+          packageDetails: selectedPackage
         });
 
         // Create Telegram Stars invoice using sendInvoice
         // Payload must be 1-128 characters, so we'll use a simple format
         const invoicePayload = `pkg_${packageIndex}_${telegramUserId}_${selectedPackage.stars}`;
+        
+        const invoiceRequestBody = {
+          chat_id: chatId,
+          title: `${totalMessages} Messages${bonusText}`,
+          description: `Purchase ${totalMessages} messages for your Tauhid AI chatbot. Messages never expire and stack with your daily trial messages.`,
+          payload: invoicePayload,
+          provider_token: '', // Empty for Telegram Stars
+          currency: 'XTR', // Telegram Stars currency
+          prices: [{
+            label: `${totalMessages} Messages`,
+            amount: selectedPackage.stars  // Telegram Stars (XTR) use direct amount, no multiplication
+          }],
+          start_parameter: `buy_${packageIndex}`
+        };
+
+        console.log('[Telegram Bot] Sending invoice request:', {
+          url: `${TELEGRAM_API_URL}/sendInvoice`,
+          body: invoiceRequestBody
+        });
 
         const invoiceResponse = await fetch(`${TELEGRAM_API_URL}/sendInvoice`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            chat_id: chatId,
-            title: `${totalMessages} Messages${bonusText}`,
-            description: `Purchase ${totalMessages} messages for your Tauhid AI chatbot. Messages never expire and stack with your daily trial messages.`,
-            payload: invoicePayload,
-            provider_token: '', // Empty for Telegram Stars
-            currency: 'XTR', // Telegram Stars currency
-            prices: [{
-              label: `${totalMessages} Messages`,
-              amount: selectedPackage.stars  // Telegram Stars (XTR) use direct amount, no multiplication
-            }],
-            start_parameter: `buy_${packageIndex}`
-          }),
+          body: JSON.stringify(invoiceRequestBody),
         });
 
         console.log('[Telegram Bot] Invoice API response status:', invoiceResponse.status, invoiceResponse.statusText);
+        console.log('[Telegram Bot] Invoice API response headers:', Object.fromEntries(invoiceResponse.headers.entries()));
 
         const invoiceResult = await invoiceResponse.json();
         console.log('[Telegram Bot] Invoice API response body:', invoiceResult);
@@ -2024,10 +2071,19 @@ If the problem persists, please contact support.`;
       }
     });
   } catch (error) {
+    console.error('===== TELEGRAM WEBHOOK ERROR =====');
     console.error('Error processing Telegram webhook:', error);
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+    console.error('Error details:', {
+      name: error instanceof Error ? error.name : 'Unknown',
+      message: error instanceof Error ? error.message : 'Unknown error',
+      cause: (error as any)?.cause
+    });
+    
     return NextResponse.json({ 
       error: 'Internal server error',
-      details: error instanceof Error ? error.message : 'Unknown error'
+      details: error instanceof Error ? error.message : 'Unknown error',
+      timestamp: new Date().toISOString()
     }, { status: 500 });
   }
 }
