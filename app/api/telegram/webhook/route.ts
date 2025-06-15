@@ -615,11 +615,11 @@ export async function POST(request: NextRequest) {
         });
 
         // Parse the payload to get package information
-        let payloadData;
-        try {
-          payloadData = JSON.parse(preCheckoutQuery.invoice_payload);
-        } catch (error) {
-          console.error('[Telegram Bot] Invalid payload in pre-checkout query:', error);
+        // Payload format: pkg_${packageIndex}_${telegramUserId}_${stars}
+        const payloadParts = preCheckoutQuery.invoice_payload.split('_');
+        
+        if (payloadParts.length !== 4 || payloadParts[0] !== 'pkg') {
+          console.error('[Telegram Bot] Invalid payload format in pre-checkout query:', preCheckoutQuery.invoice_payload);
           
           // Answer with error
           await fetch(`${TELEGRAM_API_URL}/answerPreCheckoutQuery`, {
@@ -637,7 +637,29 @@ export async function POST(request: NextRequest) {
 
         // Validate the payment data
         const { PAYMENT_CONFIG } = await import('@/lib/ai/entitlements');
-        const packageIndex = payloadData.packageIndex;
+        const packageIndex = parseInt(payloadParts[1]);
+        const payloadTelegramUserId = parseInt(payloadParts[2]);
+        const payloadStars = parseInt(payloadParts[3]);
+        
+        // Validate user ID matches
+        if (payloadTelegramUserId !== preCheckoutQuery.from.id) {
+          console.error('[Telegram Bot] User ID mismatch in pre-checkout:', {
+            payloadUserId: payloadTelegramUserId,
+            queryUserId: preCheckoutQuery.from.id
+          });
+          
+          await fetch(`${TELEGRAM_API_URL}/answerPreCheckoutQuery`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              pre_checkout_query_id: preCheckoutQuery.id,
+              ok: false,
+              error_message: 'Payment validation failed. Please try again.'
+            }),
+          });
+          
+          return NextResponse.json({ ok: true, pre_checkout_error: true });
+        }
         
         if (packageIndex < 0 || packageIndex >= PAYMENT_CONFIG.PACKAGES.length) {
           console.error('[Telegram Bot] Invalid package index in pre-checkout:', packageIndex);
@@ -740,12 +762,26 @@ export async function POST(request: NextRequest) {
         });
 
         // Parse the payload to get package information
-        let payloadData;
-        try {
-          payloadData = JSON.parse(successfulPayment.invoice_payload);
-        } catch (error) {
-          console.error('[Telegram Bot] Invalid payload in successful payment:', error);
+        // Payload format: pkg_${packageIndex}_${telegramUserId}_${stars}
+        const payloadParts = successfulPayment.invoice_payload.split('_');
+        
+        if (payloadParts.length !== 4 || payloadParts[0] !== 'pkg') {
+          console.error('[Telegram Bot] Invalid payload format in successful payment:', successfulPayment.invoice_payload);
           await sendMessage(chatId, '❌ Payment processed but failed to add messages. Please contact support.', 'Markdown');
+          return NextResponse.json({ ok: true, payment_error: true });
+        }
+
+        const packageIndex = parseInt(payloadParts[1]);
+        const payloadTelegramUserId = parseInt(payloadParts[2]);
+        const payloadStars = parseInt(payloadParts[3]);
+        
+        // Validate user ID matches
+        if (payloadTelegramUserId !== telegramUserId) {
+          console.error('[Telegram Bot] User ID mismatch in successful payment:', {
+            payloadUserId: payloadTelegramUserId,
+            actualUserId: telegramUserId
+          });
+          await sendMessage(chatId, '❌ Payment processed but validation failed. Please contact support.', 'Markdown');
           return NextResponse.json({ ok: true, payment_error: true });
         }
 
@@ -759,7 +795,7 @@ export async function POST(request: NextRequest) {
 
         const dbUser = users[0];
         const { PAYMENT_CONFIG } = await import('@/lib/ai/entitlements');
-        const selectedPackage = PAYMENT_CONFIG.PACKAGES[payloadData.packageIndex];
+        const selectedPackage = PAYMENT_CONFIG.PACKAGES[packageIndex];
         const totalMessages = selectedPackage.messages + selectedPackage.bonus;
 
         // Add paid messages to user's account
@@ -1350,6 +1386,9 @@ Example: Send "1" to buy 20 messages for 100 ⭐`;
         });
 
         // Create Telegram Stars invoice using sendInvoice
+        // Payload must be 1-128 characters, so we'll use a simple format
+        const invoicePayload = `pkg_${packageIndex}_${telegramUserId}_${selectedPackage.stars}`;
+
         const invoiceResponse = await fetch(`${TELEGRAM_API_URL}/sendInvoice`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1357,25 +1396,14 @@ Example: Send "1" to buy 20 messages for 100 ⭐`;
             chat_id: chatId,
             title: `${totalMessages} Messages${bonusText}`,
             description: `Purchase ${totalMessages} messages for your Tauhid AI chatbot. Messages never expire and stack with your daily trial messages.`,
-            payload: JSON.stringify({
-              packageIndex,
-              userId: dbUser.id,
-              telegramUserId,
-              messages: selectedPackage.messages,
-              bonus: selectedPackage.bonus,
-              stars: selectedPackage.stars
-            }),
+            payload: invoicePayload,
             provider_token: '', // Empty for Telegram Stars
             currency: 'XTR', // Telegram Stars currency
             prices: [{
               label: `${totalMessages} Messages`,
               amount: selectedPackage.stars
             }],
-            start_parameter: `buy_${packageIndex}`,
-            photo_url: 'https://via.placeholder.com/512x512/4A90E2/FFFFFF?text=⭐', // Optional: Add a nice star image
-            photo_size: 512,
-            photo_width: 512,
-            photo_height: 512
+            start_parameter: `buy_${packageIndex}`
           }),
         });
 
