@@ -52,6 +52,34 @@ import {
   messageContextMap,
   buildContextBlock,
 } from '@/lib/ai/vector-search';
+import { Langfuse } from "langfuse";
+
+// Initialize Langfuse
+const langfuse = new Langfuse({
+  secretKey: process.env.LANGFUSE_SECRET_KEY,
+  publicKey: process.env.LANGFUSE_PUBLIC_KEY,
+  baseUrl: process.env.LANGFUSE_BASE_URL || "https://cloud.langfuse.com"
+});
+
+// Helper function for non-blocking Langfuse operations
+const safeTrace = (operation: () => void) => {
+  try {
+    operation();
+  } catch (error) {
+    // Silently ignore tracing errors to not affect performance
+    console.debug('[langfuse] Tracing error:', error);
+  }
+};
+
+// Helper function to flush traces
+const flushTrace = async (trace: any) => {
+  try {
+    await langfuse.flushAsync();
+    console.log('[langfuse] External trace flushed successfully');
+  } catch (error) {
+    console.debug('[langfuse] External flush error:', error);
+  }
+};
 
 export const maxDuration = 60;
 
@@ -165,8 +193,61 @@ async function getOrCreateUserById(userId: string): Promise<{ id: string; type: 
 }
 
 export async function POST(request: Request) {
+  const startTime = Date.now();
+  
+  // Create main trace for the entire external chat request
+  const mainTrace = langfuse.trace({
+    name: "external-chat-request",
+    input: { 
+      url: request.url,
+      method: request.method,
+      headers: {
+        'content-type': request.headers.get('content-type'),
+        'user-agent': request.headers.get('user-agent')?.substring(0, 100),
+        'accept': request.headers.get('accept'),
+        'origin': request.headers.get('origin'),
+        'authorization': request.headers.get('authorization') ? 'Bearer [REDACTED]' : null
+      }
+    },
+    metadata: { 
+      timestamp: new Date().toISOString(),
+      requestStartTime: startTime,
+      environment: process.env.NODE_ENV,
+      deployment: process.env.VERCEL_ENV || 'local',
+      apiType: 'external',
+      source: 'external-api'
+    }
+  });
+
+  console.log('[langfuse] Created main trace for external-chat-request:', mainTrace.id);
+
   // Validate API key first
+  const authSpan = mainTrace.span({
+    name: "api-key-validation",
+    input: { 
+      hasAuthHeader: !!request.headers.get('authorization'),
+      authType: request.headers.get('authorization')?.split(' ')[0] || null,
+      validationStartTime: Date.now()
+    }
+  });
+
   if (!validateApiKey(request)) {
+    safeTrace(() => authSpan.update({ 
+      output: { 
+        authenticated: false, 
+        error: "Invalid API key",
+        duration: Date.now() - startTime
+      }
+    }));
+    safeTrace(() => mainTrace.update({ 
+      output: { 
+        error: "Unauthorized - Invalid API key",
+        success: false,
+        apiType: 'external'
+      }
+    }));
+    await flushTrace(mainTrace);
+    
     return new Response(
       JSON.stringify({ error: 'Unauthorized - Invalid API key' }),
       { 
@@ -175,6 +256,13 @@ export async function POST(request: Request) {
       }
     );
   }
+
+  safeTrace(() => authSpan.update({ 
+    output: { 
+      authenticated: true,
+      duration: Date.now() - startTime
+    }
+  }));
 
   // Test database connection (skip during build)
   if (process.env.NODE_ENV !== 'production' || process.env.RAILWAY_ENVIRONMENT) {
@@ -253,6 +341,16 @@ export async function POST(request: Request) {
     const userType: UserType = session.user.type;
 
     // NEW: Use trial balance system for external API users too
+    const rateLimitSpan = mainTrace.span({
+      name: "rate-limit-check",
+      input: { 
+        userId: session.user.id,
+        userType: userType,
+        checkStartTime: Date.now(),
+        apiType: 'external'
+      }
+    });
+
     const { entitlementsByUserType } = await import('@/lib/ai/entitlements');
     const entitlements = entitlementsByUserType[userType] || entitlementsByUserType['regular'];
     
@@ -263,13 +361,57 @@ export async function POST(request: Request) {
       if (!consumeResult.success) {
         // User has no messages left - return rate limit error
         console.log(`[External Chat API] User ${session.user.id} has no messages remaining`);
+        
+        safeTrace(() => rateLimitSpan.update({
+          output: {
+            success: false,
+            error: "Rate limit exceeded",
+            remainingMessages: 0,
+            systemType: "trial",
+            entitlements: entitlements,
+            apiType: 'external',
+            duration: Date.now() - startTime
+          }
+        }));
+        safeTrace(() => mainTrace.update({ 
+          output: { 
+            error: "Rate limit exceeded",
+            success: false,
+            apiType: 'external'
+          }
+        }));
+        await flushTrace(mainTrace);
+        
         return new ChatSDKError('rate_limit:chat').toResponse();
       }
       
       console.log(`[External Chat API] User ${session.user.id} consumed message. Remaining: ${consumeResult.remainingMessages}, Used trial: ${consumeResult.usedTrial}`);
+      
+      safeTrace(() => rateLimitSpan.update({
+        output: {
+          success: true,
+          remainingMessages: consumeResult.remainingMessages,
+          usedTrial: consumeResult.usedTrial,
+          systemType: "trial",
+          entitlements: entitlements,
+          apiType: 'external',
+          duration: Date.now() - startTime
+        }
+      }));
     } else {
       // LEGACY: For users not using trial balance system, allow unlimited access
       console.log(`[External Chat API] User ${session.user.id} using legacy system - unlimited access`);
+      
+      safeTrace(() => rateLimitSpan.update({
+        output: {
+          success: true,
+          systemType: "legacy",
+          unlimited: true,
+          entitlements: entitlements,
+          apiType: 'external',
+          duration: Date.now() - startTime
+        }
+      }));
     }
 
     const chat = await getChatById({ id });
@@ -515,6 +657,17 @@ REMEMBER: ${languageName} ONLY - NO EXCEPTIONS!`;
     if (isVectorSearchEnabled && !messageId) {
       console.log('[external-chat route] 🚀 Starting automatic vector search execution');
       
+      const vectorSearchSpan = mainTrace.span({
+        name: "vector-search",
+        input: {
+          messagesCount: messages.length,
+          selectedSources: selectedSources,
+          selectedChatModel: selectedChatModel,
+          searchStartTime: Date.now(),
+          apiType: 'external'
+        }
+      });
+      
       const conversationHistory = buildConversationHistory(messages);
       let userMessageContent = '';
       if (message.parts && Array.isArray(message.parts)) {
@@ -587,6 +740,39 @@ REMEMBER: ${languageName} ONLY - NO EXCEPTIONS!`;
           youtube: filteredCitations.filter((c: any) => c.metadata?.type === 'youtube' || c.metadata?.type === 'YT' || (c.namespace && ['4455', 'Islam_The_Ultimate_Peace', '2238', 'Islamic_Guidance', '2004', 'MercifulServant', '1572', 'Towards_Eternity'].includes(c.namespace))).length,
           fatwa: filteredCitations.filter((c: any) => c.metadata?.type === 'fatwa' || c.metadata?.type === 'FAT').length
         };
+
+        // Calculate citation scores for analytics
+        const citationScores = filteredCitations.map((c: any) => c.score || 0);
+        const avgScore = citationScores.length > 0 ? citationScores.reduce((a: number, b: number) => a + b, 0) / citationScores.length : 0;
+        const maxScore = citationScores.length > 0 ? Math.max(...citationScores) : 0;
+        const minScore = citationScores.length > 0 ? Math.min(...citationScores) : 0;
+
+        safeTrace(() => vectorSearchSpan.update({
+          output: {
+            messageId: messageId,
+            searchDurationMs: searchDurationMs,
+            totalCitations: filteredCitations.length,
+            citationsBySource: searchResultCounts,
+            improvedQueriesCount: searchResults.improvedQueries?.length || 0,
+            citationAnalytics: {
+              avgScore: avgScore,
+              maxScore: maxScore,
+              minScore: minScore,
+              scoreDistribution: citationScores
+            },
+            conversationContext: {
+              historyLength: conversationHistory.length,
+              userMessageLength: userMessageContent.length,
+              messagesInConversation: messages.length
+            },
+            filteringStats: {
+              originalCount: searchResults.citations.length,
+              filteredCount: filteredCitations.length,
+              removedCount: searchResults.citations.length - filteredCitations.length
+            },
+            apiType: 'external'
+          }
+        }));
         
         // Store vector search data to save after assistant message is created
         (globalThis as any).__vectorSearchDataToSave = {
@@ -618,6 +804,15 @@ REMEMBER: ${languageName} ONLY - NO EXCEPTIONS!`;
           timestamp: new Date().toISOString()
         });
         console.error('Automatic vector search failed:', error);
+        
+        safeTrace(() => vectorSearchSpan.update({
+          output: {
+            error: error instanceof Error ? error.message : String(error),
+            searchDurationMs: Date.now() - searchStartTime,
+            success: false,
+            apiType: 'external'
+          }
+        }));
       }
     }
 
@@ -719,6 +914,19 @@ Do not add any additional text, explanations, or formatting. Just return that ex
         }
 
         try {
+          const llmSpan = mainTrace.span({
+            name: "llm-streaming",
+            input: {
+              model: selectedChatModel,
+              systemPromptLength: modifiedSystemPrompt.length,
+              messagesCount: messages.length,
+              hasVectorSearchContext: !!messageId,
+              selectedLanguage: selectedLanguage,
+              streamStartTime: Date.now(),
+              apiType: 'external'
+            }
+          });
+
           let result;
           try {
             console.log('[external-chat route] Sending to AI model:', {
@@ -749,12 +957,12 @@ Do not add any additional text, explanations, or formatting. Just return that ex
               tools: {
                 getWeather,
               },
-              onFinish: async ({ response }) => {
+              onFinish: async ({ response }: { response: any }) => {
                 if (session.user?.id) {
                   try {
                     const assistantId = getTrailingMessageId({
                       messages: response.messages.filter(
-                        (message) => message.role === 'assistant',
+                        (message: any) => message.role === 'assistant',
                       ),
                     });
 
@@ -767,6 +975,63 @@ Do not add any additional text, explanations, or formatting. Just return that ex
                       messages: [message],
                       responseMessages: response.messages,
                     });
+
+                    // Extract final response text for tracing
+                    let finalResponseText = '';
+                    if (assistantMessage.parts && Array.isArray(assistantMessage.parts)) {
+                      for (const part of assistantMessage.parts) {
+                        if (part.type === 'text' && part.text) {
+                          finalResponseText += part.text;
+                        }
+                      }
+                    }
+
+                    // Extract citations used in the response
+                    const citationMatches = finalResponseText.match(/\[CIT\d+\]/g) || [];
+                    const uniqueCitations = [...new Set(citationMatches)];
+
+                    // Get citation details if we have messageId
+                    let citationDetails: any[] = [];
+                    if (messageId && messageContextMap.has(messageId)) {
+                      const allCitations = messageContextMap.get(messageId) || [];
+                      citationDetails = uniqueCitations.map(citRef => {
+                        const citNum = parseInt(citRef.match(/\d+/)?.[0] || '0');
+                        const citation = allCitations[citNum - 1];
+                        return citation ? {
+                          reference: citRef,
+                          originalText: citation.text?.substring(0, 200) + '...',
+                          metadata: citation.metadata,
+                          namespace: citation.namespace,
+                          score: citation.score
+                        } : null;
+                      }).filter(Boolean);
+                    }
+
+                    // Update LLM span with comprehensive final response data
+                    safeTrace(() => llmSpan.update({
+                      output: {
+                        assistantId: assistantId,
+                        responseLength: finalResponseText.length,
+                        responsePreview: finalResponseText.substring(0, 1000),
+                        citationsUsed: uniqueCitations,
+                        citationCount: uniqueCitations.length,
+                        citationToSourceMapping: citationDetails,
+                        citationAnalytics: {
+                          totalAvailable: messageId && messageContextMap.has(messageId) ? (messageContextMap.get(messageId) || []).length : 0,
+                          totalUsed: uniqueCitations.length,
+                          utilizationRate: messageId && messageContextMap.has(messageId) ? 
+                            (uniqueCitations.length / Math.max((messageContextMap.get(messageId) || []).length, 1) * 100).toFixed(1) + '%' : '0%'
+                        },
+                        contextUtilization: {
+                          hasVectorContext: !!messageId,
+                          messageId: messageId,
+                          contextLength: modifiedSystemPrompt.length
+                        },
+                        streamingDuration: Date.now() - startTime,
+                        provider: 'primary',
+                        apiType: 'external'
+                      }
+                    }));
 
                     await saveMessages({
                       messages: [
@@ -794,8 +1059,30 @@ Do not add any additional text, explanations, or formatting. Just return that ex
                         console.error('Failed to save vector search results:', error);
                       }
                     }
+
+                    // Update main trace with final success data
+                    safeTrace(() => mainTrace.update({
+                      output: {
+                        success: true,
+                        assistantMessageId: assistantId,
+                        responseLength: finalResponseText.length,
+                        citationsUsed: uniqueCitations.length,
+                        totalDuration: Date.now() - startTime,
+                        apiType: 'external'
+                      }
+                    }));
+
+                    // Flush trace to ensure data reaches Langfuse
+                    await flushTrace(mainTrace);
                   } catch (error) {
                     console.error('Failed to save assistant message:', error);
+                    safeTrace(() => llmSpan.update({
+                      output: {
+                        error: error instanceof Error ? error.message : String(error),
+                        provider: 'primary',
+                        apiType: 'external'
+                      }
+                    }));
                   }
                 }
               },
@@ -806,6 +1093,14 @@ Do not add any additional text, explanations, or formatting. Just return that ex
             });
           } catch (primaryError) {
             console.warn('Primary provider failed, trying fallback provider:', primaryError);
+            safeTrace(() => llmSpan.update({
+              output: {
+                primaryProviderError: primaryError instanceof Error ? primaryError.message : String(primaryError),
+                usingFallback: true,
+                apiType: 'external'
+              }
+            }));
+
             result = streamText({
               model: fallbackProvider.languageModel(selectedChatModel),
               system: modifiedSystemPrompt,
@@ -822,12 +1117,12 @@ Do not add any additional text, explanations, or formatting. Just return that ex
               tools: {
                 getWeather,
               },
-              onFinish: async ({ response }) => {
+              onFinish: async ({ response }: { response: any }) => {
                 if (session.user?.id) {
                   try {
                     const assistantId = getTrailingMessageId({
                       messages: response.messages.filter(
-                        (message) => message.role === 'assistant',
+                        (message: any) => message.role === 'assistant',
                       ),
                     });
 
@@ -840,6 +1135,63 @@ Do not add any additional text, explanations, or formatting. Just return that ex
                       messages: [message],
                       responseMessages: response.messages,
                     });
+
+                    // Extract final response text for tracing
+                    let finalResponseText = '';
+                    if (assistantMessage.parts && Array.isArray(assistantMessage.parts)) {
+                      for (const part of assistantMessage.parts) {
+                        if (part.type === 'text' && part.text) {
+                          finalResponseText += part.text;
+                        }
+                      }
+                    }
+
+                    // Extract citations used in the response
+                    const citationMatches = finalResponseText.match(/\[CIT\d+\]/g) || [];
+                    const uniqueCitations: string[] = [...new Set(citationMatches)];
+
+                    // Get citation details if we have messageId
+                    let citationDetails: any[] = [];
+                    if (messageId && messageContextMap.has(messageId)) {
+                      const allCitations = messageContextMap.get(messageId) || [];
+                      citationDetails = uniqueCitations.map(citRef => {
+                        const citNum = parseInt(citRef.match(/\d+/)?.[0] || '0');
+                        const citation = allCitations[citNum - 1];
+                        return citation ? {
+                          reference: citRef,
+                          originalText: citation.text?.substring(0, 200) + '...',
+                          metadata: citation.metadata,
+                          namespace: citation.namespace,
+                          score: citation.score
+                        } : null;
+                      }).filter(Boolean);
+                    }
+
+                    // Update LLM span with comprehensive final response data
+                    safeTrace(() => llmSpan.update({
+                      output: {
+                        assistantId: assistantId,
+                        responseLength: finalResponseText.length,
+                        responsePreview: finalResponseText.substring(0, 1000),
+                        citationsUsed: uniqueCitations,
+                        citationCount: uniqueCitations.length,
+                        citationToSourceMapping: citationDetails,
+                        citationAnalytics: {
+                          totalAvailable: messageId && messageContextMap.has(messageId) ? (messageContextMap.get(messageId) || []).length : 0,
+                          totalUsed: uniqueCitations.length,
+                          utilizationRate: messageId && messageContextMap.has(messageId) ? 
+                            (uniqueCitations.length / Math.max((messageContextMap.get(messageId) || []).length, 1) * 100).toFixed(1) + '%' : '0%'
+                        },
+                        contextUtilization: {
+                          hasVectorContext: !!messageId,
+                          messageId: messageId,
+                          contextLength: modifiedSystemPrompt.length
+                        },
+                        streamingDuration: Date.now() - startTime,
+                        provider: 'fallback',
+                        apiType: 'external'
+                      }
+                    }));
 
                     await saveMessages({
                       messages: [
@@ -867,8 +1219,31 @@ Do not add any additional text, explanations, or formatting. Just return that ex
                         console.error('Failed to save vector search results:', error);
                       }
                     }
+
+                    // Update main trace with final success data
+                    safeTrace(() => mainTrace.update({
+                      output: {
+                        success: true,
+                        assistantMessageId: assistantId,
+                        responseLength: finalResponseText.length,
+                        citationsUsed: uniqueCitations.length,
+                        totalDuration: Date.now() - startTime,
+                        usedFallbackProvider: true,
+                        apiType: 'external'
+                      }
+                    }));
+
+                    // Flush trace to ensure data reaches Langfuse
+                    await flushTrace(mainTrace);
                   } catch (error) {
                     console.error('Failed to save assistant message:', error);
+                    safeTrace(() => llmSpan.update({
+                      output: {
+                        error: error instanceof Error ? error.message : String(error),
+                        provider: 'fallback',
+                        apiType: 'external'
+                      }
+                    }));
                   }
                 }
               },
@@ -911,6 +1286,18 @@ Do not add any additional text, explanations, or formatting. Just return that ex
       return new Response(stream, { headers });
     }
   } catch (error) {
+    // Update main trace with error information
+    safeTrace(() => mainTrace.update({
+      output: {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+        errorType: error instanceof ChatSDKError ? 'ChatSDKError' : 'UnexpectedError',
+        totalDuration: Date.now() - startTime,
+        apiType: 'external'
+      }
+    }));
+    await flushTrace(mainTrace);
+
     if (error instanceof ChatSDKError) {
       return error.toResponse();
     }

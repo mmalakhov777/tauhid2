@@ -16,7 +16,7 @@ async function setWebhook() {
       },
       body: JSON.stringify({
         url: WEBHOOK_URL,
-        allowed_updates: ['message'],
+        allowed_updates: ['message', 'callback_query', 'pre_checkout_query'],
       }),
     });
 

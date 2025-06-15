@@ -1,9 +1,27 @@
 import { Pinecone } from '@pinecone-database/pinecone';
 import { v4 as uuidv4 } from 'uuid';
+import { Langfuse, LangfuseTraceClient } from "langfuse";
 
 // Environment variables
 const PINECONE_API_KEY = process.env.PINECONE_API_KEY || '';
 const RAILWAY_EMBEDDING_SERVICE_URL = process.env.RAILWAY_EMBEDDING_SERVICE_URL || 'http://localhost:3001';
+
+// Initialize Langfuse
+const langfuse = new Langfuse({
+  secretKey: process.env.LANGFUSE_SECRET_KEY,
+  publicKey: process.env.LANGFUSE_PUBLIC_KEY,
+  baseUrl: process.env.LANGFUSE_BASE_URL || "https://cloud.langfuse.com"
+});
+
+// Helper function for non-blocking Langfuse operations
+const safeTrace = (operation: () => void) => {
+  try {
+    operation();
+  } catch (error) {
+    // Silently ignore tracing errors to not affect performance
+    console.debug('[langfuse] Tracing error:', error);
+  }
+};
 
 // Add validation for production
 if (process.env.NODE_ENV === 'production' && !process.env.RAILWAY_EMBEDDING_SERVICE_URL) {
@@ -65,7 +83,13 @@ export interface VectorSearchResult {
 }
 
 // Railway embedding service functions
-async function getEmbedding(text: string): Promise<number[]> {
+async function getEmbedding(text: string, parentTrace?: LangfuseTraceClient): Promise<number[]> {
+  const span = parentTrace?.span({
+    name: "get-embedding",
+    input: { text: text.substring(0, 100) + (text.length > 100 ? '...' : '') },
+    metadata: { service: "railway-embedding" }
+  });
+
   try {
     console.log(`[vector-search] Requesting embedding from: ${RAILWAY_EMBEDDING_SERVICE_URL}/embed`);
     
@@ -82,21 +106,33 @@ async function getEmbedding(text: string): Promise<number[]> {
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`[vector-search] Embedding service error: ${response.status} - ${errorText}`);
+      safeTrace(() => span?.update({ 
+        output: { error: `${response.status} - ${errorText}` }
+      }));
       throw new Error(`Embedding service error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
     if (!data.success || !data.embedding) {
       console.error('[vector-search] Invalid embedding response:', data);
+      safeTrace(() => span?.update({ 
+        output: { error: "Invalid embedding response" }
+      }));
       throw new Error('Invalid embedding response');
     }
 
     console.log(`[vector-search] Successfully received embedding with ${data.embedding.length} dimensions`);
+    safeTrace(() => span?.update({ 
+      output: { dimensions: data.embedding.length, success: true }
+    }));
     return data.embedding;
   } catch (error) {
     console.error('Error getting embedding from Railway service:', error);
     console.error('Service URL:', RAILWAY_EMBEDDING_SERVICE_URL);
     console.error('Error details:', error instanceof Error ? error.message : String(error));
+    safeTrace(() => span?.update({ 
+      output: { error: error instanceof Error ? error.message : String(error) }
+    }));
     throw error;
   }
 }
@@ -104,8 +140,19 @@ async function getEmbedding(text: string): Promise<number[]> {
 async function improveUserQueries(
   query: string, 
   history: string,
-  selectedChatModel: string
+  selectedChatModel: string,
+  parentTrace?: LangfuseTraceClient
 ): Promise<string[]> {
+  const span = parentTrace?.span({
+    name: "improve-user-queries",
+    input: { 
+      query: query.substring(0, 200) + (query.length > 200 ? '...' : ''),
+      historyLength: history.length,
+      selectedChatModel 
+    },
+    metadata: { service: "railway-embedding" }
+  });
+
   try {
     console.log(`[vector-search] Requesting query improvement from: ${RAILWAY_EMBEDDING_SERVICE_URL}/improve-queries`);
     
@@ -126,12 +173,18 @@ async function improveUserQueries(
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`[vector-search] Query improvement service error: ${response.status} - ${errorText}`);
+      safeTrace(() => span?.update({ 
+        output: { error: `${response.status} - ${errorText}`, fallback: true }
+      }));
       throw new Error(`Query improvement service error: ${response.status} - ${errorText}`);
     }
 
     const data = await response.json();
     if (!data.success || !data.improvedQueries) {
       console.error('[vector-search] Invalid query improvement response:', data);
+      safeTrace(() => span?.update({ 
+        output: { error: "Invalid query improvement response", fallback: true }
+      }));
       throw new Error('Invalid query improvement response');
     }
 
@@ -141,12 +194,30 @@ async function improveUserQueries(
       improvedQueries: data.improvedQueries
     });
 
+    safeTrace(() => span?.update({ 
+      output: { 
+        improvedQueries: data.improvedQueries,
+        count: data.improvedQueries.length,
+        success: true 
+      }
+    }));
+
     return data.improvedQueries;
   } catch (error) {
     console.error('Error improving queries via Railway service:', error);
     console.error('Service URL:', RAILWAY_EMBEDDING_SERVICE_URL);
     console.error('Falling back to original query repeated 3 times');
-    return [query, query, query]; // fallback to 3x original
+    
+    const fallbackQueries = [query, query, query];
+    safeTrace(() => span?.update({ 
+      output: { 
+        error: error instanceof Error ? error.message : String(error),
+        fallbackQueries,
+        fallback: true 
+      }
+    }));
+    
+    return fallbackQueries; // fallback to 3x original
   }
 }
 
@@ -161,10 +232,11 @@ function getSourceIdentifier(result: VectorSearchResult): string | null {
 async function getTopKContext(
   indexName: string, 
   query: string, 
-  k = 10
+  k = 10,
+  parentTrace?: LangfuseTraceClient
 ): Promise<VectorSearchResult[]> {
   try {
-    const queryEmbedding = await getEmbedding(query);
+    const queryEmbedding = await getEmbedding(query, parentTrace);
     const index = pinecone.index(indexName);
     const searchResponse = await index.query({
       vector: queryEmbedding,
@@ -252,10 +324,11 @@ async function getTopKContextAllNamespaces(
   indexName: string, 
   namespaces: string[], 
   query: string, 
-  k = 10
+  k = 10,
+  parentTrace?: LangfuseTraceClient
 ): Promise<VectorSearchResult[]> {
   try {
-    const queryEmbedding = await getEmbedding(query);
+    const queryEmbedding = await getEmbedding(query, parentTrace);
     const results = await Promise.all(
       namespaces.map(async (namespace, i) => {
         try {
@@ -410,7 +483,8 @@ export function buildConversationHistory(messages: any[]): string {
 // Optimized function with parallel processing
 async function performAllVectorSearches(
   improvedQueries: string[], 
-  selectedSources?: SourceSelection
+  selectedSources?: SourceSelection,
+  parentTrace?: LangfuseTraceClient
 ): Promise<{
   classicContexts: VectorSearchResult[];
   modernContexts: VectorSearchResult[];
@@ -418,6 +492,17 @@ async function performAllVectorSearches(
   youtubeContexts: VectorSearchResult[];
   fatwaContexts: VectorSearchResult[];
 }> {
+  const span = parentTrace?.span({
+    name: "perform-all-vector-searches",
+    input: { 
+      improvedQueriesCount: improvedQueries.length,
+      selectedSources 
+    },
+    metadata: { 
+      searchType: "parallel-vector-search"
+    }
+  });
+
   // Default to all sources if not specified
   const sources = selectedSources || {
     classic: true,
@@ -434,7 +519,7 @@ async function performAllVectorSearches(
     if (sources.classic) {
       allSearchPromises.push(
         ...improvedQueries.map((q, i) => {
-          return getTopKContext(CLASSIC_INDEX_NAME, q, 50);
+          return getTopKContext(CLASSIC_INDEX_NAME, q, 50, parentTrace);
         })
       );
     }
@@ -443,7 +528,7 @@ async function performAllVectorSearches(
     if (sources.risale) {
       allSearchPromises.push(
         ...improvedQueries.map((q, i) => {
-          return getTopKContextAllNamespaces(RISALENUR_INDEX_NAME, RISALENUR_NAMESPACES, q, 5);
+          return getTopKContextAllNamespaces(RISALENUR_INDEX_NAME, RISALENUR_NAMESPACES, q, 5, parentTrace);
         })
       );
     }
@@ -452,7 +537,7 @@ async function performAllVectorSearches(
     if (sources.youtube) {
       allSearchPromises.push(
         ...improvedQueries.map((q, i) => {
-          return getTopKContextAllNamespaces(YOUTUBE_INDEX_NAME, YOUTUBE_NAMESPACES, q, 5);
+          return getTopKContextAllNamespaces(YOUTUBE_INDEX_NAME, YOUTUBE_NAMESPACES, q, 5, parentTrace);
         })
       );
     }
@@ -461,7 +546,7 @@ async function performAllVectorSearches(
     if (sources.fatwa) {
       allSearchPromises.push(
         ...improvedQueries.map((q, i) => {
-          return getTopKContextAllNamespaces(FATWA_INDEX_NAME, FATWA_NAMESPACES, q, 5);
+          return getTopKContextAllNamespaces(FATWA_INDEX_NAME, FATWA_NAMESPACES, q, 5, parentTrace);
         })
       );
     }
@@ -523,6 +608,21 @@ async function performAllVectorSearches(
              finalResults.youtubeContexts.length + finalResults.fatwaContexts.length
     });
 
+    safeTrace(() => span?.update({ 
+      output: { 
+        searchResultsCount: {
+          classic: finalResults.classicContexts.length,
+          modern: finalResults.modernContexts.length,
+          risale: finalResults.risaleContexts.length,
+          youtube: finalResults.youtubeContexts.length,
+          fatwa: finalResults.fatwaContexts.length
+        },
+        totalResults: finalResults.classicContexts.length + finalResults.risaleContexts.length + 
+                     finalResults.youtubeContexts.length + finalResults.fatwaContexts.length,
+        success: true
+      }
+    }));
+
     return finalResults;
     
   } catch (error) {
@@ -532,6 +632,14 @@ async function performAllVectorSearches(
       improvedQueriesCount: improvedQueries.length,
       timestamp: new Date().toISOString()
     });
+    
+    safeTrace(() => span?.update({ 
+      output: { 
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      }
+    }));
+    
     throw error;
   }
 }
@@ -548,19 +656,34 @@ export async function performVectorSearchWithProgress(
   conversationHistory: string,
   selectedChatModel: string,
   selectedSources?: SourceSelection,
-  onProgress?: (progress: any) => void
+  onProgress?: (progress: any) => void,
+  parentTrace?: LangfuseTraceClient
 ): Promise<{
   messageId: string;
   citations: VectorSearchResult[];
   improvedQueries: string[];
   contextBlock: string;
 }> {
+  const span = parentTrace?.span({
+    name: "vector-search-with-progress",
+    input: { 
+      userMessage: userMessage.substring(0, 200) + (userMessage.length > 200 ? '...' : ''),
+      conversationHistoryLength: conversationHistory.length,
+      selectedChatModel,
+      selectedSources 
+    },
+    metadata: { 
+      hasProgress: !!onProgress,
+      timestamp: new Date().toISOString()
+    }
+  });
+
   if (onProgress) {
     onProgress({ step: 1 });
   }
   
   try {
-    const improvedQueries = await improveUserQueries(userMessage, conversationHistory, selectedChatModel);
+    const improvedQueries = await improveUserQueries(userMessage, conversationHistory, selectedChatModel, parentTrace);
     
     if (onProgress) {
       onProgress({ step: 1, improvedQueries });
@@ -571,7 +694,7 @@ export async function performVectorSearchWithProgress(
     }
     
     const { classicContexts, modernContexts, risaleContexts, youtubeContexts, fatwaContexts } = 
-      await performAllVectorSearches(improvedQueries, selectedSources);
+      await performAllVectorSearches(improvedQueries, selectedSources, parentTrace);
     
     // Send search results count
     const searchResultsCount = {
@@ -606,12 +729,25 @@ export async function performVectorSearchWithProgress(
       });
     }
 
-    return {
+    const result = {
       messageId,
       citations: allContexts,
       improvedQueries,
       contextBlock
     };
+
+    safeTrace(() => span?.update({ 
+      output: { 
+        messageId,
+        citationsCount: allContexts.length,
+        improvedQueriesCount: improvedQueries.length,
+        searchResultsCount,
+        contextBlockLength: contextBlock.length,
+        success: true
+      }
+    }));
+
+    return result;
     
   } catch (error) {
     console.error('[vector-search] ❌ Error in vector search process:', {
@@ -621,6 +757,14 @@ export async function performVectorSearchWithProgress(
       selectedChatModel,
       timestamp: new Date().toISOString()
     });
+    
+    safeTrace(() => span?.update({ 
+      output: { 
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      }
+    }));
+    
     throw error;
   }
 }
@@ -629,14 +773,15 @@ export async function performVectorSearch(
   userMessage: string,
   conversationHistory: string,
   selectedChatModel: string,
-  selectedSources?: SourceSelection
+  selectedSources?: SourceSelection,
+  parentTrace?: LangfuseTraceClient
 ): Promise<{
   messageId: string;
   citations: VectorSearchResult[];
   improvedQueries: string[];
   contextBlock: string;
 }> {
-  return performVectorSearchWithProgress(userMessage, conversationHistory, selectedChatModel, selectedSources);
+  return performVectorSearchWithProgress(userMessage, conversationHistory, selectedChatModel, selectedSources, undefined, parentTrace);
 }
 
 export function getContextByMessageId(messageId: string): any[] {

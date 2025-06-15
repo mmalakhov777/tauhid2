@@ -26,9 +26,9 @@ export const entitlementsByUserType: Record<UserType, Entitlements> = {
    * For users without an account (unregistered)
    */
   guest: {
-    maxMessagesPerDay: 50,  // Legacy limit (not used with trial balance)
-    trialMessagesPerDay: 2, // NEW: 2 messages per day trial
-    useTrialBalance: true,  // NEW: Use trial balance system
+    maxMessagesPerDay: 1000,  // Legacy limit (increased for testing)
+    trialMessagesPerDay: 500, // NEW: 500 messages per day trial (increased for testing)
+    useTrialBalance: true,    // NEW: Use trial balance system
     availableChatModelIds: ['chat-model', 'chat-model-reasoning'],
   },
 
@@ -36,9 +36,9 @@ export const entitlementsByUserType: Record<UserType, Entitlements> = {
    * For users with an account (registered)
    */
   regular: {
-    maxMessagesPerDay: 200, // Legacy limit (not used with trial balance)
-    trialMessagesPerDay: 5, // NEW: 5 messages per day trial
-    useTrialBalance: true,  // NEW: Use trial balance system
+    maxMessagesPerDay: 2000,  // Legacy limit (increased for testing)
+    trialMessagesPerDay: 1000, // NEW: 1000 messages per day trial (increased for testing)
+    useTrialBalance: true,     // NEW: Use trial balance system
     availableChatModelIds: ['chat-model', 'chat-model-reasoning'],
   },
 
