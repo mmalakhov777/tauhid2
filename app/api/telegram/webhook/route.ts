@@ -1545,7 +1545,13 @@ ${t.binding.welcomeComplete}`;
 `;
                 
                 if (bindingError && bindingError instanceof Error) {
-                  if (bindingError.message.includes('Invalid or expired binding code')) {
+                  // Check both error message and cause property for specific error types
+                  const errorCause = (bindingError as any)?.cause || '';
+                  const isAlreadyLinked = bindingError.message.includes('already linked to another user') || 
+                                        errorCause.includes('already linked to another user');
+                  const isInvalidCode = bindingError.message.includes('Invalid or expired binding code');
+                  
+                  if (isInvalidCode) {
                     errorMessage += `**Reason:** The binding code has expired or is invalid.
 
 **What happened:**
@@ -1557,7 +1563,7 @@ ${t.binding.welcomeComplete}`;
 • Go back to the registration page
 • Generate a new binding code
 • Try the process again within 15 minutes`;
-                  } else if (bindingError.message.includes('already linked to another user')) {
+                  } else if (isAlreadyLinked) {
                     errorMessage += `**Reason:** This Telegram account is already connected to another email account.
 
 **What happened:**
