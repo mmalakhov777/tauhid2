@@ -144,127 +144,144 @@ const TelegramBindingStep = ({ user, onComplete }: {
   };
 
   return (
-    <div className="w-full max-w-md relative">
+    <div className="w-full max-w-6xl relative my-16">
       <div className="absolute inset-0 bg-white/20 dark:bg-white/10 backdrop-blur-xl rounded-3xl border border-white/30 dark:border-white/20 shadow-2xl shadow-black/10 dark:shadow-black/30"></div>
       <div className="relative z-10 p-8 sm:p-10">
-        <div className="flex flex-col gap-8">
-          <div className="flex flex-col items-center justify-center gap-3 text-center">
-            <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-2 ${
-              bindingStatus === 'completed' ? 'bg-green-500' : 'bg-blue-500'
-            }`}>
-              {bindingStatus === 'completed' ? (
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              ) : (
-                <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 0C5.374 0 0 5.373 0 12s5.374 12 12 12 12-5.373 12-12S18.626 0 12 0zm5.568 8.16c-.169 1.858-.896 6.728-.896 6.728-.896 6.728-1.268 7.928-1.268 7.928-.16.906-.923 1.101-1.517.683 0 0-2.271-1.702-3.414-2.559-.24-.18-.513-.54-.24-.96l2.34-2.277c.26-.252.52-.756 0-.756-.52 0-3.414 2.277-3.414 2.277-.817.533-1.75.684-1.75.684l-3.293-.906s-.414-.252-.274-.756c.14-.504.793-.756.793-.756s7.776-2.834 10.428-3.788.793-.286 1.793-.133 1.793 1.125z"/>
-                </svg>
-              )}
-            </div>
-            <h3 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
-              {bindingStatus === 'completed' ? 'Telegram Connected!' : 'Connect Telegram'}
-            </h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-              {bindingStatus === 'completed' 
-                ? 'Your Telegram account has been successfully linked'
-                : 'Link your Telegram account to complete registration'
-              }
-            </p>
-            {/* Small Sign Out button */}
-            <button
-              onClick={() => {
-                // Sign out and reset to first form
-                fetch('/api/auth/signout', { method: 'POST' }).then(() => {
-                  window.location.href = '/register';
-                });
-              }}
-              className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 underline mt-2"
-            >
-              Sign out and start over
-            </button>
+        {/* Centered Header */}
+        <div className="flex flex-col items-center justify-center gap-3 text-center mb-8">
+          <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-2 ${
+            bindingStatus === 'completed' ? 'bg-green-500' : 'bg-blue-500'
+          }`}>
+            {bindingStatus === 'completed' ? (
+              <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+              </svg>
+            ) : (
+              <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 0C5.374 0 0 5.373 0 12s5.374 12 12 12 12-5.373 12-12S18.626 0 12 0zm5.568 8.16c-.169 1.858-.896 6.728-.896 6.728-.896 6.728-1.268 7.928-1.268 7.928-.16.906-.923 1.101-1.517.683 0 0-2.271-1.702-3.414-2.559-.24-.18-.513-.54-.24-.96l2.34-2.277c.26-.252.52-.756 0-.756-.52 0-3.414 2.277-3.414 2.277-.817.533-1.75.684-1.75.684l-3.293-.906s-.414-.252-.274-.756c.14-.504.793-.756.793-.756s7.776-2.834 10.428-3.788.793-.286 1.793-.133 1.793 1.125z"/>
+              </svg>
+            )}
+          </div>
+          <h3 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
+            {bindingStatus === 'completed' ? 'Telegram Connected!' : 'Connect Telegram'}
+          </h3>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+          {/* Left side - Main content */}
+          <div className="flex flex-col gap-8">
+            {bindingStatus === 'completed' ? (
+              <div className="text-center py-8">
+                <div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <p className="text-lg font-semibold text-green-600 dark:text-green-400 mb-2">
+                  Successfully Connected!
+                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Redirecting you to the app...
+                </p>
+              </div>
+            ) : isLoading ? (
+              <div className="text-center py-8">
+                <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                <p className="text-gray-600 dark:text-gray-400">Generating binding code...</p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {/* How to connect instructions */}
+                <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4">
+                  <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-3 text-center">
+                    How to connect:
+                  </h4>
+                  <ol className="text-sm text-blue-800 dark:text-blue-200 space-y-2">
+                    <li className="flex items-start gap-3">
+                      <span className="flex-shrink-0 w-5 h-5 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-semibold">1</span>
+                      <span>Open Telegram and find our bot or scan the QR code</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <span className="flex-shrink-0 w-5 h-5 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-semibold">2</span>
+                      <span>Send the command: <code className="bg-blue-100 dark:bg-blue-800 px-1 py-0.5 rounded text-xs">/bind {bindingCode}</code></span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <span className="flex-shrink-0 w-5 h-5 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-semibold">3</span>
+                      <span>Your account will be linked automatically</span>
+                    </li>
+                    <li className="flex items-start gap-3">
+                      <span className="flex-shrink-0 w-5 h-5 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-semibold">4</span>
+                      <span>You'll be redirected once connected</span>
+                    </li>
+                  </ol>
+                </div>
+
+                {/* Binding Code */}
+                <div className="text-center">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                    Your binding code:
+                  </p>
+                  <div className="bg-gray-50 dark:bg-zinc-800 rounded-xl p-4 border-2 border-dashed border-gray-300 dark:border-zinc-600">
+                    <div className="text-3xl font-mono font-bold text-blue-600 dark:text-blue-400 tracking-wider">
+                      {bindingCode}
+                    </div>
+                  </div>
+                  <button
+                    onClick={copyToClipboard}
+                    className="mt-3 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-lg transition-colors flex items-center gap-2 mx-auto"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    Copy Code
+                  </button>
+                </div>
+
+                {/* Timer */}
+                {timeLeft > 0 && (
+                  <div className="text-center">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Code expires in: <span className="font-mono font-semibold text-red-500">{formatTime(timeLeft)}</span>
+                      {' • '}
+                      <button
+                        onClick={generateBindingCode}
+                        disabled={isGenerating}
+                        className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 underline text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {isGenerating ? 'Generating...' : 'Generate New Code'}
+                      </button>
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
-          {bindingStatus === 'completed' ? (
-            <div className="text-center py-8">
-              <div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <svg className="w-8 h-8 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
-              </div>
-              <p className="text-lg font-semibold text-green-600 dark:text-green-400 mb-2">
-                Successfully Connected!
-              </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400">
-                Redirecting you to the app...
-              </p>
-            </div>
-          ) : isLoading ? (
-            <div className="text-center py-8">
-              <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-              <p className="text-gray-600 dark:text-gray-400">Generating binding code...</p>
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {/* Binding Code */}
-              <div className="text-center">
-                <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                  Your binding code:
-                </p>
-                <div className="bg-gray-50 dark:bg-zinc-800 rounded-xl p-4 border-2 border-dashed border-gray-300 dark:border-zinc-600">
-                  <div className="text-3xl font-mono font-bold text-blue-600 dark:text-blue-400 tracking-wider">
-                    {bindingCode}
+          {/* Right side - QR Code */}
+          {bindingStatus !== 'completed' && !isLoading && (
+            <div className="flex flex-col gap-6">
+              {/* QR Code placeholder */}
+              <div className="bg-white dark:bg-zinc-800 rounded-xl p-6 text-center">
+                <h4 className="font-semibold text-gray-900 dark:text-white mb-4">
+                  Scan QR Code
+                </h4>
+                <div className="w-48 h-48 bg-gray-100 dark:bg-zinc-700 rounded-lg flex items-center justify-center mx-auto mb-4">
+                  <div className="text-center">
+                    <svg className="w-16 h-16 text-gray-400 dark:text-gray-500 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
+                    </svg>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">QR Code will appear here</p>
                   </div>
                 </div>
-                <button
-                  onClick={copyToClipboard}
-                  className="mt-3 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-lg transition-colors flex items-center gap-2 mx-auto"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                  </svg>
-                  Copy Code
-                </button>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Scan with your phone to open Telegram bot
+                </p>
               </div>
-
-              {/* Timer */}
-              {timeLeft > 0 && (
-                <div className="text-center">
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Code expires in: <span className="font-mono font-semibold text-red-500">{formatTime(timeLeft)}</span>
-                    {' • '}
-                    <button
-                      onClick={generateBindingCode}
-                      disabled={isGenerating}
-                      className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 underline text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      {isGenerating ? 'Generating...' : 'Generate New Code'}
-                    </button>
-                  </p>
-                </div>
-              )}
-
-              {/* Instructions */}
-              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4">
-                <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">
-                  How to connect:
-                </h4>
-                <ol className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
-                  <li>1. Open Telegram and find our bot</li>
-                  <li>2. Send the command: <code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">/bind {bindingCode}</code></li>
-                  <li>3. Your account will be linked automatically</li>
-                  <li>4. You'll be redirected once connected</li>
-                </ol>
-              </div>
-            </div>
-          )}
-
-          {/* Action Buttons - Only show open telegram button if not completed */}
-          {bindingStatus !== 'completed' && (
-            <div className="flex gap-3">
+              
+              {/* Telegram Button */}
               <button
-                onClick={() => window.open('https://t.me/tauhid_app_bot', '_blank')}
-                className="flex-1 px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors flex items-center justify-center gap-2 font-medium"
+                onClick={() => window.open(`https://t.me/tauhid_app_bot?start=register_${bindingCode}`, '_blank')}
+                className="w-full px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors flex items-center justify-center gap-2 font-medium"
               >
                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                   <path d="M12 0C5.374 0 0 5.373 0 12s5.374 12 12 12 12-5.373 12-12S18.626 0 12 0zm5.568 8.16c-.169 1.858-.896 6.728-.896 6.728-.896 6.728-1.268 7.928-1.268 7.928-.16.906-.923 1.101-1.517.683 0 0-2.271-1.702-3.414-2.559-.24-.18-.513-.54-.24-.96l2.34-2.277c.26-.252.52-.756 0-.756-.52 0-3.414 2.277-3.414 2.277-.817.533-1.75.684-1.75.684l-3.293-.906s-.414-.252-.274-.756c.14-.504.793-.756.793-.756s7.776-2.834 10.428-3.788.793-.286 1.793-.133 1.793 1.125z"/>
@@ -359,61 +376,66 @@ export default function Page() {
 
   return (
     <div className="flex h-dvh w-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-      {/* Left side - Form */}
-      <div className="flex-1 flex items-center justify-center p-8 relative">
-        {showTelegramBinding && registeredUser ? (
+      {showTelegramBinding && registeredUser ? (
+        /* Full width for Telegram binding */
+        <div className="flex-1 flex items-start justify-center px-8 py-0 relative min-h-0">
           <TelegramBindingStep 
             user={registeredUser}
             onComplete={handleTelegramComplete}
           />
-        ) : (
-          /* Glass container */
-          <div className="w-full max-w-md relative">
-            <div className="absolute inset-0 bg-white/20 dark:bg-white/10 backdrop-blur-xl rounded-3xl border border-white/30 dark:border-white/20 shadow-2xl shadow-black/10 dark:shadow-black/30"></div>
-            <div className="relative z-10 p-8 sm:p-10">
-              <div className="flex flex-col gap-8">
-                <div className="flex flex-col items-center justify-center gap-3 text-center">
-                  <h3 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
-                    Create Account
-                  </h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                    Create an account with your email and password
-                  </p>
-                </div>
+        </div>
+      ) : (
+        <>
+          {/* Left side - Form */}
+          <div className="flex-1 flex items-start justify-center px-8 py-0 relative min-h-0">
+            {/* Glass container */}
+            <div className="w-full max-w-md relative">
+              <div className="absolute inset-0 bg-white/20 dark:bg-white/10 backdrop-blur-xl rounded-3xl border border-white/30 dark:border-white/20 shadow-2xl shadow-black/10 dark:shadow-black/30"></div>
+              <div className="relative z-10 p-8 sm:p-10">
+                <div className="flex flex-col gap-8">
+                  <div className="flex flex-col items-center justify-center gap-3 text-center">
+                    <h3 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
+                      Create Account
+                    </h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                      Create an account with your email and password
+                    </p>
+                  </div>
 
-                {/* Email/Password Form */}
-                <AuthForm action={handleSubmit} defaultEmail={email}>
-                  <SubmitButton isSuccessful={isSuccessful}>Sign Up</SubmitButton>
-                  <p className="text-center text-sm text-gray-600 mt-6 dark:text-gray-400">
-                    {'Already have an account? '}
-                    <Link
-                      href="/login"
-                      className="font-semibold text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 transition-colors duration-200 hover:underline"
-                    >
-                      Sign in
-                    </Link>
-                    {' instead.'}
-                  </p>
-                </AuthForm>
+                  {/* Email/Password Form */}
+                  <AuthForm action={handleSubmit} defaultEmail={email}>
+                    <SubmitButton isSuccessful={isSuccessful}>Sign Up</SubmitButton>
+                    <p className="text-center text-sm text-gray-600 mt-6 dark:text-gray-400">
+                      {'Already have an account? '}
+                      <Link
+                        href="/login"
+                        className="font-semibold text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 transition-colors duration-200 hover:underline"
+                      >
+                        Sign in
+                      </Link>
+                      {' instead.'}
+                    </p>
+                  </AuthForm>
+                </div>
               </div>
             </div>
           </div>
-        )}
-      </div>
-      
-      {/* Right side - Image */}
-      <div className="flex-1 relative hidden md:block">
-        <div className="absolute inset-4 rounded-3xl overflow-hidden shadow-2xl">
-          <Image
-            src="/assets/loginimage.webp"
-            alt="Register illustration"
-            fill
-            className="object-cover"
-            priority
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
-        </div>
-      </div>
+          
+          {/* Right side - Image */}
+          <div className="flex-1 relative hidden md:block">
+            <div className="absolute inset-4 rounded-3xl overflow-hidden shadow-2xl">
+              <Image
+                src="/assets/loginimage.webp"
+                alt="Register illustration"
+                fill
+                className="object-cover"
+                priority
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent"></div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

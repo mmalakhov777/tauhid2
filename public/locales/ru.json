@@ -247,7 +247,9 @@
     "completeProfile": "Завершите свой профиль",
     "setupEmailDescription": "Настройте электронную почту, чтобы сохранять беседы и получить доступ к расширенным функциям",
     "registerAccount": "Зарегистрировать аккаунт",
-    "saveMessagesDescription": "Сохраните свои сообщения и историю чатов"
+    "saveMessagesDescription": "Сохраните свои сообщения и историю чатов",
+    "connectTelegram": "Подключить аккаунт Telegram",
+    "telegramDescription": "Свяжите свой Telegram для доступа к функциям чата и уведомлениям"
   },
   "guest": {
     "guestMode": "Гостевой режим",

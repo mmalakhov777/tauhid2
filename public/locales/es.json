@@ -247,7 +247,9 @@
     "completeProfile": "Completa tu perfil",
     "setupEmailDescription": "Configura tu correo electrónico para guardar conversaciones y acceder a funciones avanzadas",
     "registerAccount": "Registrar cuenta",
-    "saveMessagesDescription": "Guarda tus mensajes e historial de chat"
+    "saveMessagesDescription": "Guarda tus mensajes e historial de chat",
+    "connectTelegram": "Conectar cuenta de Telegram",
+    "telegramDescription": "Vincula tu Telegram para acceder a funciones de chat y notificaciones"
   },
   "guest": {
     "guestMode": "Modo invitado",

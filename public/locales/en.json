@@ -50,7 +50,9 @@
     "completeProfile": "Complete Your Profile",
     "setupEmailDescription": "Set up your email to save conversations and access advanced features",
     "registerAccount": "Register account",
-    "saveMessagesDescription": "Save your messages and chat history"
+    "saveMessagesDescription": "Save your messages and chat history",
+    "connectTelegram": "Connect Telegram Account",
+    "telegramDescription": "Link your Telegram to access chat features and notifications"
   },
   "chat": {
     "typeMessage": "Type your message...",

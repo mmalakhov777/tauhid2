@@ -247,7 +247,9 @@
     "completeProfile": "Profilinizi Tamamlayın",
     "setupEmailDescription": "Konuşmaları kaydetmek ve gelişmiş özelliklere erişmek için e-postanızı ayarlayın",
     "registerAccount": "Hesap kaydet",
-    "saveMessagesDescription": "Mesajlarınızı ve sohbet geçmişinizi kaydedin"
+    "saveMessagesDescription": "Mesajlarınızı ve sohbet geçmişinizi kaydedin",
+    "connectTelegram": "Telegram Hesabını Bağla",
+    "telegramDescription": "Sohbet özelliklerine ve bildirimlere erişmek için Telegram'ınızı bağlayın"
   },
   "guest": {
     "guestMode": "Misafir Modu",

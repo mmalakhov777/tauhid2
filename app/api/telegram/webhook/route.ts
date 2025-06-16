@@ -1416,11 +1416,264 @@ ${t.purchase.neverExpire}`;
       }
     }
 
-    if (userText === '/start') {
+    if (userText.startsWith('/start')) {
       // Get user's language from Telegram data
       const userLanguage = getUserLanguage(message.from.language_code);
       const t = getTranslations(userLanguage);
       
+      // Check if there's a start parameter
+      const startParts = userText.split(' ');
+      if (startParts.length > 1) {
+        const startParam = startParts[1];
+        
+        // Handle register_XXXXXXXX parameter (binding code from registration)
+        if (startParam.startsWith('register_')) {
+          const bindingCode = startParam.replace('register_', '');
+          
+          // Validate binding code format (8 digits)
+          const bindingCodePattern = /^\d{8}$/;
+          if (bindingCodePattern.test(bindingCode)) {
+            console.log(`[Telegram Bot] Auto-processing binding code from start parameter: ${bindingCode}`);
+            
+            // Show processing message
+            await sendTypingAction(chatId);
+            const bindingProcessingMessage = await sendMessage(
+              chatId, 
+              `${t.binding.checking}\n\n${t.binding.pleaseWait}`,
+              'Markdown'
+            );
+            
+            try {
+              // Attempt to use the binding code
+              let bindingResult;
+              let bindingError = null;
+              
+              try {
+                bindingResult = await useTelegramBindingCode(bindingCode, {
+                  telegramId: telegramUserId,
+                  telegramUsername: message.from.username,
+                  telegramFirstName: message.from.first_name,
+                  telegramLastName: undefined,
+                  telegramPhotoUrl: undefined,
+                  telegramLanguageCode: message.from.language_code,
+                  telegramIsPremium: undefined,
+                  telegramAllowsWriteToPm: undefined,
+                });
+                
+                console.log(`[Telegram Bot] Auto-binding result:`, {
+                  success: bindingResult?.success,
+                  transferred: bindingResult?.transferred,
+                  userId: bindingResult?.userId,
+                  email: bindingResult?.email,
+                  oldUserId: bindingResult?.oldUserId
+                });
+              } catch (error) {
+                bindingError = error;
+                console.log(`[Telegram Bot] Auto-binding error:`, error);
+              }
+
+              if (bindingResult?.success) {
+                // Success! Account bound
+                let successMessage;
+                
+                if (bindingResult.transferred) {
+                  successMessage = `${t.binding.successUpgraded}
+
+🎉 Your Telegram account has been successfully upgraded and connected to your email account: \`${bindingResult.email}\`
+
+${t.binding.whatThisMeans}
+${t.binding.accessHistory}
+${t.binding.syncedPlatforms}
+${t.binding.premiumFeatures}
+${t.binding.preservedChats}
+
+${t.binding.welcomeComplete}`;
+                } else {
+                  successMessage = `${t.binding.successLinked}
+
+🎉 Your Telegram account has been successfully connected to your email account: \`${bindingResult.email}\`
+
+${t.binding.whatThisMeans}
+${t.binding.accessHistory}
+${t.binding.syncedPlatforms}
+${t.binding.premiumFeatures}
+
+${t.binding.nextSteps}
+${t.binding.continueHere}
+${t.binding.visitWebApp}
+${t.binding.fullyIntegrated}
+
+${t.binding.welcomeComplete}`;
+                }
+
+                // Edit the processing message with success
+                await fetch(`${TELEGRAM_API_URL}/editMessageText`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    chat_id: chatId,
+                    message_id: bindingProcessingMessage.result.message_id,
+                    text: successMessage,
+                    parse_mode: 'Markdown',
+                    reply_markup: {
+                      inline_keyboard: [[
+                        {
+                          text: t.binding.openWebApp,
+                          web_app: {
+                            url: BASE_URL
+                          }
+                        }
+                      ]]
+                    }
+                  }),
+                });
+
+                console.log(`[Telegram Bot] Auto-binding successful for user ${telegramUserId} to email ${bindingResult.email}`);
+                
+                return NextResponse.json({ 
+                  ok: true, 
+                  message_sent: true, 
+                  auto_binding_success: true,
+                  bound_email: bindingResult.email,
+                  data_transferred: bindingResult.transferred || false
+                });
+
+              } else {
+                // Binding failed - show error and continue with welcome
+                let errorMessage = `❌ Auto-binding failed
+
+The binding code from registration could not be processed automatically.
+
+You can still bind manually:
+• Send the 8-digit code directly as a message
+
+Welcome to Tauhid AI anyway! 👋`;
+
+                // Edit the processing message with error and then send welcome
+                await fetch(`${TELEGRAM_API_URL}/editMessageText`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    chat_id: chatId,
+                    message_id: bindingProcessingMessage.result.message_id,
+                    text: errorMessage,
+                    parse_mode: 'Markdown'
+                  }),
+                });
+
+                // Continue to welcome message after a short delay
+                setTimeout(async () => {
+                  const welcomeText = `${formatText(t.welcome.greeting, { userName })}
+
+${t.welcome.description}
+
+${t.welcome.howToAsk}
+${t.welcome.textMessages}
+${t.welcome.voiceMessages}
+${t.welcome.forwardMessages}
+
+${t.welcome.whatICanHelp}
+${t.welcome.quranicVerses}
+${t.welcome.islamicTeachings}
+${t.welcome.hadithScholarly}
+${t.welcome.prayerWorship}
+${t.welcome.risaleNur}
+
+${t.welcome.howItWorks}
+${t.welcome.step1}
+${t.welcome.step2}
+${t.welcome.step3}
+${t.welcome.completeResponse}
+${t.welcome.dedicatedUI}
+${t.welcome.enhancedSearch}
+${t.welcome.chatHistory}
+
+${t.welcome.accessFullService}
+${t.welcome.menuButton}
+
+${t.welcome.exampleQuestions}
+${t.welcome.prayerExample}
+${t.welcome.tawhidExample}
+${t.welcome.pillarsExample}
+
+${t.welcome.feelFree}`;
+
+                  await sendMessage(chatId, welcomeText, 'Markdown');
+                }, 2000);
+
+                return NextResponse.json({ 
+                  ok: true, 
+                  message_sent: true, 
+                  auto_binding_failed: true
+                });
+              }
+
+            } catch (error) {
+              console.error(`[Telegram Bot] Error in auto-binding:`, error);
+              
+              // Edit with technical error and continue with welcome
+              await fetch(`${TELEGRAM_API_URL}/editMessageText`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  chat_id: chatId,
+                  message_id: bindingProcessingMessage.result.message_id,
+                                     text: `${t.binding.technicalError}\n\nWelcome to Tauhid AI anyway! 👋`,
+                  parse_mode: 'Markdown'
+                }),
+              });
+
+              // Continue to welcome message
+              setTimeout(async () => {
+                const welcomeText = `${formatText(t.welcome.greeting, { userName })}
+
+${t.welcome.description}
+
+${t.welcome.howToAsk}
+${t.welcome.textMessages}
+${t.welcome.voiceMessages}
+${t.welcome.forwardMessages}
+
+${t.welcome.whatICanHelp}
+${t.welcome.quranicVerses}
+${t.welcome.islamicTeachings}
+${t.welcome.hadithScholarly}
+${t.welcome.prayerWorship}
+${t.welcome.risaleNur}
+
+${t.welcome.howItWorks}
+${t.welcome.step1}
+${t.welcome.step2}
+${t.welcome.step3}
+${t.welcome.completeResponse}
+${t.welcome.dedicatedUI}
+${t.welcome.enhancedSearch}
+${t.welcome.chatHistory}
+
+${t.welcome.accessFullService}
+${t.welcome.menuButton}
+
+${t.welcome.exampleQuestions}
+${t.welcome.prayerExample}
+${t.welcome.tawhidExample}
+${t.welcome.pillarsExample}
+
+${t.welcome.feelFree}`;
+
+                await sendMessage(chatId, welcomeText, 'Markdown');
+              }, 2000);
+
+              return NextResponse.json({ 
+                ok: true, 
+                message_sent: true, 
+                auto_binding_error: true
+              });
+            }
+          }
+        }
+      }
+      
+      // Default welcome message (no start parameter or invalid binding code)
       const welcomeText = `${formatText(t.welcome.greeting, { userName })}
 
 ${t.welcome.description}

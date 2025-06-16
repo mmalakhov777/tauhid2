@@ -46,16 +46,11 @@ export const EmailSetupBanner = ({ user, onClick }: EmailSetupBannerProps) => {
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-foreground/90">
-            {t('banners.completeProfile')} {isClicked && '✓'}
+            {t('banners.completeProfile')}
           </p>
           <p className="text-xs text-muted-foreground mt-1">
             {t('banners.setupEmailDescription')}
           </p>
-        </div>
-        <div className="flex-shrink-0 mt-0.5">
-          <svg className="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
         </div>
       </div>
     </div>

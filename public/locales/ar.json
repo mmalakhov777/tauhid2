@@ -247,7 +247,9 @@
     "completeProfile": "أكمل ملفك الشخصي",
     "setupEmailDescription": "قم بإعداد بريدك الإلكتروني لحفظ المحادثات والوصول إلى الميزات المتقدمة",
     "registerAccount": "تسجيل حساب",
-    "saveMessagesDescription": "احفظ رسائلك وتاريخ المحادثات"
+    "saveMessagesDescription": "احفظ رسائلك وتاريخ المحادثات",
+    "connectTelegram": "ربط حساب تيليجرام",
+    "telegramDescription": "اربط تيليجرام للوصول إلى ميزات المحادثة والإشعارات"
   },
   "guest": {
     "guestMode": "وضع الضيف",
