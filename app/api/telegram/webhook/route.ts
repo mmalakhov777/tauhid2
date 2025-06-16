@@ -592,6 +592,55 @@ async function callExternalChatAPI(userMessage: string, userId: string, chatId: 
   }
 }
 
+// Helper function to create consistent "already linked" error message
+async function createAlreadyLinkedErrorMessage(telegramUserId: number, t: any): Promise<string> {
+  // Get the existing user's email to help them
+  let existingEmail = 'your existing account';
+  let isDummyEmailAccount = false;
+  try {
+    const existingUsers = await getUserByTelegramId(telegramUserId);
+    if (existingUsers.length > 0 && existingUsers[0].email) {
+      existingEmail = existingUsers[0].email;
+      isDummyEmailAccount = existingEmail.startsWith('telegram_') && existingEmail.endsWith('@telegram.local');
+    }
+  } catch (e) {
+    console.log('[Telegram Bot] Could not fetch existing user email:', e);
+  }
+  
+  if (isDummyEmailAccount) {
+    // Special message for dummy email accounts that should be able to re-bind
+    return `${t.binding.reBindingIssue}
+
+There was an issue upgrading your temporary Telegram account to a full email account.
+
+${t.binding.currentAccount}
+${t.binding.tryingToConnect}
+
+${t.binding.whatToTry}
+${t.binding.generateNewCode}
+${t.binding.codeNotExpired}
+${t.binding.tryAgain}
+
+${t.binding.ifPersists}
+${t.binding.contactSupport}
+${t.binding.historyPreserved}
+
+${t.binding.needHelp}`;
+  } else {
+    // Regular case: real email account already linked
+    return `${t.binding.alreadyLinked}
+
+This Telegram account is already connected to another user account.
+
+${formatText(t.binding.existingEmail, { email: existingEmail })}
+
+${t.binding.whatYouCanDo}
+${t.binding.loginWithEmail}
+${t.binding.forgotPassword}
+${t.binding.fullAccess}`;
+  }
+}
+
 async function handleCallbackQuery(callbackQuery: TelegramCallbackQuery) {
   try {
     const chatId = callbackQuery.message?.chat.id;
@@ -1558,11 +1607,8 @@ ${t.binding.autoBindingExpiredWhat}
 
 ${t.binding.autoBindingExpiredNextSteps}`;
                   } else if (isAlreadyLinked) {
-                    errorMessage += `${t.binding.autoBindingAlreadyLinkedReason}
-
-${t.binding.autoBindingAlreadyLinkedWhat}
-
-${t.binding.autoBindingAlreadyLinkedNextSteps}`;
+                    // Use the same consistent message as manual binding
+                    errorMessage = await createAlreadyLinkedErrorMessage(telegramUserId, t);
                   } else {
                     errorMessage += `${t.binding.autoBindingTechnicalReason}
 
@@ -1990,51 +2036,8 @@ ${t.binding.welcomeComplete}`;
               (bindingError.message.includes('already linked') || 
                bindingError.message.includes('already linked to another user') ||
                (bindingError as any)?.cause?.includes('already linked to another user'))) {
-            // Get the existing user's email to help them
-            let existingEmail = 'your existing account';
-            let isDummyEmailAccount = false;
-            try {
-              const existingUsers = await getUserByTelegramId(telegramUserId);
-              if (existingUsers.length > 0 && existingUsers[0].email) {
-                existingEmail = existingUsers[0].email;
-                isDummyEmailAccount = existingEmail.startsWith('telegram_') && existingEmail.endsWith('@telegram.local');
-              }
-            } catch (e) {
-              console.log('[Telegram Bot] Could not fetch existing user email:', e);
-            }
-            
-            if (isDummyEmailAccount) {
-              // Special message for dummy email accounts that should be able to re-bind
-              errorMessage = `${t.binding.reBindingIssue}
-
-There was an issue upgrading your temporary Telegram account to a full email account.
-
-${t.binding.currentAccount}
-${t.binding.tryingToConnect}
-
-${t.binding.whatToTry}
-${t.binding.generateNewCode}
-${t.binding.codeNotExpired}
-${t.binding.tryAgain}
-
-${t.binding.ifPersists}
-${t.binding.contactSupport}
-${t.binding.historyPreserved}
-
-${t.binding.needHelp}`;
-            } else {
-              // Regular case: real email account already linked
-              errorMessage = `${t.binding.alreadyLinked}
-
-This Telegram account is already connected to another user account.
-
-${formatText(t.binding.existingEmail, { email: existingEmail })}
-
-${t.binding.whatYouCanDo}
-${t.binding.loginWithEmail}
-${t.binding.forgotPassword}
-${t.binding.fullAccess}`;
-            }
+            // Use the same consistent message as auto-binding
+            errorMessage = await createAlreadyLinkedErrorMessage(telegramUserId, t);
           } else {
             // Generic error for invalid/expired codes
             errorMessage = `${t.binding.invalidCode}

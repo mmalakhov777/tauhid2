@@ -152,9 +152,7 @@ export interface TelegramTranslations {
     autoBindingExpiredReason: string;
     autoBindingExpiredWhat: string;
     autoBindingExpiredNextSteps: string;
-    autoBindingAlreadyLinkedReason: string;
-    autoBindingAlreadyLinkedWhat: string;
-    autoBindingAlreadyLinkedNextSteps: string;
+
     autoBindingTechnicalReason: string;
     autoBindingTechnicalWhat: string;
     autoBindingTechnicalNextSteps: string;

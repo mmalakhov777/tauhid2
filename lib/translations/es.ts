@@ -154,9 +154,7 @@ export const es: TelegramTranslations = {
     autoBindingExpiredReason: "**Razón:** El código de vinculación ha expirado o es inválido.",
     autoBindingExpiredWhat: "**Qué pasó:**\n• Los códigos de vinculación expiran después de 15 minutos\n• El código puede haber sido ya usado\n• Puede haber un error tipográfico en el código",
     autoBindingExpiredNextSteps: "**Próximos pasos:**\n• Vuelve a la página de registro\n• Genera un nuevo código de vinculación\n• Intenta el proceso de nuevo dentro de 15 minutos",
-    autoBindingAlreadyLinkedReason: "**Razón:** Esta cuenta de Telegram ya está conectada a otra cuenta de email.",
-    autoBindingAlreadyLinkedWhat: "**Qué pasó:**\n• Tu cuenta de Telegram ya está vinculada a un usuario diferente\n• Cada cuenta de Telegram solo puede estar vinculada a una cuenta de email",
-    autoBindingAlreadyLinkedNextSteps: "**Próximos pasos:**\n• Si tienes múltiples cuentas, usa una cuenta de Telegram diferente\n• O contacta soporte si crees que esto es un error",
+
     autoBindingTechnicalReason: "**Razón:** Error técnico ocurrió durante el procesamiento.",
     autoBindingTechnicalWhat: "**Qué pasó:**\n• Hubo un error del servidor al procesar tu código de vinculación\n• Esto es probablemente un problema temporal con nuestros sistemas\n• El error ha sido registrado para investigación",
     autoBindingTechnicalNextSteps: "**Próximos pasos:**\n• Espera unos minutos e inténtalo de nuevo\n• Envía el código de 8 dígitos directamente como mensaje\n• Genera un nuevo código de vinculación si el problema persiste",

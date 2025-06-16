@@ -154,9 +154,7 @@ export const en: TelegramTranslations = {
     autoBindingExpiredReason: "**Reason:** The binding code has expired or is invalid.",
     autoBindingExpiredWhat: "**What happened:**\n• Binding codes expire after 15 minutes\n• The code may have already been used\n• There might be a typo in the code",
     autoBindingExpiredNextSteps: "**Next steps:**\n• Go back to the registration page\n• Generate a new binding code\n• Try the process again within 15 minutes",
-    autoBindingAlreadyLinkedReason: "**Reason:** This Telegram account is already connected to another email account.",
-    autoBindingAlreadyLinkedWhat: "**What happened:**\n• Your Telegram account is already linked to a different user\n• Each Telegram account can only be linked to one email account",
-    autoBindingAlreadyLinkedNextSteps: "**Next steps:**\n• If you have multiple accounts, use a different Telegram account\n• Or contact support if you believe this is an error",
+
     autoBindingTechnicalReason: "**Reason:** Technical error occurred during processing.",
     autoBindingTechnicalWhat: "**What happened:**\n• There was a server error while processing your binding code\n• This is likely a temporary issue with our systems\n• The error has been logged for investigation",
     autoBindingTechnicalNextSteps: "**Next steps:**\n• Wait a few minutes and try again\n• Send the 8-digit code directly as a message\n• Generate a new binding code if the issue persists",

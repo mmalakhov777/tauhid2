@@ -11,6 +11,7 @@ import { SubmitButton } from '@/components/submit-button';
 import { register, type RegisterActionState } from '../actions';
 import { toast } from '@/components/toast';
 import { useSession } from 'next-auth/react';
+import { QRCodeGenerator } from '@/components/QRCodeGenerator';
 
 // Telegram Binding Step Component
 const TelegramBindingStep = ({ user, onComplete }: {
@@ -199,7 +200,8 @@ const TelegramBindingStep = ({ user, onComplete }: {
                   <ol className="text-sm text-blue-800 dark:text-blue-200 space-y-2">
                     <li className="flex items-start gap-3">
                       <span className="flex-shrink-0 w-5 h-5 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-semibold">1</span>
-                      <span>Open Telegram and find our bot or scan the QR code</span>
+                      <span className="hidden lg:inline">Open Telegram and find our bot or scan the QR code</span>
+                      <span className="lg:hidden">Tap the button below to open Telegram</span>
                     </li>
                     <li className="flex items-start gap-3">
                       <span className="flex-shrink-0 w-5 h-5 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-semibold">2</span>
@@ -221,20 +223,19 @@ const TelegramBindingStep = ({ user, onComplete }: {
                   <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
                     Your binding code:
                   </p>
-                  <div className="bg-gray-50 dark:bg-zinc-800 rounded-xl p-4 border-2 border-dashed border-gray-300 dark:border-zinc-600">
+                  <div 
+                    className="bg-gray-50 dark:bg-zinc-800 rounded-xl p-4 border-2 border-dashed border-gray-300 dark:border-zinc-600 relative cursor-pointer hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
+                    onClick={copyToClipboard}
+                  >
                     <div className="text-3xl font-mono font-bold text-blue-600 dark:text-blue-400 tracking-wider">
                       {bindingCode}
                     </div>
+                    <button className="absolute top-2 right-2 p-1 hover:bg-gray-200 dark:hover:bg-zinc-600 rounded transition-colors">
+                      <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                    </button>
                   </div>
-                  <button
-                    onClick={copyToClipboard}
-                    className="mt-3 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white text-sm rounded-lg transition-colors flex items-center gap-2 mx-auto"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
-                    Copy Code
-                  </button>
                 </div>
 
                 {/* Timer */}
@@ -253,43 +254,46 @@ const TelegramBindingStep = ({ user, onComplete }: {
                     </p>
                   </div>
                 )}
+
+                {/* Mobile Telegram Button (mobile/tablet only, max-width: 1023px) */}
+                <div className="lg:hidden">
+                  <button
+                    onClick={() => window.open(`https://t.me/tauhid_app_bot?start=register_${bindingCode}`, '_blank')}
+                    className="w-full px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors flex items-center justify-center gap-2 font-medium"
+                  >
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 0C5.374 0 0 5.373 0 12s5.374 12 12 12 12-5.373 12-12S18.626 0 12 0zm5.568 8.16c-.169 1.858-.896 6.728-.896 6.728-.896 6.728-1.268 7.928-1.268 7.928-.16.906-.923 1.101-1.517.683 0 0-2.271-1.702-3.414-2.559-.24-.18-.513-.54-.24-.96l2.34-2.277c.26-.252.52-.756 0-.756-.52 0-3.414 2.277-3.414 2.277-.817.533-1.75.684-1.75.684l-3.293-.906s-.414-.252-.274-.756c.14-.504.793-.756.793-.756s7.776-2.834 10.428-3.788-.793-.286 1.793-.133 1.793 1.125z"/>
+                    </svg>
+                    Open Telegram Bot
+                  </button>
+                </div>
               </div>
             )}
           </div>
 
-          {/* Right side - QR Code */}
+          {/* Right side - QR Code (desktop only, min-width: 1024px) */}
           {bindingStatus !== 'completed' && !isLoading && (
-            <div className="flex flex-col gap-6">
-              {/* QR Code placeholder */}
+            <div className="hidden lg:flex flex-col gap-6">
+              {/* Real QR Code */}
               <div className="bg-white dark:bg-zinc-800 rounded-xl p-6 text-center">
                 <h4 className="font-semibold text-gray-900 dark:text-white mb-4">
                   Scan QR Code
                 </h4>
-                <div className="w-48 h-48 bg-gray-100 dark:bg-zinc-700 rounded-lg flex items-center justify-center mx-auto mb-4">
-                  <div className="text-center">
-                    <svg className="w-16 h-16 text-gray-400 dark:text-gray-500 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-                    </svg>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">QR Code will appear here</p>
-                  </div>
+                <div className="flex justify-center mb-4">
+                  <QRCodeGenerator 
+                    url={`https://t.me/tauhid_app_bot?start=register_${bindingCode}`}
+                    size={192}
+                    className="mx-auto"
+                  />
                 </div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
                   Scan with your phone to open Telegram bot
                 </p>
               </div>
-              
-              {/* Telegram Button */}
-              <button
-                onClick={() => window.open(`https://t.me/tauhid_app_bot?start=register_${bindingCode}`, '_blank')}
-                className="w-full px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors flex items-center justify-center gap-2 font-medium"
-              >
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 0C5.374 0 0 5.373 0 12s5.374 12 12 12 12-5.373 12-12S18.626 0 12 0zm5.568 8.16c-.169 1.858-.896 6.728-.896 6.728-.896 6.728-1.268 7.928-1.268 7.928-.16.906-.923 1.101-1.517.683 0 0-2.271-1.702-3.414-2.559-.24-.18-.513-.54-.24-.96l2.34-2.277c.26-.252.52-.756 0-.756-.52 0-3.414 2.277-3.414 2.277-.817.533-1.75.684-1.75.684l-3.293-.906s-.414-.252-.274-.756c.14-.504.793-.756.793-.756s7.776-2.834 10.428-3.788.793-.286 1.793-.133 1.793 1.125z"/>
-                </svg>
-                Open Telegram Bot
-              </button>
             </div>
           )}
+
+
         </div>
       </div>
     </div>

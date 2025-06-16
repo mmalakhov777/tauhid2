@@ -154,9 +154,7 @@ export const fr: TelegramTranslations = {
     autoBindingExpiredReason: "**Raison :** Le code de liaison a expiré ou est invalide.",
     autoBindingExpiredWhat: "**Ce qui s'est passé :**\n• Les codes de liaison expirent après 15 minutes\n• Le code a peut-être déjà été utilisé\n• Il pourrait y avoir une erreur de frappe dans le code",
     autoBindingExpiredNextSteps: "**Prochaines étapes :**\n• Retournez à la page d'inscription\n• Générez un nouveau code de liaison\n• Réessayez le processus dans les 15 minutes",
-    autoBindingAlreadyLinkedReason: "**Raison :** Ce compte Telegram est déjà connecté à un autre compte email.",
-    autoBindingAlreadyLinkedWhat: "**Ce qui s'est passé :**\n• Votre compte Telegram est déjà lié à un utilisateur différent\n• Chaque compte Telegram ne peut être lié qu'à un seul compte email",
-    autoBindingAlreadyLinkedNextSteps: "**Prochaines étapes :**\n• Si vous avez plusieurs comptes, utilisez un compte Telegram différent\n• Ou contactez le support si vous pensez que c'est une erreur",
+
     autoBindingTechnicalReason: "**Raison :** Erreur technique survenue pendant le traitement.",
     autoBindingTechnicalWhat: "**Ce qui s'est passé :**\n• Il y a eu une erreur serveur lors du traitement de votre code de liaison\n• Ceci est probablement un problème temporaire avec nos systèmes\n• L'erreur a été enregistrée pour investigation",
     autoBindingTechnicalNextSteps: "**Prochaines étapes :**\n• Attendez quelques minutes et réessayez\n• Envoyez le code à 8 chiffres directement comme message\n• Générez un nouveau code de liaison si le problème persiste",

@@ -154,9 +154,7 @@ export const tr: TelegramTranslations = {
     autoBindingExpiredReason: "**Sebep:** Bağlama kodu süresi dolmuş veya geçersiz.",
     autoBindingExpiredWhat: "**Ne oldu:**\n• Bağlama kodları 15 dakika sonra sona erer\n• Kod zaten kullanılmış olabilir\n• Kodda yazım hatası olabilir",
     autoBindingExpiredNextSteps: "**Sonraki adımlar:**\n• Kayıt sayfasına geri dönün\n• Yeni bir bağlama kodu oluşturun\n• İşlemi 15 dakika içinde tekrar deneyin",
-    autoBindingAlreadyLinkedReason: "**Sebep:** Bu Telegram hesabı zaten başka bir email hesabına bağlı.",
-    autoBindingAlreadyLinkedWhat: "**Ne oldu:**\n• Telegram hesabınız zaten farklı bir kullanıcıya bağlı\n• Her Telegram hesabı sadece bir email hesabına bağlanabilir",
-    autoBindingAlreadyLinkedNextSteps: "**Sonraki adımlar:**\n• Birden fazla hesabınız varsa, farklı bir Telegram hesabı kullanın\n• Veya bunun bir hata olduğunu düşünüyorsanız destekle iletişime geçin",
+
     autoBindingTechnicalReason: "**Sebep:** İşleme sırasında teknik hata oluştu.",
     autoBindingTechnicalWhat: "**Ne oldu:**\n• Bağlama kodunuzu işlerken sunucu hatası oluştu\n• Bu muhtemelen sistemlerimizle ilgili geçici bir sorun\n• Hata araştırma için kaydedildi",
     autoBindingTechnicalNextSteps: "**Sonraki adımlar:**\n• Birkaç dakika bekleyin ve tekrar deneyin\n• 8 haneli kodu doğrudan mesaj olarak gönderin\n• Sorun devam ederse yeni bir bağlama kodu oluşturun",
