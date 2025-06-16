@@ -46,6 +46,8 @@ export const es: TelegramTranslations = {
     commands: "*Comandos:*",
     startCommand: "/start - Mensaje de bienvenida",
     helpCommand: "/help - Este mensaje de ayuda",
+    buyCommand: "/buy - Comprar más mensajes con Telegram Stars",
+    balanceCommand: "/balance - Verificar saldo de mensajes",
     blessing: "¡Que Alá nos guíe a todos! 🤲"
   },
   processing: {
@@ -147,7 +149,25 @@ export const es: TelegramTranslations = {
     technicalError: "⚠️ *Error Técnico*",
     technicalIssue: "Lo siento, hubo un problema técnico al procesar tu código de vinculación.",
     tryAgainMoments: "*Por favor, inténtalo de nuevo en unos momentos.*",
-    problemPersists: "Si el problema persiste, por favor contacta soporte."
+    problemPersists: "Si el problema persiste, por favor contacta soporte.",
+    autoBindingFailed: "❌ Auto-vinculación falló",
+    autoBindingExpiredReason: "**Razón:** El código de vinculación ha expirado o es inválido.",
+    autoBindingExpiredWhat: "**Qué pasó:**\n• Los códigos de vinculación expiran después de 15 minutos\n• El código puede haber sido ya usado\n• Puede haber un error tipográfico en el código",
+    autoBindingExpiredNextSteps: "**Próximos pasos:**\n• Vuelve a la página de registro\n• Genera un nuevo código de vinculación\n• Intenta el proceso de nuevo dentro de 15 minutos",
+    autoBindingAlreadyLinkedReason: "**Razón:** Esta cuenta de Telegram ya está conectada a otra cuenta de email.",
+    autoBindingAlreadyLinkedWhat: "**Qué pasó:**\n• Tu cuenta de Telegram ya está vinculada a un usuario diferente\n• Cada cuenta de Telegram solo puede estar vinculada a una cuenta de email",
+    autoBindingAlreadyLinkedNextSteps: "**Próximos pasos:**\n• Si tienes múltiples cuentas, usa una cuenta de Telegram diferente\n• O contacta soporte si crees que esto es un error",
+    autoBindingTechnicalReason: "**Razón:** Error técnico ocurrió durante el procesamiento.",
+    autoBindingTechnicalWhat: "**Qué pasó:**\n• Hubo un error del servidor al procesar tu código de vinculación\n• Esto es probablemente un problema temporal con nuestros sistemas\n• El error ha sido registrado para investigación",
+    autoBindingTechnicalNextSteps: "**Próximos pasos:**\n• Espera unos minutos e inténtalo de nuevo\n• Envía el código de 8 dígitos directamente como mensaje\n• Genera un nuevo código de vinculación si el problema persiste",
+    autoBindingUnknownReason: "**Razón:** Error desconocido ocurrió durante la vinculación.",
+    autoBindingUnknownWhat: "**Qué pasó:**\n• El proceso de vinculación falló por una razón desconocida\n• Esto podría ser un problema temporal",
+    autoBindingUnknownNextSteps: "**Próximos pasos:**\n• Intenta enviar el código de 8 dígitos directamente como mensaje\n• Genera un nuevo código de vinculación si es necesario",
+    autoBindingInvalidFormatReason: "**Razón:** Formato de código de vinculación inválido.",
+    autoBindingInvalidFormatWhat: "**Qué pasó:**\n• El código de vinculación del enlace de registro no está en el formato correcto\n• Los códigos de vinculación deben ser exactamente 8 dígitos",
+    autoBindingInvalidFormatNextSteps: "**Próximos pasos:**\n• Vuelve a la página de registro\n• Genera un nuevo código de vinculación\n• Asegúrate de usar el enlace correcto del botón de Telegram\n• O envía el código de 8 dígitos directamente como mensaje",
+    manualBindingOption: "Aún puedes vincular manualmente:\n• Envía el código de 8 dígitos directamente como mensaje",
+    welcomeAnyway: "¡Bienvenido a Tauhid AI de todos modos! 👋"
   },
   preCheckout: {
     invalidPaymentData: "Datos de pago inválidos. Por favor, inténtalo de nuevo.",

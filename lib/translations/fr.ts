@@ -46,6 +46,8 @@ export const fr: TelegramTranslations = {
     commands: "*Commandes :*",
     startCommand: "/start - Message de bienvenue",
     helpCommand: "/help - Ce message d'aide",
+    buyCommand: "/buy - Acheter plus de messages avec Telegram Stars",
+    balanceCommand: "/balance - Vérifier le solde des messages",
     blessing: "Qu'Allah nous guide tous ! 🤲"
   },
   processing: {
@@ -147,7 +149,25 @@ export const fr: TelegramTranslations = {
     technicalError: "⚠️ *Erreur Technique*",
     technicalIssue: "Désolé, il y a eu un problème technique lors du traitement de votre code de liaison.",
     tryAgainMoments: "*Veuillez réessayer dans quelques instants.*",
-    problemPersists: "Si le problème persiste, veuillez contacter le support."
+    problemPersists: "Si le problème persiste, veuillez contacter le support.",
+    autoBindingFailed: "❌ Liaison automatique échouée",
+    autoBindingExpiredReason: "**Raison :** Le code de liaison a expiré ou est invalide.",
+    autoBindingExpiredWhat: "**Ce qui s'est passé :**\n• Les codes de liaison expirent après 15 minutes\n• Le code a peut-être déjà été utilisé\n• Il pourrait y avoir une erreur de frappe dans le code",
+    autoBindingExpiredNextSteps: "**Prochaines étapes :**\n• Retournez à la page d'inscription\n• Générez un nouveau code de liaison\n• Réessayez le processus dans les 15 minutes",
+    autoBindingAlreadyLinkedReason: "**Raison :** Ce compte Telegram est déjà connecté à un autre compte email.",
+    autoBindingAlreadyLinkedWhat: "**Ce qui s'est passé :**\n• Votre compte Telegram est déjà lié à un utilisateur différent\n• Chaque compte Telegram ne peut être lié qu'à un seul compte email",
+    autoBindingAlreadyLinkedNextSteps: "**Prochaines étapes :**\n• Si vous avez plusieurs comptes, utilisez un compte Telegram différent\n• Ou contactez le support si vous pensez que c'est une erreur",
+    autoBindingTechnicalReason: "**Raison :** Erreur technique survenue pendant le traitement.",
+    autoBindingTechnicalWhat: "**Ce qui s'est passé :**\n• Il y a eu une erreur serveur lors du traitement de votre code de liaison\n• Ceci est probablement un problème temporaire avec nos systèmes\n• L'erreur a été enregistrée pour investigation",
+    autoBindingTechnicalNextSteps: "**Prochaines étapes :**\n• Attendez quelques minutes et réessayez\n• Envoyez le code à 8 chiffres directement comme message\n• Générez un nouveau code de liaison si le problème persiste",
+    autoBindingUnknownReason: "**Raison :** Erreur inconnue survenue pendant la liaison.",
+    autoBindingUnknownWhat: "**Ce qui s'est passé :**\n• Le processus de liaison a échoué pour une raison inconnue\n• Ceci pourrait être un problème temporaire",
+    autoBindingUnknownNextSteps: "**Prochaines étapes :**\n• Essayez d'envoyer le code à 8 chiffres directement comme message\n• Générez un nouveau code de liaison si nécessaire",
+    autoBindingInvalidFormatReason: "**Raison :** Format de code de liaison invalide.",
+    autoBindingInvalidFormatWhat: "**Ce qui s'est passé :**\n• Le code de liaison du lien d'inscription n'est pas dans le bon format\n• Les codes de liaison doivent être exactement 8 chiffres",
+    autoBindingInvalidFormatNextSteps: "**Prochaines étapes :**\n• Retournez à la page d'inscription\n• Générez un nouveau code de liaison\n• Assurez-vous d'utiliser le bon lien du bouton Telegram\n• Ou envoyez le code à 8 chiffres directement comme message",
+    manualBindingOption: "Vous pouvez encore lier manuellement :\n• Envoyez le code à 8 chiffres directement comme message",
+    welcomeAnyway: "Bienvenue à Tauhid AI quand même ! 👋"
   },
   preCheckout: {
     invalidPaymentData: "Données de paiement invalides. Veuillez réessayer.",

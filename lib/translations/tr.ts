@@ -46,6 +46,8 @@ export const tr: TelegramTranslations = {
     commands: "*Komutlar:*",
     startCommand: "/start - Hoş geldin mesajı",
     helpCommand: "/help - Bu yardım mesajı",
+    buyCommand: "/buy - Telegram Stars ile mesaj satın al",
+    balanceCommand: "/balance - Mesaj bakiyenizi kontrol edin",
     blessing: "Allah hepimizi hidayete erdirsin! 🤲"
   },
   processing: {
@@ -147,7 +149,25 @@ export const tr: TelegramTranslations = {
     technicalError: "⚠️ *Teknik Hata*",
     technicalIssue: "Üzgünüm, bağlama kodunuzu işlerken teknik bir sorun oluştu.",
     tryAgainMoments: "*Lütfen birkaç dakika sonra tekrar deneyin.*",
-    problemPersists: "Sorun devam ederse, lütfen destek ile iletişime geçin."
+    problemPersists: "Sorun devam ederse, lütfen destek ile iletişime geçin.",
+    autoBindingFailed: "❌ Otomatik bağlama başarısız",
+    autoBindingExpiredReason: "**Sebep:** Bağlama kodu süresi dolmuş veya geçersiz.",
+    autoBindingExpiredWhat: "**Ne oldu:**\n• Bağlama kodları 15 dakika sonra sona erer\n• Kod zaten kullanılmış olabilir\n• Kodda yazım hatası olabilir",
+    autoBindingExpiredNextSteps: "**Sonraki adımlar:**\n• Kayıt sayfasına geri dönün\n• Yeni bir bağlama kodu oluşturun\n• İşlemi 15 dakika içinde tekrar deneyin",
+    autoBindingAlreadyLinkedReason: "**Sebep:** Bu Telegram hesabı zaten başka bir email hesabına bağlı.",
+    autoBindingAlreadyLinkedWhat: "**Ne oldu:**\n• Telegram hesabınız zaten farklı bir kullanıcıya bağlı\n• Her Telegram hesabı sadece bir email hesabına bağlanabilir",
+    autoBindingAlreadyLinkedNextSteps: "**Sonraki adımlar:**\n• Birden fazla hesabınız varsa, farklı bir Telegram hesabı kullanın\n• Veya bunun bir hata olduğunu düşünüyorsanız destekle iletişime geçin",
+    autoBindingTechnicalReason: "**Sebep:** İşleme sırasında teknik hata oluştu.",
+    autoBindingTechnicalWhat: "**Ne oldu:**\n• Bağlama kodunuzu işlerken sunucu hatası oluştu\n• Bu muhtemelen sistemlerimizle ilgili geçici bir sorun\n• Hata araştırma için kaydedildi",
+    autoBindingTechnicalNextSteps: "**Sonraki adımlar:**\n• Birkaç dakika bekleyin ve tekrar deneyin\n• 8 haneli kodu doğrudan mesaj olarak gönderin\n• Sorun devam ederse yeni bir bağlama kodu oluşturun",
+    autoBindingUnknownReason: "**Sebep:** Bağlama sırasında bilinmeyen hata oluştu.",
+    autoBindingUnknownWhat: "**Ne oldu:**\n• Bağlama işlemi bilinmeyen bir nedenle başarısız oldu\n• Bu geçici bir sorun olabilir",
+    autoBindingUnknownNextSteps: "**Sonraki adımlar:**\n• 8 haneli kodu doğrudan mesaj olarak göndermeyi deneyin\n• Gerekirse yeni bir bağlama kodu oluşturun",
+    autoBindingInvalidFormatReason: "**Sebep:** Geçersiz bağlama kodu formatı.",
+    autoBindingInvalidFormatWhat: "**Ne oldu:**\n• Kayıt bağlantısındaki bağlama kodu doğru formatta değil\n• Bağlama kodları tam olarak 8 hane olmalıdır",
+    autoBindingInvalidFormatNextSteps: "**Sonraki adımlar:**\n• Kayıt sayfasına geri dönün\n• Yeni bir bağlama kodu oluşturun\n• Doğru Telegram düğmesi bağlantısını kullandığınızdan emin olun\n• Veya 8 haneli kodu doğrudan mesaj olarak gönderin",
+    manualBindingOption: "Hala manuel olarak bağlayabilirsiniz:\n• 8 haneli kodu doğrudan mesaj olarak gönderin",
+    welcomeAnyway: "Yine de Tauhid AI'ya hoş geldiniz! 👋"
   },
   preCheckout: {
     invalidPaymentData: "Geçersiz ödeme verisi. Lütfen tekrar deneyin.",

@@ -1540,7 +1540,7 @@ ${t.binding.welcomeComplete}`;
 
               } else {
                 // Binding failed - show detailed error based on the specific issue
-                let errorMessage = `❌ Auto-binding failed
+                let errorMessage = `${t.binding.autoBindingFailed}
 
 `;
                 
@@ -1552,56 +1552,39 @@ ${t.binding.welcomeComplete}`;
                   const isInvalidCode = bindingError.message.includes('Invalid or expired binding code');
                   
                   if (isInvalidCode) {
-                    errorMessage += `**Reason:** The binding code has expired or is invalid.
+                    errorMessage += `${t.binding.autoBindingExpiredReason}
 
-**What happened:**
-• Binding codes expire after 15 minutes
-• The code may have already been used
-• There might be a typo in the code
+${t.binding.autoBindingExpiredWhat}
 
-**Next steps:**
-• Go back to the registration page
-• Generate a new binding code
-• Try the process again within 15 minutes`;
+${t.binding.autoBindingExpiredNextSteps}`;
                   } else if (isAlreadyLinked) {
-                    errorMessage += `**Reason:** This Telegram account is already connected to another email account.
+                    errorMessage += `${t.binding.autoBindingAlreadyLinkedReason}
 
-**What happened:**
-• Your Telegram account is already linked to a different user
-• Each Telegram account can only be linked to one email account
+${t.binding.autoBindingAlreadyLinkedWhat}
 
-**Next steps:**
-• If you have multiple accounts, use a different Telegram account
-• Or contact support if you believe this is an error`;
+${t.binding.autoBindingAlreadyLinkedNextSteps}`;
                   } else {
-                    errorMessage += `**Reason:** ${bindingError.message}
+                    errorMessage += `${t.binding.autoBindingTechnicalReason}
 
-**What happened:**
-• There was a technical issue processing your binding code
-• This could be a temporary server issue
+${t.binding.autoBindingTechnicalWhat}
 
-**Next steps:**
-• Try sending the 8-digit code directly as a message
-• If the problem persists, contact support`;
+${t.binding.autoBindingTechnicalNextSteps}
+
+**Error details:** ${bindingError.message}`;
                   }
                 } else {
-                  errorMessage += `**Reason:** Unknown error occurred during binding.
+                  errorMessage += `${t.binding.autoBindingUnknownReason}
 
-**What happened:**
-• The binding process failed for an unknown reason
-• This could be a temporary issue
+${t.binding.autoBindingUnknownWhat}
 
-**Next steps:**
-• Try sending the 8-digit code directly as a message
-• Generate a new binding code if needed`;
+${t.binding.autoBindingUnknownNextSteps}`;
                 }
                 
                 errorMessage += `
 
-You can still bind manually:
-• Send the 8-digit code directly as a message
+${t.binding.manualBindingOption}
 
-Welcome to Tauhid AI anyway! 👋`;
+${t.binding.welcomeAnyway}`;
 
                 // Edit the processing message with error and then send welcome
                 await fetch(`${TELEGRAM_API_URL}/editMessageText`, {
@@ -1666,23 +1649,17 @@ ${t.welcome.feelFree}`;
               console.error(`[Telegram Bot] Error in auto-binding:`, error);
               
               // Edit with detailed technical error and continue with welcome
-              const technicalErrorMessage = `❌ Auto-binding failed
+              const technicalErrorMessage = `${t.binding.autoBindingFailed}
 
-**Reason:** Technical error occurred during processing.
+${t.binding.autoBindingTechnicalReason}
 
-**What happened:**
-• There was a server error while processing your binding code
-• This is likely a temporary issue with our systems
-• The error has been logged for investigation
+${t.binding.autoBindingTechnicalWhat}
 
-**Next steps:**
-• Wait a few minutes and try again
-• Send the 8-digit code directly as a message
-• Generate a new binding code if the issue persists
+${t.binding.autoBindingTechnicalNextSteps}
 
 **Error details:** ${error instanceof Error ? error.message : 'Unknown error'}
 
-Welcome to Tauhid AI anyway! 👋`;
+${t.binding.welcomeAnyway}`;
 
               await fetch(`${TELEGRAM_API_URL}/editMessageText`, {
                 method: 'POST',
@@ -1745,22 +1722,16 @@ ${t.welcome.feelFree}`;
             // Invalid binding code format from registration URL
             console.log(`[Telegram Bot] Invalid binding code format from registration: ${bindingCode}`);
             
-            const invalidFormatMessage = `❌ Auto-binding failed
+            const invalidFormatMessage = `${t.binding.autoBindingFailed}
 
-**Reason:** Invalid binding code format.
+${t.binding.autoBindingInvalidFormatReason}
 
-**What happened:**
-• The binding code from the registration link is not in the correct format
-• Binding codes must be exactly 8 digits
+${t.binding.autoBindingInvalidFormatWhat}
 • The code received was: "${bindingCode}"
 
-**Next steps:**
-• Go back to the registration page
-• Generate a new binding code
-• Make sure to use the correct Telegram button link
-• Or send the 8-digit code directly as a message
+${t.binding.autoBindingInvalidFormatNextSteps}
 
-Welcome to Tauhid AI anyway! 👋`;
+${t.binding.welcomeAnyway}`;
 
             await sendMessage(chatId, invalidFormatMessage, 'Markdown');
             
@@ -1878,8 +1849,8 @@ ${t.help.startCommand}
 ${t.help.helpCommand}
 
 *Purchase Commands:*
-• \`/buy\` - Purchase more messages with Telegram Stars
-• \`/balance\` - Check your message balance
+• ${t.help.buyCommand}
+• ${t.help.balanceCommand}
 
 ${t.help.blessing}`;
 

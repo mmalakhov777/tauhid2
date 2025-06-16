@@ -46,6 +46,8 @@ export const en: TelegramTranslations = {
     commands: "*Commands:*",
     startCommand: "/start - Welcome message",
     helpCommand: "/help - This help message",
+    buyCommand: "/buy - Purchase more messages with Telegram Stars",
+    balanceCommand: "/balance - Check your message balance",
     blessing: "May Allah guide us all! 🤲"
   },
   processing: {
@@ -147,7 +149,25 @@ export const en: TelegramTranslations = {
     technicalError: "⚠️ *Technical Error*",
     technicalIssue: "Sorry, there was a technical issue while processing your binding code.",
     tryAgainMoments: "*Please try again in a few moments.*",
-    problemPersists: "If the problem persists, please contact support."
+    problemPersists: "If the problem persists, please contact support.",
+    autoBindingFailed: "❌ Auto-binding failed",
+    autoBindingExpiredReason: "**Reason:** The binding code has expired or is invalid.",
+    autoBindingExpiredWhat: "**What happened:**\n• Binding codes expire after 15 minutes\n• The code may have already been used\n• There might be a typo in the code",
+    autoBindingExpiredNextSteps: "**Next steps:**\n• Go back to the registration page\n• Generate a new binding code\n• Try the process again within 15 minutes",
+    autoBindingAlreadyLinkedReason: "**Reason:** This Telegram account is already connected to another email account.",
+    autoBindingAlreadyLinkedWhat: "**What happened:**\n• Your Telegram account is already linked to a different user\n• Each Telegram account can only be linked to one email account",
+    autoBindingAlreadyLinkedNextSteps: "**Next steps:**\n• If you have multiple accounts, use a different Telegram account\n• Or contact support if you believe this is an error",
+    autoBindingTechnicalReason: "**Reason:** Technical error occurred during processing.",
+    autoBindingTechnicalWhat: "**What happened:**\n• There was a server error while processing your binding code\n• This is likely a temporary issue with our systems\n• The error has been logged for investigation",
+    autoBindingTechnicalNextSteps: "**Next steps:**\n• Wait a few minutes and try again\n• Send the 8-digit code directly as a message\n• Generate a new binding code if the issue persists",
+    autoBindingUnknownReason: "**Reason:** Unknown error occurred during binding.",
+    autoBindingUnknownWhat: "**What happened:**\n• The binding process failed for an unknown reason\n• This could be a temporary issue",
+    autoBindingUnknownNextSteps: "**Next steps:**\n• Try sending the 8-digit code directly as a message\n• Generate a new binding code if needed",
+    autoBindingInvalidFormatReason: "**Reason:** Invalid binding code format.",
+    autoBindingInvalidFormatWhat: "**What happened:**\n• The binding code from the registration link is not in the correct format\n• Binding codes must be exactly 8 digits",
+    autoBindingInvalidFormatNextSteps: "**Next steps:**\n• Go back to the registration page\n• Generate a new binding code\n• Make sure to use the correct Telegram button link\n• Or send the 8-digit code directly as a message",
+    manualBindingOption: "You can still bind manually:\n• Send the 8-digit code directly as a message",
+    welcomeAnyway: "Welcome to Tauhid AI anyway! 👋"
   },
   preCheckout: {
     invalidPaymentData: "Invalid payment data. Please try again.",

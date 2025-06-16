@@ -44,6 +44,8 @@ export interface TelegramTranslations {
     commands: string;
     startCommand: string;
     helpCommand: string;
+    buyCommand: string;
+    balanceCommand: string;
     blessing: string;
   };
   processing: {
@@ -146,6 +148,24 @@ export interface TelegramTranslations {
     technicalIssue: string;
     tryAgainMoments: string;
     problemPersists: string;
+    autoBindingFailed: string;
+    autoBindingExpiredReason: string;
+    autoBindingExpiredWhat: string;
+    autoBindingExpiredNextSteps: string;
+    autoBindingAlreadyLinkedReason: string;
+    autoBindingAlreadyLinkedWhat: string;
+    autoBindingAlreadyLinkedNextSteps: string;
+    autoBindingTechnicalReason: string;
+    autoBindingTechnicalWhat: string;
+    autoBindingTechnicalNextSteps: string;
+    autoBindingUnknownReason: string;
+    autoBindingUnknownWhat: string;
+    autoBindingUnknownNextSteps: string;
+    autoBindingInvalidFormatReason: string;
+    autoBindingInvalidFormatWhat: string;
+    autoBindingInvalidFormatNextSteps: string;
+    manualBindingOption: string;
+    welcomeAnyway: string;
   };
   preCheckout: {
     invalidPaymentData: string;
