@@ -183,21 +183,37 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
     ? Math.min((userStats.messagesLast24h / entitlements.maxMessagesPerDay) * 100, 100)
     : 0;
 
-  // Handle buy button click - either send data to bot or open external bot link
+  // Handle buy button click - either send command in Telegram or open external bot
   const handleBuyClick = () => {
-    if (webApp && isTelegramAvailable && typeof webApp.sendData === 'function') {
-      console.log('[ProfileModal] Using Telegram sendData for /buy command');
+    if (webApp && isTelegramAvailable) {
+      console.log('[ProfileModal] Inside Telegram mini app, triggering /buy command');
       try {
-        // Send /buy command directly to the bot and mini app will close automatically
-        webApp.sendData('/buy');
+        // When inside Telegram mini app, use openTelegramLink to trigger the /buy command
+        // This will send the command to the bot and close the mini app
+        if (typeof webApp.openTelegramLink === 'function') {
+          // Use the bot's direct link with the buy command
+          webApp.openTelegramLink('https://t.me/tauhid_app_bot?start=buy');
+          // The mini app will remain open according to Bot API 7.0+
+          // So we manually close it after a short delay
+          setTimeout(() => {
+            if (typeof webApp.close === 'function') {
+              webApp.close();
+            }
+          }, 100);
+        } else {
+          // Fallback: close the mini app so user can type /buy manually
+          if (typeof webApp.close === 'function') {
+            webApp.close();
+          }
+        }
       } catch (error) {
-        console.error('[ProfileModal] Error sending data to bot:', error);
+        console.error('[ProfileModal] Error triggering /buy command:', error);
         // Fallback to external bot link
         window.open('https://t.me/tauhid_app_bot?start=buy', '_blank');
       }
     } else {
       console.log('[ProfileModal] Opening external Telegram bot link');
-      // Not in Telegram mini app or sendData not available, open external bot
+      // Not in Telegram mini app, open external bot
       window.open('https://t.me/tauhid_app_bot?start=buy', '_blank');
     }
   };
