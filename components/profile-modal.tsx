@@ -239,11 +239,11 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
               relative w-full 
               h-[90vh] sm:h-auto sm:max-h-[85vh]
               overflow-y-auto
-              bg-white/10 dark:bg-gray-900/10
-              backdrop-blur-xl
-              border border-white/20 dark:border-gray-700/30
+              bg-white/30 dark:bg-gray-800/90
+              backdrop-blur-sm
+              border border-gray-200/60 dark:border-gray-700/60
               rounded-2xl
-              shadow-2xl
+              shadow-sm
               transform transition-all duration-300 scale-100 opacity-100
             "
             onClick={(e) => e.stopPropagation()}
