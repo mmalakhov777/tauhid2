@@ -222,9 +222,9 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
 
   const modalContent = (
     <>
-      {/* Backdrop with blur */}
+      {/* Backdrop */}
       <div 
-        className="fixed inset-0 backdrop-blur-sm z-[9999] transition-all duration-300"
+        className="fixed inset-0 bg-black/50 z-[9999] transition-all duration-300"
         onClick={() => onOpenChange(false)}
       />
       
@@ -239,11 +239,10 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
               relative w-full 
               h-[90vh] sm:h-auto sm:max-h-[85vh]
               overflow-y-auto
-              bg-white/30 dark:bg-gray-800/90
-              backdrop-blur-sm
-              border border-gray-200/60 dark:border-gray-700/60
+              bg-white dark:bg-gray-900
+              border border-gray-200 dark:border-gray-700
               rounded-2xl
-              shadow-sm
+              shadow-xl
               transform transition-all duration-300 scale-100 opacity-100
             "
             onClick={(e) => e.stopPropagation()}
@@ -253,11 +252,10 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
               onClick={() => onOpenChange(false)}
               className="
                 absolute top-4 right-4 z-10 p-2 rounded-full
-                bg-white/30 dark:bg-gray-800/90
-                backdrop-blur-sm
-                border border-gray-200/60 dark:border-gray-700/60
+                bg-gray-100 dark:bg-gray-800
+                border border-gray-200 dark:border-gray-700
                 text-gray-700 dark:text-gray-300
-                hover:bg-white/40 dark:hover:bg-gray-800/95
+                hover:bg-gray-200 dark:hover:bg-gray-700
                 transition-colors duration-200
               "
             >
