@@ -176,7 +176,7 @@ export const TelegramBindingModal = ({ user, onClose, onSuccess }: TelegramBindi
           onClick={(e) => e.stopPropagation()}
         >
           <div className="relative">
-            <div className="absolute inset-0 bg-white dark:bg-gray-900 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-xl"></div>
+            <div className="absolute inset-0 bg-background dark:bg-background rounded-3xl border border-border dark:border-border shadow-xl"></div>
             <div className="relative z-10 p-8 sm:p-10">
               {/* Close button */}
               <button
@@ -238,26 +238,26 @@ export const TelegramBindingModal = ({ user, onClose, onSuccess }: TelegramBindi
                   ) : (
                     <div className="space-y-6">
                       {/* How to connect instructions */}
-                      <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4">
-                        <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-3 text-center">
+                      <div className="bg-muted dark:bg-muted rounded-xl p-4">
+                        <h4 className="font-semibold text-foreground dark:text-foreground mb-3 text-center">
                           {t('auth.telegram.howToConnect')}
                         </h4>
-                                                 <ol className="text-sm text-blue-800 dark:text-blue-200 space-y-2">
+                                                 <ol className="text-sm text-foreground dark:text-foreground space-y-2">
                            <li className="flex items-start gap-3">
-                             <span className="flex-shrink-0 w-5 h-5 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-semibold">1</span>
-                             <span className="hidden lg:inline">{t('auth.telegram.step1Desktop')} <a href={`https://t.me/tauhid_app_bot?start=register_${bindingCode}`} target="_blank" className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors duration-200 hover:underline">@tauhid_app_bot</a> {t('auth.telegram.orScanQr')}</span>
+                             <span className="flex-shrink-0 w-5 h-5 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-semibold">1</span>
+                             <span className="hidden lg:inline">{t('auth.telegram.step1Desktop')} <a href={`https://t.me/tauhid_app_bot?start=register_${bindingCode}`} target="_blank" className="text-foreground dark:text-foreground hover:text-muted-foreground dark:hover:text-muted-foreground transition-colors duration-200 hover:underline">@tauhid_app_bot</a> {t('auth.telegram.orScanQr')}</span>
                              <span className="lg:hidden">{t('auth.telegram.step1Mobile')}</span>
                            </li>
                            <li className="flex items-start gap-3">
-                             <span className="flex-shrink-0 w-5 h-5 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-semibold">2</span>
-                             <span>{t('auth.telegram.step2')} <code className="bg-blue-100 dark:bg-blue-800 px-1 py-0.5 rounded text-xs"> {bindingCode}</code></span>
+                             <span className="flex-shrink-0 w-5 h-5 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-semibold">2</span>
+                             <span>{t('auth.telegram.step2')} <code className="bg-accent dark:bg-accent px-1 py-0.5 rounded text-xs"> {bindingCode}</code></span>
                            </li>
                            <li className="flex items-start gap-3">
-                             <span className="flex-shrink-0 w-5 h-5 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-semibold">3</span>
+                             <span className="flex-shrink-0 w-5 h-5 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-semibold">3</span>
                              <span>{t('auth.telegram.step3')}</span>
                            </li>
                            <li className="flex items-start gap-3 lg:flex">
-                             <span className="flex-shrink-0 w-5 h-5 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-semibold hidden lg:flex">4</span>
+                             <span className="flex-shrink-0 w-5 h-5 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-semibold hidden lg:flex">4</span>
                              <span className="hidden lg:inline">{t('auth.telegram.step4')}</span>
                            </li>
                          </ol>
@@ -266,14 +266,14 @@ export const TelegramBindingModal = ({ user, onClose, onSuccess }: TelegramBindi
                       {/* Binding Code - Hidden on mobile */}
                       <div className="text-center hidden lg:block">
                         <div 
-                          className="bg-gray-50 dark:bg-zinc-800 rounded-xl p-4 border-2 border-dashed border-gray-300 dark:border-zinc-600 relative cursor-pointer hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
+                          className="bg-muted dark:bg-muted rounded-xl p-4 border-2 border-dashed border-border dark:border-border relative cursor-pointer hover:bg-accent dark:hover:bg-accent transition-colors"
                           onClick={copyToClipboard}
                         >
-                          <div className="text-3xl font-mono font-bold text-blue-600 dark:text-blue-400 tracking-wider">
+                          <div className="text-3xl font-mono font-bold text-foreground dark:text-foreground tracking-wider">
                             {bindingCode}
                           </div>
-                          <button className="absolute top-2 right-2 p-1 hover:bg-gray-200 dark:hover:bg-zinc-600 rounded transition-colors">
-                            <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <button className="absolute top-2 right-2 p-1 hover:bg-accent dark:hover:bg-accent rounded transition-colors">
+                            <svg className="w-4 h-4 text-muted-foreground dark:text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                             </svg>
                           </button>
@@ -283,13 +283,13 @@ export const TelegramBindingModal = ({ user, onClose, onSuccess }: TelegramBindi
                       {/* Timer */}
                                              {timeLeft > 0 && (
                          <div className="text-center">
-                           <p className="text-xs text-gray-600 dark:text-gray-400">
+                           <p className="text-xs text-muted-foreground dark:text-muted-foreground">
                              {t('auth.telegram.codeExpiresIn')} <span className="font-mono font-semibold text-red-500">{formatTime(timeLeft)}</span>
                              {' • '}
                              <button
                                onClick={generateBindingCode}
                                disabled={isGenerating}
-                               className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 underline text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                               className="text-foreground dark:text-foreground hover:text-muted-foreground dark:hover:text-muted-foreground underline text-xs disabled:opacity-50 disabled:cursor-not-allowed"
                              >
                                {isGenerating ? t('auth.telegram.generating') : t('auth.telegram.generateNewCode')}
                              </button>
@@ -317,10 +317,10 @@ export const TelegramBindingModal = ({ user, onClose, onSuccess }: TelegramBindi
                 {bindingStatus !== 'completed' && !isLoading && (
                   <div className="hidden lg:flex flex-col gap-6">
                     {/* Real QR Code */}
-                    <div className="bg-white dark:bg-zinc-800 rounded-xl p-6 text-center">
-                      <h4 className="font-semibold text-gray-900 dark:text-white mb-4">
-                        {t('auth.telegram.scanQrCode')}
-                      </h4>
+                    <div className="bg-card dark:bg-card rounded-xl p-6 text-center border border-border dark:border-border">
+                                              <h4 className="font-semibold text-card-foreground dark:text-card-foreground mb-4">
+                          {t('auth.telegram.scanQrCode')}
+                        </h4>
                       <div className="flex justify-center mb-4">
                         <QRCodeGenerator 
                           url={`https://t.me/tauhid_app_bot?start=register_${bindingCode}`}
@@ -328,9 +328,9 @@ export const TelegramBindingModal = ({ user, onClose, onSuccess }: TelegramBindi
                           className="mx-auto"
                         />
                       </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {t('auth.telegram.scanWithPhone')}
-                      </p>
+                                              <p className="text-sm text-muted-foreground dark:text-muted-foreground">
+                          {t('auth.telegram.scanWithPhone')}
+                        </p>
                     </div>
                   </div>
                 )}

@@ -181,23 +181,27 @@ async function improveUserQueries(
     }
 
     const data = await response.json();
-    if (!data.success || !data.improvedQueries) {
+    if (!data.success || !data.improvedQuery) {
       safeTrace(() => span?.update({ 
         output: { error: "Invalid query improvement response", fallback: true }
       }));
       throw new Error('Invalid query improvement response');
     }
 
+    // Convert single improved query to array format for compatibility
+    const improvedQueries = [data.improvedQuery, data.improvedQuery, data.improvedQuery];
+
     safeTrace(() => span?.update({ 
       output: { 
-        improvedQueries: data.improvedQueries,
-        count: data.improvedQueries.length,
+        improvedQuery: data.improvedQuery,
+        improvedQueries: improvedQueries,
+        count: improvedQueries.length,
         attemptNumber: previousAttempts ? previousAttempts.length + 1 : 1,
         success: true 
       }
     }));
 
-    return data.improvedQueries;
+    return improvedQueries;
   } catch (error) {
     const fallbackQueries = [query, query, query];
     safeTrace(() => span?.update({ 

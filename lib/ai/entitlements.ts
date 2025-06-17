@@ -143,7 +143,7 @@ export const entitlementsByUserType: Record<UserType, Entitlements> = {
    */
   regular: {
     maxMessagesPerDay: 2000,  // Legacy limit (increased for testing)
-    trialMessagesPerDay: 50, // NEW: 1000 messages per day trial (increased for testing)
+    trialMessagesPerDay: 5, // NEW: 1000 messages per day trial (increased for testing)
     useTrialBalance: true,     // NEW: Use trial balance system
     availableChatModelIds: ['chat-model', 'chat-model-reasoning'],
   },

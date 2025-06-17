@@ -17,7 +17,6 @@ import {
   MessageSquare,
   Calendar,
   Clock,
-  Star,
   X,
   BarChart3,
   Bot,
@@ -58,9 +57,9 @@ const CustomBadge = ({
 }) => {
   const baseClasses = 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium';
   const variantClasses = {
-    default: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200',
-    secondary: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
-    outline: 'text-gray-700 dark:text-gray-300'
+    default: 'bg-muted text-muted-foreground dark:bg-muted dark:text-muted-foreground',
+    secondary: 'bg-secondary text-secondary-foreground dark:bg-secondary dark:text-secondary-foreground',
+    outline: 'text-muted-foreground dark:text-muted-foreground'
   };
 
   return (
@@ -86,11 +85,10 @@ const CustomCard = ({
   return (
     <div
       className={`
-        bg-white/30 dark:bg-gray-800/90
-        border border-gray-200/60 dark:border-gray-700/60
+        bg-card dark:bg-card
+        border border-border dark:border-border
         rounded-2xl p-3 sm:p-4 md:p-6
         shadow-sm
-        backdrop-blur-sm
         ${className}
       `}
       {...props}
@@ -103,9 +101,9 @@ const CustomCard = ({
 // Custom Progress Component - Self-Contained
 const CustomProgress = ({ value, className = '' }: { value: number; className?: string }) => {
   return (
-    <div className={`w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 ${className}`}>
+    <div className={`w-full bg-muted dark:bg-muted rounded-full h-2 ${className}`}>
       <div 
-        className="bg-blue-600 h-2 rounded-full transition-all duration-300" 
+        className="bg-primary h-2 rounded-full transition-all duration-300" 
         style={{ width: `${Math.min(value, 100)}%` }}
       />
     </div>
@@ -114,7 +112,7 @@ const CustomProgress = ({ value, className = '' }: { value: number; className?: 
 
 // Custom Separator Component - Self-Contained
 const CustomSeparator = ({ className = '' }: { className?: string }) => {
-  return <div className={`border-t border-gray-200 dark:border-gray-700 ${className}`} />;
+  return <div className={`border-t border-border dark:border-border ${className}`} />;
 };
 
 export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
@@ -239,8 +237,8 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
               relative w-full 
               h-[90vh] sm:h-auto sm:max-h-[85vh]
               overflow-y-auto
-              bg-white dark:bg-gray-900
-              border border-gray-200 dark:border-gray-700
+              bg-background dark:bg-background
+              border border-border dark:border-border
               rounded-2xl
               shadow-xl
               transform transition-all duration-300 scale-100 opacity-100
@@ -252,10 +250,10 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
               onClick={() => onOpenChange(false)}
               className="
                 absolute top-4 right-4 z-10 p-2 rounded-full
-                bg-gray-100 dark:bg-gray-800
-                border border-gray-200 dark:border-gray-700
-                text-gray-700 dark:text-gray-300
-                hover:bg-gray-200 dark:hover:bg-gray-700
+                bg-muted dark:bg-muted
+                border border-border dark:border-border
+                text-muted-foreground dark:text-muted-foreground
+                hover:bg-accent dark:hover:bg-accent
                 transition-colors duration-200
               "
             >
@@ -264,18 +262,18 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
 
             {/* Header */}
             <div className="p-4 sm:p-6 pb-2 sm:pb-4">
-              <h2 className="text-lg sm:text-xl font-normal tracking-tight text-gray-900 dark:text-white flex items-center gap-2">
+              <h2 className="text-lg sm:text-xl font-normal tracking-tight text-foreground dark:text-foreground flex items-center gap-2">
                 <User className="h-4 w-4 sm:h-5 sm:w-5" />
                 {t('profileModal.profileInformation')}
               </h2>
             </div>
 
             {/* Content */}
-            <div className="p-4 sm:p-6 pt-0 space-y-4 sm:space-y-6">
+            <div className="p-4 sm:p-6 pt-4 sm:pt-6 space-y-4 sm:space-y-6">
               {/* User Info Section */}
               <CustomCard>
                 <div className="space-y-4">
-                  <h3 className="text-sm sm:text-base font-medium text-gray-900 dark:text-white">{t('profileModal.userInformation')}</h3>
+                  <h3 className="text-sm sm:text-base font-medium text-foreground dark:text-foreground">{t('profileModal.userInformation')}</h3>
                   
                   <div className="flex items-center gap-3">
                     <Image
@@ -287,7 +285,7 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
                     />
                     <div className="flex-1 space-y-1 min-w-0">
                       <div className="flex items-center gap-1 flex-wrap">
-                        <h4 className="text-sm sm:text-base font-medium text-gray-900 dark:text-white truncate">{displayName}</h4>
+                        <h4 className="text-sm sm:text-base font-medium text-foreground dark:text-foreground truncate">{displayName}</h4>
                         {isGuest && <CustomBadge variant="secondary">{t('profileModal.guest')}</CustomBadge>}
                         {isTelegramUser && <CustomBadge variant="outline">{t('profileModal.telegram')}</CustomBadge>}
                         {telegramUser?.is_premium && (
@@ -337,8 +335,7 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
               {/* Account Type & Entitlements */}
               <CustomCard>
                 <div className="space-y-4">
-                  <h3 className="text-sm sm:text-base font-medium text-gray-900 dark:text-white flex items-center gap-2">
-                    <Star className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <h3 className="text-sm sm:text-base font-medium text-gray-900 dark:text-white">
                     {t('profileModal.accountTypeLimits')}
                   </h3>
                   
@@ -355,7 +352,7 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
                       {/* Trial Messages */}
                       <div className="space-y-2">
                         <div className="flex items-center justify-between text-xs">
-                          <span className="text-gray-900 dark:text-white">Trial Messages Today</span>
+                          <span className="text-gray-900 dark:text-white">{t('profileModal.trialMessagesToday')}</span>
                           <span className="font-medium text-gray-900 dark:text-white">
                             {loading ? '...' : userStats.trialBalance.trialMessagesRemaining} / {userStats.trialBalance.trialMessagesPerDay}
                           </span>
@@ -363,31 +360,30 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
                         <CustomProgress value={usagePercentage} />
                         {userStats.trialBalance.needsReset && (
                           <div className="text-xs text-amber-600 dark:text-amber-400">
-                            ⏰ Trial balance will reset soon
+                            ⏰ {t('profileModal.trialBalanceReset')}
                           </div>
                         )}
                       </div>
                       
                       {/* Paid Messages (if any) */}
                       {userStats.trialBalance.paidMessagesRemaining > 0 && (
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-gray-900 dark:text-white flex items-center gap-1">
-                              <Star className="h-3 w-3 text-yellow-500" />
-                              Paid Messages
-                            </span>
-                            <span className="font-medium text-gray-900 dark:text-white">
-                              {userStats.trialBalance.paidMessagesRemaining}
-                            </span>
+                                                  <div className="space-y-2">
+                            <div className="flex items-center justify-between text-xs">
+                              <span className="text-gray-900 dark:text-white">
+                                {t('profileModal.paidMessages')}
+                              </span>
+                              <span className="font-medium text-gray-900 dark:text-white">
+                                {userStats.trialBalance.paidMessagesRemaining}
+                              </span>
+                            </div>
                           </div>
-                        </div>
                       )}
                       
                       {/* Total Available */}
-                      <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+                      <div className="pt-2 border-t border-border dark:border-border">
                         <div className="flex items-center justify-between text-xs">
-                          <span className="font-medium text-gray-900 dark:text-white">Total Messages Available</span>
-                          <span className="font-bold text-gray-900 dark:text-white">
+                          <span className="font-medium text-foreground dark:text-foreground">{t('profileModal.totalMessagesAvailable')}</span>
+                          <span className="font-bold text-foreground dark:text-foreground">
                             {userStats.trialBalance.totalMessagesRemaining}
                           </span>
                         </div>
@@ -497,49 +493,48 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
 
               {/* Purchase Messages Section */}
               {userStats?.trialBalance?.useTrialBalance && (
-                <CustomCard className="bg-gray-50 dark:bg-gray-900/30">
+                <CustomCard className="bg-muted dark:bg-muted">
                   <div className="space-y-4">
-                    <div className="flex items-center gap-2 text-gray-800 dark:text-gray-200">
-                      <Star className="h-4 w-4 sm:h-5 sm:w-5" />
-                      <span className="font-medium">Purchase More Messages</span>
+                    <div className="text-foreground dark:text-foreground">
+                      <span className="font-medium">{t('profileModal.purchaseMoreMessages')}</span>
                     </div>
                     
-                    <p className="text-sm text-gray-700 dark:text-gray-300">
-                      Need more messages? {isTelegramUser ? 'Use the /buy command in Telegram to purchase with Telegram Stars.' : 'Purchase additional messages that never expire.'}
+                    <p className="text-sm text-muted-foreground dark:text-muted-foreground">
+                      {t('profileModal.needMoreMessages')} {isTelegramUser ? t('profileModal.useBuyCommand') : t('profileModal.purchaseAdditionalMessages')}
                     </p>
                     
                     {isTelegramUser ? (
                       <div className="bg-gray-100 dark:bg-gray-800/50 p-3 rounded-lg">
                         <div className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-2">
-                          💬 Telegram Purchase
+                          💬 {t('profileModal.telegramPurchase')}
                         </div>
-                        <div className="text-xs text-gray-700 dark:text-gray-300 space-y-1">
-                          <div>• Open your Telegram chat with the bot</div>
-                          <div>• Send the command: <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">/buy</code></div>
-                          <div>• Choose a package and pay with Telegram Stars</div>
-                          <div>• Messages are added instantly!</div>
-                        </div>
+                                                  <div className="text-xs text-gray-700 dark:text-gray-300 space-y-1">
+                            <div>• {t('profileModal.openTelegramChat')}</div>
+                            <div>• {t('profileModal.sendCommand')}: <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">/buy</code></div>
+                            <div>• {t('profileModal.choosePackage')}</div>
+                            <div>• {t('profileModal.messagesAddedInstantly')}</div>
+                          </div>
                       </div>
                     ) : (
                       <div className="bg-gray-100 dark:bg-gray-800/50 p-4 rounded-lg">
                         <div className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-4">
-                          🌟 Purchase Messages
+                          🌟 {t('profileModal.purchaseMessages')}
                         </div>
                         
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
                           {/* Button for mobile/tablet and desktop */}
                           <div className="space-y-3">
                             <div className="text-xs text-gray-700 dark:text-gray-300">
-                              🔒 We use Telegram's secure payment system with Telegram Stars for fast, reliable, and protected transactions.
+                              🔒 {t('profileModal.securePaymentSystem')}
                             </div>
                             <button
                               onClick={handleBuyClick}
-                              className="w-full px-4 py-3 bg-gray-800 hover:bg-gray-900 text-white rounded-lg transition-colors flex items-center justify-center gap-2 font-medium text-sm"
+                              className="w-full px-4 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors flex items-center justify-center gap-2 font-medium text-sm"
                             >
                               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                                 <path d="M12 0C5.374 0 0 5.373 0 12s5.374 12 12 12 12-5.373 12-12S18.626 0 12 0zm5.568 8.16c-.169 1.858-.896 6.728-.896 6.728-.896 6.728-1.268 7.928-1.268 7.928-.16.906-.923 1.101-1.517.683 0 0-2.271-1.702-3.414-2.559-.24-.18-.513-.54-.24-.96l2.34-2.277c.26-.252.52-.756 0-.756-.52 0-3.414 2.277-3.414 2.277-.817.533-1.75.684-1.75.684l-3.293-.906s-.414-.252-.274-.756c.14-.504.793-.756.793-.756s7.776-2.834 10.428-3.788-.793-.286 1.793-.133 1.793 1.125z"/>
                               </svg>
-                              {isTelegramAvailable ? 'Send /buy Command' : 'Open Telegram Bot'}
+                              {isTelegramAvailable ? t('profileModal.sendBuyCommand') : t('profileModal.openTelegramBot')}
                             </button>
                           </div>
 
@@ -553,7 +548,7 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
                               />
                             </div>
                             <p className="text-xs text-gray-600 dark:text-gray-400 text-center">
-                              Scan with phone
+                              {t('profileModal.scanWithPhone')}
                             </p>
                           </div>
                         </div>
