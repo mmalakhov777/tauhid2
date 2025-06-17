@@ -58,7 +58,7 @@ const CustomBadge = ({
 }) => {
   const baseClasses = 'inline-flex items-center px-2 py-1 rounded-full text-xs font-medium';
   const variantClasses = {
-    default: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+    default: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200',
     secondary: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
     outline: 'border border-gray-300 text-gray-700 dark:border-gray-600 dark:text-gray-300'
   };
@@ -388,7 +388,7 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
                       <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
                         <div className="flex items-center justify-between text-xs">
                           <span className="font-medium text-gray-900 dark:text-white">Total Messages Available</span>
-                          <span className="font-bold text-blue-600 dark:text-blue-400">
+                          <span className="font-bold text-gray-900 dark:text-white">
                             {userStats.trialBalance.totalMessagesRemaining}
                           </span>
                         </div>
@@ -414,7 +414,7 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
                 <CustomCard>
                   <div className="space-y-4">
                     <h3 className="text-sm sm:text-base font-medium text-gray-900 dark:text-white flex items-center gap-2">
-                      <Bot className="h-3 w-3 sm:h-4 sm:w-4 text-blue-500" />
+                      <Bot className="h-3 w-3 sm:h-4 sm:w-4 text-gray-900 dark:text-white" />
                       {t('profileModal.telegramUserData')}
                     </h3>
                     
@@ -498,44 +498,44 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
 
               {/* Purchase Messages Section */}
               {userStats?.trialBalance?.useTrialBalance && (
-                <CustomCard className="border-blue-300 bg-blue-50 dark:border-blue-700 dark:bg-blue-900/30">
+                <CustomCard className="border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-900/30">
                   <div className="space-y-4">
-                    <div className="flex items-center gap-2 text-blue-800 dark:text-blue-200">
+                    <div className="flex items-center gap-2 text-gray-800 dark:text-gray-200">
                       <Star className="h-4 w-4 sm:h-5 sm:w-5" />
                       <span className="font-medium">Purchase More Messages</span>
                     </div>
                     
-                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                    <p className="text-sm text-gray-700 dark:text-gray-300">
                       Need more messages? {isTelegramUser ? 'Use the /buy command in Telegram to purchase with Telegram Stars.' : 'Purchase additional messages that never expire.'}
                     </p>
                     
                     {isTelegramUser ? (
-                      <div className="bg-blue-100 dark:bg-blue-800/50 p-3 rounded-lg">
-                        <div className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
+                      <div className="bg-gray-100 dark:bg-gray-800/50 p-3 rounded-lg">
+                        <div className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-2">
                           💬 Telegram Purchase
                         </div>
-                        <div className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
+                        <div className="text-xs text-gray-700 dark:text-gray-300 space-y-1">
                           <div>• Open your Telegram chat with the bot</div>
-                          <div>• Send the command: <code className="bg-blue-200 dark:bg-blue-700 px-1 rounded">/buy</code></div>
+                          <div>• Send the command: <code className="bg-gray-200 dark:bg-gray-700 px-1 rounded">/buy</code></div>
                           <div>• Choose a package and pay with Telegram Stars</div>
                           <div>• Messages are added instantly!</div>
                         </div>
                       </div>
                     ) : (
-                      <div className="bg-blue-100 dark:bg-blue-800/50 p-4 rounded-lg">
-                        <div className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-4">
+                      <div className="bg-gray-100 dark:bg-gray-800/50 p-4 rounded-lg">
+                        <div className="text-sm font-medium text-gray-800 dark:text-gray-200 mb-4">
                           🌟 Purchase Messages
                         </div>
                         
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
                           {/* Button for mobile/tablet and desktop */}
                           <div className="space-y-3">
-                            <div className="text-xs text-blue-700 dark:text-blue-300">
+                            <div className="text-xs text-gray-700 dark:text-gray-300">
                               🔒 We use Telegram's secure payment system with Telegram Stars for fast, reliable, and protected transactions.
                             </div>
                             <button
                               onClick={handleBuyClick}
-                              className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center justify-center gap-2 font-medium text-sm"
+                              className="w-full px-4 py-3 bg-gray-800 hover:bg-gray-900 text-white rounded-lg transition-colors flex items-center justify-center gap-2 font-medium text-sm"
                             >
                               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                                 <path d="M12 0C5.374 0 0 5.373 0 12s5.374 12 12 12 12-5.373 12-12S18.626 0 12 0zm5.568 8.16c-.169 1.858-.896 6.728-.896 6.728-.896 6.728-1.268 7.928-1.268 7.928-.16.906-.923 1.101-1.517.683 0 0-2.271-1.702-3.414-2.559-.24-.18-.513-.54-.24-.96l2.34-2.277c.26-.252.52-.756 0-.756-.52 0-3.414 2.277-3.414 2.277-.817.533-1.75.684-1.75.684l-3.293-.906s-.414-.252-.274-.756c.14-.504.793-.756.793-.756s7.776-2.834 10.428-3.788-.793-.286 1.793-.133 1.793 1.125z"/>
@@ -553,7 +553,7 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
                                 className="mx-auto"
                               />
                             </div>
-                            <p className="text-xs text-blue-600 dark:text-blue-400 text-center">
+                            <p className="text-xs text-gray-600 dark:text-gray-400 text-center">
                               Scan with phone
                             </p>
                           </div>
@@ -579,8 +579,8 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
                       {/* NEW: Trial Balance System Stats */}
                       {userStats.trialBalance?.useTrialBalance ? (
                         <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                          <div className="text-center p-2 sm:p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                            <div className="text-lg sm:text-xl font-semibold text-blue-600 dark:text-blue-400">
+                          <div className="text-center p-2 sm:p-3 bg-gray-50 dark:bg-gray-900/20 rounded-lg">
+                            <div className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">
                               {userStats.trialBalance.trialMessagesRemaining}
                             </div>
                             <div className="text-xs text-gray-600 dark:text-gray-400">Trial Left</div>
@@ -607,8 +607,8 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
                       ) : (
                         /* LEGACY: Old stats display */
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                          <div className="text-center p-2 sm:p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                            <div className="text-lg sm:text-xl font-semibold text-blue-600 dark:text-blue-400">{userStats.messagesLast24h}</div>
+                          <div className="text-center p-2 sm:p-3 bg-gray-50 dark:bg-gray-900/20 rounded-lg">
+                            <div className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">{userStats.messagesLast24h}</div>
                             <div className="text-xs text-gray-600 dark:text-gray-400">{t('profileModal.last24h')}</div>
                           </div>
                           <div className="text-center p-2 sm:p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
