@@ -630,7 +630,7 @@ ${t.binding.needHelp}`;
     // Regular case: real email account already linked
     return `${t.binding.alreadyLinked}
 
-This Telegram account is already connected to another user account.
+
 
 ${formatText(t.binding.existingEmail, { email: existingEmail })}
 

@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { toast } from '@/components/toast';
+import { useTranslations } from '@/lib/i18n';
+import { QRCodeGenerator } from '@/components/QRCodeGenerator';
 
 interface TelegramBindingModalProps {
   user: {
@@ -14,11 +16,14 @@ interface TelegramBindingModalProps {
 }
 
 export const TelegramBindingModal = ({ user, onClose, onSuccess }: TelegramBindingModalProps) => {
+  const { t } = useTranslations();
   const [bindingCode, setBindingCode] = useState<string>('');
   const [expiresAt, setExpiresAt] = useState<Date | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isCheckingBinding, setIsCheckingBinding] = useState(false);
+  const [bindingStatus, setBindingStatus] = useState<'pending' | 'checking' | 'completed' | 'failed'>('pending');
   const [mounted, setMounted] = useState(false);
 
   // Ensure we're mounted on the client
@@ -28,7 +33,9 @@ export const TelegramBindingModal = ({ user, onClose, onSuccess }: TelegramBindi
 
   // Generate binding code on mount
   useEffect(() => {
-    if (mounted) {
+    console.log('Modal useEffect triggered - mounted:', mounted, 'bindingCode:', bindingCode, 'isLoading:', isLoading);
+    if (mounted && !bindingCode) {
+      console.log('Modal calling generateBindingCode...');
       generateBindingCode();
     }
   }, [mounted]);
@@ -46,18 +53,31 @@ export const TelegramBindingModal = ({ user, onClose, onSuccess }: TelegramBindi
       
       if (remaining <= 0) {
         clearInterval(timer);
-        toast({ type: 'error', description: 'Binding code expired. Please generate a new one.' });
+        toast({ type: 'error', description: t('auth.telegram.codeExpired') });
       }
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [expiresAt]);
+  }, [expiresAt, t]);
+
+  // Polling mechanism to check if binding is completed
+  useEffect(() => {
+    if (bindingCode && bindingStatus === 'pending') {
+      const pollInterval = setInterval(async () => {
+        await checkBindingStatus();
+      }, 5000); // Check every 5 seconds
+
+      return () => clearInterval(pollInterval);
+    }
+  }, [bindingCode, bindingStatus]);
 
   const generateBindingCode = async () => {
     setIsGenerating(true);
     setIsLoading(true);
+    setBindingStatus('pending');
 
     try {
+      console.log('Generating binding code for user:', user);
       const response = await fetch('/api/telegram/generate-binding-code', {
         method: 'POST',
         headers: {
@@ -65,31 +85,71 @@ export const TelegramBindingModal = ({ user, onClose, onSuccess }: TelegramBindi
         },
       });
 
+      console.log('Response status:', response.status);
       const result = await response.json();
+      console.log('Response result:', result);
 
       if (result.success) {
         setBindingCode(result.bindingCode);
         setExpiresAt(new Date(result.expiresAt));
-        toast({ type: 'success', description: 'Binding code generated successfully!' });
+        console.log('Binding code generated successfully:', result.bindingCode);
       } else {
-        toast({ type: 'error', description: result.error || 'Failed to generate binding code' });
+        console.error('Failed to generate binding code:', result.error);
+        toast({ type: 'error', description: result.error || t('auth.telegram.failedToGenerateCode') });
       }
     } catch (error) {
       console.error('Error generating binding code:', error);
-      toast({ type: 'error', description: 'Failed to generate binding code. Please try again.' });
+      toast({ type: 'error', description: t('auth.telegram.failedToGenerateCode') });
     } finally {
       setIsLoading(false);
       setIsGenerating(false);
     }
   };
 
+  const checkBindingStatus = async () => {
+    if (isCheckingBinding || bindingStatus !== 'pending') return;
+    
+    setIsCheckingBinding(true);
+    
+    try {
+      const response = await fetch('/api/telegram/check-binding-status', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ bindingCode }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        
+        if (result.success && result.isCompleted) {
+          setBindingStatus('completed');
+          toast({ type: 'success', description: t('auth.telegram.telegramAccountLinked') });
+          
+          // Wait a moment then complete the process
+          setTimeout(() => {
+            if (onSuccess) {
+              onSuccess();
+            }
+            onClose();
+          }, 2000);
+        }
+      }
+    } catch (error) {
+      console.error('Error checking binding status:', error);
+    } finally {
+      setIsCheckingBinding(false);
+    }
+  };
+
   const copyToClipboard = async () => {
     try {
       await navigator.clipboard.writeText(bindingCode);
-      toast({ type: 'success', description: 'Code copied to clipboard!' });
+      toast({ type: 'success', description: t('auth.telegram.codeCopiedToClipboard') });
     } catch (error) {
       console.error('Failed to copy:', error);
-      toast({ type: 'error', description: 'Failed to copy code. Please copy manually.' });
+      toast({ type: 'error', description: t('auth.telegram.failedToCopyCode') });
     }
   };
 
@@ -112,145 +172,168 @@ export const TelegramBindingModal = ({ user, onClose, onSuccess }: TelegramBindi
       {/* Modal */}
       <div className="fixed inset-0 z-[99999] flex items-center justify-center p-4 pointer-events-none">
         <div 
-          className="pointer-events-auto w-full max-w-md mx-auto"
+          className="pointer-events-auto w-full max-w-6xl mx-auto"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="bg-white dark:bg-zinc-900 rounded-3xl w-full sm:rounded-2xl flex flex-col overflow-hidden shadow-2xl">
-            {/* Header */}
-            <div className="flex-shrink-0 p-6 border-b border-gray-200 dark:border-zinc-700">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
-                    <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 0C5.374 0 0 5.373 0 12s5.374 12 12 12 12-5.373 12-12S18.626 0 12 0zm5.568 8.16c-.169 1.858-.896 6.728-.896 6.728-.896 6.728-1.268 7.928-1.268 7.928-.16.906-.923 1.101-1.517.683 0 0-2.271-1.702-3.414-2.559-.24-.18-.513-.54-.24-.96l2.34-2.277c.26-.252.52-.756 0-.756-.52 0-3.414 2.277-3.414 2.277-.817.533-1.75.684-1.75.684l-3.293-.906s-.414-.252-.274-.756c.14-.504.793-.756.793-.756s7.776-2.834 10.428-3.788c.793-.286 1.793-.133 1.793 1.125z"/>
+          <div className="relative">
+            <div className="absolute inset-0 bg-white/20 dark:bg-white/10 backdrop-blur-xl rounded-3xl border border-white/30 dark:border-white/20 shadow-2xl shadow-black/10 dark:shadow-black/30"></div>
+            <div className="relative z-10 p-8 sm:p-10">
+              {/* Close button */}
+              <button
+                onClick={onClose}
+                className="absolute top-4 right-4 p-2 hover:bg-white/20 dark:hover:bg-white/10 rounded-full transition-colors z-20"
+              >
+                <svg className="w-6 h-6 text-gray-700 dark:text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+
+              {/* Centered Header */}
+              <div className="flex flex-col items-center justify-center gap-3 text-center mb-8">
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center mb-2 ${
+                  bindingStatus === 'completed' ? 'bg-green-500' : 'bg-blue-500'
+                }`}>
+                  {bindingStatus === 'completed' ? (
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold dark:text-zinc-50">
-                      Connect Telegram
-                    </h3>
-                    <p className="text-sm text-gray-500 dark:text-zinc-400">
-                      Link your account with this code
-                    </p>
-                  </div>
+                  ) : (
+                    <svg className="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M12 0C5.374 0 0 5.373 0 12s5.374 12 12 12 12-5.373 12-12S18.626 0 12 0zm5.568 8.16c-.169 1.858-.896 6.728-.896 6.728-.896 6.728-1.268 7.928-1.268 7.928-.16.906-.923 1.101-1.517.683 0 0-2.271-1.702-3.414-2.559-.24-.18-.513-.54-.24-.96l2.34-2.277c.26-.252.52-.756 0-.756-.52 0-3.414 2.277-3.414 2.277-.817.533-1.75.684-1.75.684l-3.293-.906s-.414-.252-.274-.756c.14-.504.793-.756.793-.756s7.776-2.834 10.428-3.788.793-.286 1.793-.133 1.793 1.125z"/>
+                    </svg>
+                  )}
                 </div>
-                <button
-                  onClick={onClose}
-                  className="p-2 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded-full transition-colors"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
+                <h3 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
+                  {bindingStatus === 'completed' ? t('auth.telegram.telegramConnected') : t('auth.telegram.oneMoreStep')}
+                </h3>
+                {bindingStatus !== 'completed' && (
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    {t('auth.telegram.connectDescription')}
+                  </p>
+                )}
               </div>
-            </div>
 
-            {/* Content */}
-            <div className="flex-1 p-6">
-              {isLoading ? (
-                <div className="text-center py-8">
-                  <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                  <p className="text-gray-600 dark:text-zinc-400">Generating binding code...</p>
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  {/* Binding Code */}
-                  <div className="text-center">
-                    <p className="text-sm text-gray-600 dark:text-zinc-400 mb-3">
-                      Your binding code:
-                    </p>
-                    <div 
-                      className="bg-gray-50 dark:bg-zinc-800 rounded-xl p-4 border-2 border-dashed border-gray-300 dark:border-zinc-600 relative cursor-pointer hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
-                      onClick={copyToClipboard}
-                    >
-                      <div className="text-3xl font-mono font-bold text-blue-600 dark:text-blue-400 tracking-wider">
-                        {bindingCode}
-                      </div>
-                      <button className="absolute top-2 right-2 p-1 hover:bg-gray-200 dark:hover:bg-zinc-600 rounded transition-colors">
-                        <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+                {/* Left side - Main content */}
+                <div className="flex flex-col gap-8">
+                  {bindingStatus === 'completed' ? (
+                    <div className="text-center py-8">
+                      <div className="w-16 h-16 bg-green-100 dark:bg-green-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <svg className="w-8 h-8 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                         </svg>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Timer */}
-                  {timeLeft > 0 && (
-                    <div className="text-center">
-                      <p className="text-sm text-gray-600 dark:text-zinc-400">
-                        Code expires in: <span className="font-mono font-semibold text-red-500">{formatTime(timeLeft)}</span>
+                      </div>
+                      <p className="text-lg font-semibold text-green-600 dark:text-green-400 mb-2">
+                        {t('auth.telegram.successfullyConnected')}
+                      </p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {t('auth.telegram.redirectingToApp')}
                       </p>
                     </div>
-                  )}
+                  ) : isLoading ? (
+                    <div className="text-center py-8">
+                      <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                      <p className="text-gray-600 dark:text-gray-400">{t('auth.telegram.generatingBindingCode')}</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {/* How to connect instructions */}
+                      <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4">
+                        <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-3 text-center">
+                          {t('auth.telegram.howToConnect')}
+                        </h4>
+                                                 <ol className="text-sm text-blue-800 dark:text-blue-200 space-y-2">
+                           <li className="flex items-start gap-3">
+                             <span className="flex-shrink-0 w-5 h-5 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-semibold">1</span>
+                             <span className="hidden lg:inline">{t('auth.telegram.step1Desktop')} <a href={`https://t.me/tauhid_app_bot?start=register_${bindingCode}`} target="_blank" className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors duration-200 hover:underline">@tauhid_app_bot</a> {t('auth.telegram.orScanQr')}</span>
+                             <span className="lg:hidden">{t('auth.telegram.step1Mobile')}</span>
+                           </li>
+                           <li className="flex items-start gap-3">
+                             <span className="flex-shrink-0 w-5 h-5 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-semibold">2</span>
+                             <span>{t('auth.telegram.step2')} <code className="bg-blue-100 dark:bg-blue-800 px-1 py-0.5 rounded text-xs"> {bindingCode}</code></span>
+                           </li>
+                           <li className="flex items-start gap-3">
+                             <span className="flex-shrink-0 w-5 h-5 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-semibold">3</span>
+                             <span>{t('auth.telegram.step3')}</span>
+                           </li>
+                           <li className="flex items-start gap-3 lg:flex">
+                             <span className="flex-shrink-0 w-5 h-5 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-semibold hidden lg:flex">4</span>
+                             <span className="hidden lg:inline">{t('auth.telegram.step4')}</span>
+                           </li>
+                         </ol>
+                      </div>
 
-                  {/* Desktop Instructions with QR placeholder */}
-                  <div className="hidden lg:block bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4">
-                    <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">
-                      How to connect:
-                    </h4>
-                    <ol className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
-                      <li>1. Scan the QR code below with your phone</li>
-                      <li>2. Send the command: <code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">/bind {bindingCode}</code></li>
-                      <li>3. Your accounts will be linked automatically</li>
-                    </ol>
-                    
-                    {/* QR Code placeholder for desktop */}
-                    <div className="mt-4 flex justify-center">
-                      <div className="w-32 h-32 bg-gray-100 dark:bg-zinc-700 rounded-lg flex items-center justify-center">
-                        <div className="text-center">
-                          <svg className="w-8 h-8 text-gray-400 dark:text-gray-500 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" />
-                          </svg>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">QR Code</p>
+                      {/* Binding Code - Hidden on mobile */}
+                      <div className="text-center hidden lg:block">
+                        <div 
+                          className="bg-gray-50 dark:bg-zinc-800 rounded-xl p-4 border-2 border-dashed border-gray-300 dark:border-zinc-600 relative cursor-pointer hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
+                          onClick={copyToClipboard}
+                        >
+                          <div className="text-3xl font-mono font-bold text-blue-600 dark:text-blue-400 tracking-wider">
+                            {bindingCode}
+                          </div>
+                          <button className="absolute top-2 right-2 p-1 hover:bg-gray-200 dark:hover:bg-zinc-600 rounded transition-colors">
+                            <svg className="w-4 h-4 text-gray-500 dark:text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                          </button>
                         </div>
                       </div>
-                    </div>
-                  </div>
 
-                  {/* Mobile Instructions with Telegram Button */}
-                  <div className="lg:hidden space-y-4">
-                    <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4">
-                      <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">
-                        How to connect:
-                      </h4>
-                      <ol className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
-                        <li>1. Tap the button below to open Telegram</li>
-                        <li>2. Send the command: <code className="bg-blue-100 dark:bg-blue-800 px-1 rounded">/bind {bindingCode}</code></li>
-                        <li>3. Your accounts will be linked automatically</li>
-                      </ol>
+                      {/* Timer */}
+                                             {timeLeft > 0 && (
+                         <div className="text-center">
+                           <p className="text-xs text-gray-600 dark:text-gray-400">
+                             {t('auth.telegram.codeExpiresIn')} <span className="font-mono font-semibold text-red-500">{formatTime(timeLeft)}</span>
+                             {' • '}
+                             <button
+                               onClick={generateBindingCode}
+                               disabled={isGenerating}
+                               className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 underline text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                             >
+                               {isGenerating ? t('auth.telegram.generating') : t('auth.telegram.generateNewCode')}
+                             </button>
+                           </p>
+                         </div>
+                       )}
+
+                      {/* Mobile Telegram Button (mobile/tablet only, max-width: 1023px) */}
+                      <div className="lg:hidden">
+                        <button
+                          onClick={() => window.open(`https://t.me/tauhid_app_bot?start=register_${bindingCode}`, '_blank')}
+                          className="w-full px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors flex items-center justify-center gap-2 font-medium"
+                        >
+                          <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M12 0C5.374 0 0 5.373 0 12s5.374 12 12 12 12-5.373 12-12S18.626 0 12 0zm5.568 8.16c-.169 1.858-.896 6.728-.896 6.728-.896 6.728-1.268 7.928-1.268 7.928-.16.906-.923 1.101-1.517.683 0 0-2.271-1.702-3.414-2.559-.24-.18-.513-.54-.24-.96l2.34-2.277c.26-.252.52-.756 0-.756-.52 0-3.414 2.277-3.414 2.277-.817.533-1.75.684-1.75.684l-3.293-.906s-.414-.252-.274-.756c.14-.504.793-.756.793-.756s7.776-2.834 10.428-3.788-.793-.286 1.793-.133 1.793 1.125z"/>
+                          </svg>
+                          {t('auth.telegram.openTelegramBot')}
+                        </button>
+                      </div>
                     </div>
-                    
-                    {/* Telegram Button for mobile */}
-                    <button
-                      onClick={() => window.open(`https://t.me/tauhid_app_bot?start=bind_${bindingCode}`, '_blank')}
-                      className="w-full px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors flex items-center justify-center gap-2 font-medium"
-                    >
-                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M12 0C5.374 0 0 5.373 0 12s5.374 12 12 12 12-5.373 12-12S18.626 0 12 0zm5.568 8.16c-.169 1.858-.896 6.728-.896 6.728-.896 6.728-1.268 7.928-1.268 7.928-.16.906-.923 1.101-1.517.683 0 0-2.271-1.702-3.414-2.559-.24-.18-.513-.54-.24-.96l2.34-2.277c.26-.252.52-.756 0-.756-.52 0-3.414 2.277-3.414 2.277-.817.533-1.75.684-1.75.684l-3.293-.906s-.414-.252-.274-.756c.14-.504.793-.756.793-.756s7.776-2.834 10.428-3.788.793-.286 1.793-.133 1.793 1.125z"/>
-                      </svg>
-                      Open Telegram Bot
-                    </button>
-                  </div>
+                  )}
                 </div>
-              )}
-            </div>
 
-            {/* Footer */}
-            <div className="flex-shrink-0 p-6 border-t border-gray-200 dark:border-zinc-700">
-              <div className="flex gap-3">
-                <button
-                  onClick={generateBindingCode}
-                  disabled={isGenerating}
-                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-zinc-600 text-gray-700 dark:text-zinc-300 rounded-lg hover:bg-gray-50 dark:hover:bg-zinc-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isGenerating ? 'Generating...' : 'Generate New Code'}
-                </button>
-                <button
-                  onClick={onClose}
-                  className="px-6 py-2 bg-gray-500 hover:bg-gray-600 text-white rounded-lg transition-colors"
-                >
-                  Close
-                </button>
+                {/* Right side - QR Code (desktop only, min-width: 1024px) */}
+                {bindingStatus !== 'completed' && !isLoading && (
+                  <div className="hidden lg:flex flex-col gap-6">
+                    {/* Real QR Code */}
+                    <div className="bg-white dark:bg-zinc-800 rounded-xl p-6 text-center">
+                      <h4 className="font-semibold text-gray-900 dark:text-white mb-4">
+                        {t('auth.telegram.scanQrCode')}
+                      </h4>
+                      <div className="flex justify-center mb-4">
+                        <QRCodeGenerator 
+                          url={`https://t.me/tauhid_app_bot?start=register_${bindingCode}`}
+                          size={192}
+                          className="mx-auto"
+                        />
+                      </div>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        {t('auth.telegram.scanWithPhone')}
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           </div>

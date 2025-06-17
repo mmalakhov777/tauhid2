@@ -12,12 +12,14 @@ import { register, type RegisterActionState } from '../actions';
 import { toast } from '@/components/toast';
 import { useSession } from 'next-auth/react';
 import { QRCodeGenerator } from '@/components/QRCodeGenerator';
+import { useTranslations } from '@/lib/i18n';
 
 // Telegram Binding Step Component
 const TelegramBindingStep = ({ user, onComplete }: {
   user: { id: string; email?: string | null };
   onComplete: () => void;
 }) => {
+  const { t } = useTranslations();
   const [bindingCode, setBindingCode] = useState<string>('');
   const [expiresAt, setExpiresAt] = useState<Date | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(0);
@@ -28,7 +30,11 @@ const TelegramBindingStep = ({ user, onComplete }: {
 
   // Generate binding code on mount
   useEffect(() => {
-    generateBindingCode();
+    console.log('useEffect triggered - bindingCode:', bindingCode, 'isLoading:', isLoading);
+    if (!bindingCode) {
+      console.log('Calling generateBindingCode...');
+      generateBindingCode();
+    }
   }, []);
 
   // Countdown timer
@@ -44,7 +50,7 @@ const TelegramBindingStep = ({ user, onComplete }: {
       
       if (remaining <= 0) {
         clearInterval(timer);
-        toast({ type: 'error', description: 'Binding code expired. Please generate a new one.' });
+        toast({ type: 'error', description: t('auth.telegram.codeExpired') });
       }
     }, 1000);
 
@@ -68,6 +74,7 @@ const TelegramBindingStep = ({ user, onComplete }: {
     setBindingStatus('pending');
 
     try {
+      console.log('Generating binding code for user:', user);
       const response = await fetch('/api/telegram/generate-binding-code', {
         method: 'POST',
         headers: {
@@ -75,18 +82,21 @@ const TelegramBindingStep = ({ user, onComplete }: {
         },
       });
 
+      console.log('Response status:', response.status);
       const result = await response.json();
+      console.log('Response result:', result);
 
       if (result.success) {
         setBindingCode(result.bindingCode);
         setExpiresAt(new Date(result.expiresAt));
-        toast({ type: 'success', description: 'Binding code generated successfully!' });
+        console.log('Binding code generated successfully:', result.bindingCode);
       } else {
-        toast({ type: 'error', description: result.error || 'Failed to generate binding code' });
+        console.error('Failed to generate binding code:', result.error);
+        toast({ type: 'error', description: result.error || t('auth.telegram.failedToGenerateCode') });
       }
     } catch (error) {
       console.error('Error generating binding code:', error);
-      toast({ type: 'error', description: 'Failed to generate binding code. Please try again.' });
+      toast({ type: 'error', description: t('auth.telegram.failedToGenerateCode') });
     } finally {
       setIsLoading(false);
       setIsGenerating(false);
@@ -113,7 +123,7 @@ const TelegramBindingStep = ({ user, onComplete }: {
         
         if (result.success && result.isCompleted) {
           setBindingStatus('completed');
-          toast({ type: 'success', description: 'Telegram account successfully linked!' });
+          toast({ type: 'success', description: t('auth.telegram.telegramAccountLinked') });
           
           // Wait a moment then complete the process
           setTimeout(() => {
@@ -131,10 +141,10 @@ const TelegramBindingStep = ({ user, onComplete }: {
   const copyToClipboard = async () => {
     try {
       await navigator.clipboard.writeText(bindingCode);
-      toast({ type: 'success', description: 'Code copied to clipboard!' });
+      toast({ type: 'success', description: t('auth.telegram.codeCopiedToClipboard') });
     } catch (error) {
       console.error('Failed to copy:', error);
-      toast({ type: 'error', description: 'Failed to copy code. Please copy manually.' });
+      toast({ type: 'error', description: t('auth.telegram.failedToCopyCode') });
     }
   };
 
@@ -164,8 +174,13 @@ const TelegramBindingStep = ({ user, onComplete }: {
             )}
           </div>
           <h3 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
-            {bindingStatus === 'completed' ? 'Telegram Connected!' : 'Connect Telegram'}
+            {bindingStatus === 'completed' ? t('auth.telegram.telegramConnected') : t('auth.telegram.oneMoreStep')}
           </h3>
+          {bindingStatus !== 'completed' && (
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              {t('auth.telegram.connectDescription')}
+            </p>
+          )}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
@@ -179,50 +194,48 @@ const TelegramBindingStep = ({ user, onComplete }: {
                   </svg>
                 </div>
                 <p className="text-lg font-semibold text-green-600 dark:text-green-400 mb-2">
-                  Successfully Connected!
+                  {t('auth.telegram.successfullyConnected')}
                 </p>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Redirecting you to the app...
+                  {t('auth.telegram.redirectingToApp')}
                 </p>
               </div>
             ) : isLoading ? (
               <div className="text-center py-8">
                 <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-                <p className="text-gray-600 dark:text-gray-400">Generating binding code...</p>
+                <p className="text-gray-600 dark:text-gray-400">{t('auth.telegram.generatingBindingCode')}</p>
               </div>
             ) : (
               <div className="space-y-6">
                 {/* How to connect instructions */}
                 <div className="bg-blue-50 dark:bg-blue-900/20 rounded-xl p-4">
                   <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-3 text-center">
-                    How to connect:
+                    {t('auth.telegram.howToConnect')}
                   </h4>
-                  <ol className="text-sm text-blue-800 dark:text-blue-200 space-y-2">
-                    <li className="flex items-start gap-3">
-                      <span className="flex-shrink-0 w-5 h-5 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-semibold">1</span>
-                      <span className="hidden lg:inline">Open Telegram and find our bot or scan the QR code</span>
-                      <span className="lg:hidden">Tap the button below to open Telegram</span>
-                    </li>
-                    <li className="flex items-start gap-3">
-                      <span className="flex-shrink-0 w-5 h-5 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-semibold">2</span>
-                      <span>Send the command: <code className="bg-blue-100 dark:bg-blue-800 px-1 py-0.5 rounded text-xs">/bind {bindingCode}</code></span>
-                    </li>
-                    <li className="flex items-start gap-3">
-                      <span className="flex-shrink-0 w-5 h-5 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-semibold">3</span>
-                      <span>Your account will be linked automatically</span>
-                    </li>
-                    <li className="flex items-start gap-3">
-                      <span className="flex-shrink-0 w-5 h-5 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-semibold">4</span>
-                      <span>You'll be redirected once connected</span>
-                    </li>
-                  </ol>
+                                          <ol className="text-sm text-blue-800 dark:text-blue-200 space-y-2">
+                          <li className="flex items-start gap-3">
+                            <span className="flex-shrink-0 w-5 h-5 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-semibold">1</span>
+                            <span className="hidden lg:inline">{t('auth.telegram.step1Desktop')} <a href={`https://t.me/tauhid_app_bot?start=register_${bindingCode}`} target="_blank" className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors duration-200 hover:underline">@tauhid_app_bot</a> {t('auth.telegram.orScanQr')}</span>
+                            <span className="lg:hidden">{t('auth.telegram.step1Mobile')}</span>
+                          </li>
+                          <li className="flex items-start gap-3">
+                            <span className="flex-shrink-0 w-5 h-5 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-semibold">2</span>
+                            <span>{t('auth.telegram.step2')} <code className="bg-blue-100 dark:bg-blue-800 px-1 py-0.5 rounded text-xs"> {bindingCode}</code></span>
+                          </li>
+                          <li className="flex items-start gap-3">
+                            <span className="flex-shrink-0 w-5 h-5 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-semibold">3</span>
+                            <span>{t('auth.telegram.step3')}</span>
+                          </li>
+                          <li className="flex items-start gap-3 lg:flex">
+                            <span className="flex-shrink-0 w-5 h-5 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-semibold hidden lg:flex">4</span>
+                            <span className="hidden lg:inline">{t('auth.telegram.step4')}</span>
+                          </li>
+                        </ol>
                 </div>
 
-                {/* Binding Code */}
-                <div className="text-center">
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-                    Your binding code:
-                  </p>
+                {/* Binding Code - Hidden on mobile */}
+                <div className="text-center hidden lg:block">
+                 
                   <div 
                     className="bg-gray-50 dark:bg-zinc-800 rounded-xl p-4 border-2 border-dashed border-gray-300 dark:border-zinc-600 relative cursor-pointer hover:bg-gray-100 dark:hover:bg-zinc-700 transition-colors"
                     onClick={copyToClipboard}
@@ -239,21 +252,21 @@ const TelegramBindingStep = ({ user, onComplete }: {
                 </div>
 
                 {/* Timer */}
-                {timeLeft > 0 && (
-                  <div className="text-center">
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      Code expires in: <span className="font-mono font-semibold text-red-500">{formatTime(timeLeft)}</span>
-                      {' • '}
-                      <button
-                        onClick={generateBindingCode}
-                        disabled={isGenerating}
-                        className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 underline text-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {isGenerating ? 'Generating...' : 'Generate New Code'}
-                      </button>
-                    </p>
-                  </div>
-                )}
+                                      {timeLeft > 0 && (
+                        <div className="text-center">
+                          <p className="text-xs text-gray-600 dark:text-gray-400">
+                            {t('auth.telegram.codeExpiresIn')} <span className="font-mono font-semibold text-red-500">{formatTime(timeLeft)}</span>
+                            {' • '}
+                            <button
+                              onClick={generateBindingCode}
+                              disabled={isGenerating}
+                              className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 underline text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {isGenerating ? t('auth.telegram.generating') : t('auth.telegram.generateNewCode')}
+                            </button>
+                          </p>
+                        </div>
+                      )}
 
                 {/* Mobile Telegram Button (mobile/tablet only, max-width: 1023px) */}
                 <div className="lg:hidden">
@@ -264,7 +277,7 @@ const TelegramBindingStep = ({ user, onComplete }: {
                     <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M12 0C5.374 0 0 5.373 0 12s5.374 12 12 12 12-5.373 12-12S18.626 0 12 0zm5.568 8.16c-.169 1.858-.896 6.728-.896 6.728-.896 6.728-1.268 7.928-1.268 7.928-.16.906-.923 1.101-1.517.683 0 0-2.271-1.702-3.414-2.559-.24-.18-.513-.54-.24-.96l2.34-2.277c.26-.252.52-.756 0-.756-.52 0-3.414 2.277-3.414 2.277-.817.533-1.75.684-1.75.684l-3.293-.906s-.414-.252-.274-.756c.14-.504.793-.756.793-.756s7.776-2.834 10.428-3.788-.793-.286 1.793-.133 1.793 1.125z"/>
                     </svg>
-                    Open Telegram Bot
+                    {t('auth.telegram.openTelegramBot')}
                   </button>
                 </div>
               </div>
@@ -277,7 +290,7 @@ const TelegramBindingStep = ({ user, onComplete }: {
               {/* Real QR Code */}
               <div className="bg-white dark:bg-zinc-800 rounded-xl p-6 text-center">
                 <h4 className="font-semibold text-gray-900 dark:text-white mb-4">
-                  Scan QR Code
+                  {t('auth.telegram.scanQrCode')}
                 </h4>
                 <div className="flex justify-center mb-4">
                   <QRCodeGenerator 
@@ -287,7 +300,7 @@ const TelegramBindingStep = ({ user, onComplete }: {
                   />
                 </div>
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Scan with your phone to open Telegram bot
+                  {t('auth.telegram.scanWithPhone')}
                 </p>
               </div>
             </div>
@@ -302,6 +315,7 @@ const TelegramBindingStep = ({ user, onComplete }: {
 
 export default function Page() {
   const router = useRouter();
+  const { t } = useTranslations();
 
   const [email, setEmail] = useState('');
   const [isSuccessful, setIsSuccessful] = useState(false);
@@ -322,21 +336,21 @@ export default function Page() {
   // Handle registration success
   useEffect(() => {
     if (state.status === 'user_exists') {
-      toast({ type: 'error', description: 'Account already exists!' });
+      toast({ type: 'error', description: t('auth.signUpError') });
     } else if (state.status === 'failed') {
-      toast({ type: 'error', description: 'Failed to create account!' });
+      toast({ type: 'error', description: t('auth.signUpError') });
     } else if (state.status === 'invalid_data') {
       toast({
         type: 'error',
-        description: 'Failed validating your submission!',
+        description: t('auth.signUpError'),
       });
     } else if (state.status === 'success' && !hasProcessedSuccess) {
       setHasProcessedSuccess(true);
-      toast({ type: 'success', description: 'Account created successfully!' });
+      toast({ type: 'success', description: t('auth.accountCreated') });
       setIsSuccessful(true);
       setShouldUpdateSession(true);
     }
-  }, [state.status, hasProcessedSuccess]);
+  }, [state.status, hasProcessedSuccess, t]);
 
   // Handle session update separately
   useEffect(() => {
@@ -391,34 +405,34 @@ export default function Page() {
       ) : (
         <>
           {/* Left side - Form */}
-          <div className="flex-1 flex items-start justify-center px-8 py-0 relative min-h-0">
+          <div className="flex-1 flex items-center justify-center p-8 relative">
             {/* Glass container */}
             <div className="w-full max-w-md relative">
               <div className="absolute inset-0 bg-white/20 dark:bg-white/10 backdrop-blur-xl rounded-3xl border border-white/30 dark:border-white/20 shadow-2xl shadow-black/10 dark:shadow-black/30"></div>
               <div className="relative z-10 p-8 sm:p-10">
                 <div className="flex flex-col gap-8">
-                  <div className="flex flex-col items-center justify-center gap-3 text-center">
-                    <h3 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
-                      Create Account
-                    </h3>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
-                      Create an account with your email and password
-                    </p>
-                  </div>
+                                  <div className="flex flex-col items-center justify-center gap-3 text-center">
+                  <h3 className="text-2xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
+                    {t('auth.register.title')}
+                  </h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+                    {t('auth.register.description')}
+                  </p>
+                </div>
 
                   {/* Email/Password Form */}
                   <AuthForm action={handleSubmit} defaultEmail={email}>
-                    <SubmitButton isSuccessful={isSuccessful}>Sign Up</SubmitButton>
-                    <p className="text-center text-sm text-gray-600 mt-6 dark:text-gray-400">
-                      {'Already have an account? '}
-                      <Link
-                        href="/login"
-                        className="font-semibold text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 transition-colors duration-200 hover:underline"
-                      >
-                        Sign in
-                      </Link>
-                      {' instead.'}
-                    </p>
+                                    <SubmitButton isSuccessful={isSuccessful}>{t('auth.signUp')}</SubmitButton>
+                <p className="text-center text-sm text-gray-600 mt-6 dark:text-gray-400">
+                  {t('auth.register.alreadyHaveAccount')}{' '}
+                  <Link
+                    href="/login"
+                    className="font-semibold text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 transition-colors duration-200 hover:underline"
+                  >
+                    {t('auth.register.signInInstead')}
+                  </Link>
+                  {' '}{t('auth.register.instead')}
+                </p>
                   </AuthForm>
                 </div>
               </div>

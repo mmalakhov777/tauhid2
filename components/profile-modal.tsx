@@ -8,6 +8,7 @@ import { useTelegram } from '@/hooks/useTelegram';
 import { guestRegex } from '@/lib/constants';
 import { entitlementsByUserType, PAYMENT_CONFIG } from '@/lib/ai/entitlements';
 import { useTranslations } from '@/lib/i18n';
+import { QRCodeGenerator } from '@/components/QRCodeGenerator';
 import {
   User,
   Mail,
@@ -118,7 +119,7 @@ const CustomSeparator = ({ className = '' }: { className?: string }) => {
 
 export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
   const { data: session } = useSession();
-  const { user: telegramUser } = useTelegram();
+  const { user: telegramUser, webApp, isTelegramAvailable } = useTelegram();
   const [userStats, setUserStats] = useState<UserStats | null>(null);
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -181,6 +182,29 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
     : userStats 
     ? Math.min((userStats.messagesLast24h / entitlements.maxMessagesPerDay) * 100, 100)
     : 0;
+
+  // Handle buy button click - either use Telegram switchInlineQuery or open external bot
+  const handleBuyClick = () => {
+    if (webApp && isTelegramAvailable && typeof webApp.switchInlineQuery === 'function') {
+      console.log('[ProfileModal] Using Telegram switchInlineQuery for /buy command');
+      try {
+        // Use switchInlineQuery to send /buy command in the current chat
+        webApp.switchInlineQuery('/buy', ['users']);
+        // Close the mini app after sending the command
+        if (typeof webApp.close === 'function') {
+          webApp.close();
+        }
+      } catch (error) {
+        console.error('[ProfileModal] Error using switchInlineQuery:', error);
+        // Fallback to external bot link
+        window.open('https://t.me/tauhid_app_bot?start=buy', '_blank');
+      }
+    } else {
+      console.log('[ProfileModal] Opening external Telegram bot link');
+      // Not in Telegram mini app or switchInlineQuery not available, open external bot
+      window.open('https://t.me/tauhid_app_bot?start=buy', '_blank');
+    }
+  };
 
   if (!open || !mounted) return null;
 
@@ -460,6 +484,74 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
                 </CustomCard>
               )}
 
+              {/* Purchase Messages Section */}
+              {userStats?.trialBalance?.useTrialBalance && (
+                <CustomCard className="border-blue-300 bg-blue-50 dark:border-blue-700 dark:bg-blue-900/30">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 text-blue-800 dark:text-blue-200">
+                      <Star className="h-4 w-4 sm:h-5 sm:w-5" />
+                      <span className="font-medium">Purchase More Messages</span>
+                    </div>
+                    
+                    <p className="text-sm text-blue-700 dark:text-blue-300">
+                      Need more messages? {isTelegramUser ? 'Use the /buy command in Telegram to purchase with Telegram Stars.' : 'Purchase additional messages that never expire.'}
+                    </p>
+                    
+                    {isTelegramUser ? (
+                      <div className="bg-blue-100 dark:bg-blue-800/50 p-3 rounded-lg">
+                        <div className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
+                          💬 Telegram Purchase
+                        </div>
+                        <div className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
+                          <div>• Open your Telegram chat with the bot</div>
+                          <div>• Send the command: <code className="bg-blue-200 dark:bg-blue-700 px-1 rounded">/buy</code></div>
+                          <div>• Choose a package and pay with Telegram Stars</div>
+                          <div>• Messages are added instantly!</div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-blue-100 dark:bg-blue-800/50 p-4 rounded-lg">
+                        <div className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-4">
+                          🌟 Purchase Messages
+                        </div>
+                        
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
+                          {/* Button for mobile/tablet and desktop */}
+                          <div className="space-y-3">
+                            <div className="text-xs text-blue-700 dark:text-blue-300">
+                              🔒 We use Telegram's secure payment system with Telegram Stars for fast, reliable, and protected transactions.
+                            </div>
+                            <button
+                              onClick={handleBuyClick}
+                              className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center justify-center gap-2 font-medium text-sm"
+                            >
+                              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 0C5.374 0 0 5.373 0 12s5.374 12 12 12 12-5.373 12-12S18.626 0 12 0zm5.568 8.16c-.169 1.858-.896 6.728-.896 6.728-.896 6.728-1.268 7.928-1.268 7.928-.16.906-.923 1.101-1.517.683 0 0-2.271-1.702-3.414-2.559-.24-.18-.513-.54-.24-.96l2.34-2.277c.26-.252.52-.756 0-.756-.52 0-3.414 2.277-3.414 2.277-.817.533-1.75.684-1.75.684l-3.293-.906s-.414-.252-.274-.756c.14-.504.793-.756.793-.756s7.776-2.834 10.428-3.788-.793-.286 1.793-.133 1.793 1.125z"/>
+                              </svg>
+                              {isTelegramAvailable ? 'Send /buy Command' : 'Open Telegram Bot'}
+                            </button>
+                          </div>
+
+                          {/* QR Code for desktop */}
+                          <div className="hidden lg:flex flex-col items-center justify-center space-y-3 w-full">
+                            <div className="bg-white dark:bg-zinc-800 rounded-lg p-4 w-full flex justify-center">
+                              <QRCodeGenerator 
+                                url="https://t.me/tauhid_app_bot?start=buy"
+                                size={160}
+                                className="mx-auto"
+                              />
+                            </div>
+                            <p className="text-xs text-blue-600 dark:text-blue-400 text-center">
+                              Scan with phone
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CustomCard>
+              )}
+
               {/* Usage Statistics */}
               <CustomCard>
                 <div className="space-y-4">
@@ -535,55 +627,6 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
                   )}
                 </div>
               </CustomCard>
-
-              {/* Purchase Messages Section */}
-              {userStats?.trialBalance?.useTrialBalance && (
-                <CustomCard className="border-blue-300 bg-blue-50 dark:border-blue-700 dark:bg-blue-900/30">
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-2 text-blue-800 dark:text-blue-200">
-                      <Star className="h-4 w-4 sm:h-5 sm:w-5" />
-                      <span className="font-medium">Purchase More Messages</span>
-                    </div>
-                    
-                    <p className="text-sm text-blue-700 dark:text-blue-300">
-                      Need more messages? {isTelegramUser ? 'Use the /buy command in Telegram to purchase with Telegram Stars.' : 'Purchase additional messages that never expire.'}
-                    </p>
-                    
-                    {isTelegramUser ? (
-                      <div className="bg-blue-100 dark:bg-blue-800/50 p-3 rounded-lg">
-                        <div className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
-                          💬 Telegram Purchase
-                        </div>
-                        <div className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
-                          <div>• Open your Telegram chat with the bot</div>
-                          <div>• Send the command: <code className="bg-blue-200 dark:bg-blue-700 px-1 rounded">/buy</code></div>
-                          <div>• Choose a package and pay with Telegram Stars</div>
-                          <div>• Messages are added instantly!</div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="bg-blue-100 dark:bg-blue-800/50 p-3 rounded-lg">
-                        <div className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
-                          🌟 Available Packages
-                        </div>
-                        <div className="text-xs text-blue-700 dark:text-blue-300 space-y-1">
-                          {PAYMENT_CONFIG.PACKAGES.map((pkg, index) => {
-                            const totalMessages = pkg.messages + pkg.bonus;
-                            const bonusText = pkg.bonus > 0 ? ` (+${pkg.bonus} bonus)` : '';
-                            const popularText = pkg.popular ? ' (Popular)' : '';
-                            return (
-                              <div key={index}>• {totalMessages} Messages - {pkg.stars} ⭐ Telegram Stars{bonusText}{popularText}</div>
-                            );
-                          })}
-                        </div>
-                        <div className="mt-2 text-xs text-blue-600 dark:text-blue-400">
-                          💡 Connect your Telegram account to purchase with Telegram Stars
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </CustomCard>
-              )}
 
               {/* Guest User Info */}
               {isGuest && (
