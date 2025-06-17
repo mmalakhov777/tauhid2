@@ -60,7 +60,7 @@ const CustomBadge = ({
   const variantClasses = {
     default: 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200',
     secondary: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300',
-    outline: 'border border-gray-300 text-gray-700 dark:border-gray-600 dark:text-gray-300'
+    outline: 'text-gray-700 dark:text-gray-300'
   };
 
   return (
@@ -498,7 +498,7 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
 
               {/* Purchase Messages Section */}
               {userStats?.trialBalance?.useTrialBalance && (
-                <CustomCard className="border-gray-300 bg-gray-50 dark:border-gray-700 dark:bg-gray-900/30">
+                <CustomCard className="bg-gray-50 dark:bg-gray-900/30">
                   <div className="space-y-4">
                     <div className="flex items-center gap-2 text-gray-800 dark:text-gray-200">
                       <Star className="h-4 w-4 sm:h-5 sm:w-5" />
