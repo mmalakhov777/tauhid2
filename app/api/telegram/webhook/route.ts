@@ -80,6 +80,10 @@ interface TelegramMessage {
     telegram_payment_charge_id: string;
     provider_payment_charge_id: string;
   };
+  web_app_data?: {
+    data: string;
+    button_text: string;
+  };
 }
 
 interface TelegramCallbackQuery {
@@ -1002,7 +1006,17 @@ ${t.payment.checkBalance}`;
     let userText: string | null = null;
     let isAudioMessage = false;
 
-    if (message.text) {
+    // Handle web app data (sent from mini apps using sendData)
+    if (message.web_app_data) {
+      console.log(`Processing web app data from ${userName} (${chatId}):`, {
+        data: message.web_app_data.data,
+        button_text: message.web_app_data.button_text
+      });
+      
+      // Treat web app data as text input
+      userText = message.web_app_data.data.trim();
+      console.log(`Web app data processed as text: "${userText}"`);
+    } else if (message.text) {
       // Text message
       userText = message.text.trim();
       console.log(`Processing text message from ${userName} (${chatId}): "${userText}"`);

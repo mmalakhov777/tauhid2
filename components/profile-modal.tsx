@@ -183,25 +183,21 @@ export function ProfileModal({ open, onOpenChange }: ProfileModalProps) {
     ? Math.min((userStats.messagesLast24h / entitlements.maxMessagesPerDay) * 100, 100)
     : 0;
 
-  // Handle buy button click - either use Telegram switchInlineQuery or open external bot
+  // Handle buy button click - either send data to bot or open external bot link
   const handleBuyClick = () => {
-    if (webApp && isTelegramAvailable && typeof webApp.switchInlineQuery === 'function') {
-      console.log('[ProfileModal] Using Telegram switchInlineQuery for /buy command');
+    if (webApp && isTelegramAvailable && typeof webApp.sendData === 'function') {
+      console.log('[ProfileModal] Using Telegram sendData for /buy command');
       try {
-        // Use switchInlineQuery to send /buy command in the current chat
-        webApp.switchInlineQuery('/buy', ['users']);
-        // Close the mini app after sending the command
-        if (typeof webApp.close === 'function') {
-          webApp.close();
-        }
+        // Send /buy command directly to the bot and mini app will close automatically
+        webApp.sendData('/buy');
       } catch (error) {
-        console.error('[ProfileModal] Error using switchInlineQuery:', error);
+        console.error('[ProfileModal] Error sending data to bot:', error);
         // Fallback to external bot link
         window.open('https://t.me/tauhid_app_bot?start=buy', '_blank');
       }
     } else {
       console.log('[ProfileModal] Opening external Telegram bot link');
-      // Not in Telegram mini app or switchInlineQuery not available, open external bot
+      // Not in Telegram mini app or sendData not available, open external bot
       window.open('https://t.me/tauhid_app_bot?start=buy', '_blank');
     }
   };
