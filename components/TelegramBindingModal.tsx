@@ -165,7 +165,7 @@ export const TelegramBindingModal = ({ user, onClose, onSuccess }: TelegramBindi
     <>
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm z-[99999] transition-all duration-300"
+        className="fixed inset-0 bg-black/50 z-[99999] transition-all duration-300"
         onClick={onClose}
       />
       
@@ -176,7 +176,7 @@ export const TelegramBindingModal = ({ user, onClose, onSuccess }: TelegramBindi
           onClick={(e) => e.stopPropagation()}
         >
           <div className="relative">
-            <div className="absolute inset-0 bg-white/20 dark:bg-white/10 backdrop-blur-xl rounded-3xl border border-white/30 dark:border-white/20 shadow-2xl shadow-black/10 dark:shadow-black/30"></div>
+            <div className="absolute inset-0 bg-white dark:bg-gray-900 rounded-3xl border border-gray-200 dark:border-gray-700 shadow-xl"></div>
             <div className="relative z-10 p-8 sm:p-10">
               {/* Close button */}
               <button
