@@ -1829,6 +1829,66 @@ ${t.welcome.feelFree}`;
             });
           }
         }
+        
+        // Handle buy parameter (/start buy)
+        if (startParam === 'buy') {
+          console.log(`[Telegram Bot] Processing /start buy parameter for user ${telegramUserId}`);
+          
+          // Check if user exists in database
+          if (!dbUser || !dbUser.id) {
+            await sendMessage(chatId, t.purchase.userNotFound, 'Markdown');
+            return NextResponse.json({ ok: true, message_sent: true, purchase_error: true });
+          }
+
+          try {
+            const { PAYMENT_CONFIG } = await import('@/lib/ai/entitlements');
+            
+            console.log('[Telegram Bot] Processing /start buy command:', {
+              telegramUserId,
+              chatId,
+              packagesAvailable: PAYMENT_CONFIG.PACKAGES.length
+            });
+            
+            // Create the purchase message with dynamic numbers but fixed text
+            const packageList = PAYMENT_CONFIG.PACKAGES.map((pkg, index) => {
+              const totalMessages = pkg.messages + pkg.bonus;
+              const bonusText = pkg.bonus > 0 ? ` (${pkg.messages} + ${pkg.bonus} bonus)` : '';
+              const popularText = pkg.popular ? ' (Popular)' : '';
+              
+              return `${pkg.emoji} **${totalMessages} Messages**${bonusText} - ${pkg.stars} ⭐${popularText}`;
+            }).join('\n');
+
+            const purchaseMessage = `${t.purchase.title}
+
+${t.purchase.availablePackages}
+
+${packageList}
+
+${t.purchase.starsInfo}
+${t.purchase.tapButton}
+${t.purchase.neverExpire}`;
+
+            // Create keyboard buttons with dynamic numbers
+            const keyboardButtons = PAYMENT_CONFIG.PACKAGES.map((pkg, index) => {
+              const totalMessages = pkg.messages + pkg.bonus;
+              return [`${pkg.emoji} ${totalMessages} Messages - ${pkg.stars} ⭐`];
+            });
+
+            await sendMessageWithReplyKeyboard(chatId, purchaseMessage, keyboardButtons, 'Markdown');
+
+            console.log('[Telegram Bot] Purchase menu with keyboard sent successfully from /start buy:', {
+              telegramUserId,
+              chatId,
+              packagesShown: PAYMENT_CONFIG.PACKAGES.length
+            });
+
+            return NextResponse.json({ ok: true, message_sent: true, purchase_menu: true, from_start_buy: true });
+          } catch (error) {
+            console.error('[Telegram Bot] /start buy command error:', error);
+            await sendMessage(chatId, formatText(t.purchase.menuError, { error: error instanceof Error ? error.message : 'Unknown error' }), 'Markdown');
+            return NextResponse.json({ ok: true, message_sent: true, purchase_error: true });
+          }
+        }
       }
       
       // Default welcome message (no start parameter or invalid binding code)
