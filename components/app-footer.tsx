@@ -7,6 +7,7 @@ export function AppFooter() {
   const { t } = useTranslations();
   
   const footerLinks = [
+    { label: t('navigation.sources'), href: '/sources' },
     { label: t('navigation.terms'), href: '/terms' },
     { label: t('navigation.privacy'), href: '/privacy' },
     { label: t('navigation.about'), href: '/about' },

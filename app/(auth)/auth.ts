@@ -13,6 +13,14 @@ declare module 'next-auth' {
     user: {
       id: string;
       type: UserType;
+      telegramId?: number | null;
+      telegramUsername?: string | null;
+      telegramFirstName?: string | null;
+      telegramLastName?: string | null;
+      telegramPhotoUrl?: string | null;
+      telegramLanguageCode?: string | null;
+      telegramIsPremium?: boolean | null;
+      telegramAllowsWriteToPm?: boolean | null;
     } & DefaultSession['user'];
   }
 
@@ -35,6 +43,14 @@ declare module 'next-auth/jwt' {
   interface JWT extends DefaultJWT {
     id: string;
     type: UserType;
+    telegramId?: number | null;
+    telegramUsername?: string | null;
+    telegramFirstName?: string | null;
+    telegramLastName?: string | null;
+    telegramPhotoUrl?: string | null;
+    telegramLanguageCode?: string | null;
+    telegramIsPremium?: boolean | null;
+    telegramAllowsWriteToPm?: boolean | null;
   }
 }
 

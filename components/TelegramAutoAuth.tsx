@@ -19,6 +19,7 @@ export const TelegramAutoAuth = () => {
   const { theme } = useTheme();
   const { isAuthLoading, setIsAuthLoading } = useAuthLoading();
   const [isLoaderVisible, setIsLoaderVisible] = useState(false);
+  const [showDebug, setShowDebug] = useState(false);
 
   // Sync loader visibility with loading states
   useEffect(() => {
@@ -87,6 +88,17 @@ export const TelegramAutoAuth = () => {
 
   useEffect(() => {
     const autoAuthenticate = async () => {
+      // Show debug info via Telegram WebApp alerts
+      if (webApp && isTelegramAvailable) {
+        webApp.showAlert(`Debug Info:
+- hasAttempted: ${hasAttemptedAuth.current}
+- isLoading: ${isLoading}
+- isTelegramAvailable: ${isTelegramAvailable}
+- telegramUser: ${telegramUser ? 'YES' : 'NO'}
+- session: ${session?.user ? 'YES' : 'NO'}
+- telegramUserId: ${telegramUser?.id || 'N/A'}`);
+      }
+      
       // Only run once, if we have Telegram data, and user is not already authenticated
       if (
         !hasAttemptedAuth.current && 
@@ -124,8 +136,11 @@ export const TelegramAutoAuth = () => {
           });
 
           if (result.status === 'success') {
+            if (webApp) {
+              webApp.showAlert('✅ Auth successful! Updating session...');
+            }
             // Remove toast: toast({ type: 'success', description: `Welcome back, ${telegramUser.first_name}!` });
-            updateSession();
+            await updateSession();
             
             // Don't clear loading state here - let the chat component do it
             setIsAuthenticating(false);
@@ -150,7 +165,9 @@ export const TelegramAutoAuth = () => {
             }
           } else if (result.status === 'needs_email') {
             // New user - create them with dummy email immediately, no form shown
-            console.log('New user detected, creating with dummy email...');
+            if (webApp) {
+              webApp.showAlert('🆕 New user detected, creating account...');
+            }
             
             const skipResult = await telegramAuth({
               telegramId: telegramUser.id,
@@ -165,8 +182,11 @@ export const TelegramAutoAuth = () => {
             });
 
             if (skipResult.status === 'success') {
+              if (webApp) {
+                webApp.showAlert('✅ New user created successfully!');
+              }
               // Remove toast: toast({ type: 'success', description: `Welcome, ${telegramUser.first_name}! You can start chatting right away.` });
-              updateSession();
+              await updateSession();
               
               // Don't clear loading state here - let the chat component do it
               setIsAuthenticating(false);
@@ -192,6 +212,9 @@ export const TelegramAutoAuth = () => {
             }
           }
         } catch (error) {
+          if (webApp) {
+            webApp.showAlert(`❌ Auth Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          }
           console.error('Auto-authentication error:', error);
           // Silent fail - user can still use manual auth buttons
           setIsAuthLoading(false); // Clear loading on error
@@ -203,6 +226,44 @@ export const TelegramAutoAuth = () => {
 
     autoAuthenticate();
   }, [isLoading, isTelegramAvailable, telegramUser, session, updateSession, router, webApp, setIsAuthLoading]);
+
+  // Add debug function to window for Telegram debugging
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      (window as any).telegramDebug = () => {
+        const debugInfo = {
+          hasAttemptedAuth: hasAttemptedAuth.current,
+          isLoading,
+          isTelegramAvailable,
+          telegramUser: telegramUser ? {
+            id: telegramUser.id,
+            first_name: telegramUser.first_name,
+            username: telegramUser.username
+          } : null,
+          session: session?.user ? {
+            id: session.user.id,
+            email: session.user.email,
+            type: session.user.type,
+            telegramId: session.user.telegramId
+          } : null,
+          webApp: webApp ? 'Available' : 'Not Available'
+        };
+        
+        if (webApp) {
+          webApp.showAlert(`Debug Info:\n${JSON.stringify(debugInfo, null, 2)}`);
+        }
+        
+        return debugInfo;
+      };
+      
+      (window as any).toggleTelegramDebug = () => {
+        setShowDebug(prev => !prev);
+        if (webApp) {
+          webApp.showAlert(`Debug overlay ${showDebug ? 'hidden' : 'shown'}`);
+        }
+      };
+    }
+  }, [hasAttemptedAuth.current, isLoading, isTelegramAvailable, telegramUser, session, webApp, showDebug]);
 
   // Show loading indicator while authenticating or auth is loading globally
   if (isLoaderVisible) {
@@ -244,6 +305,34 @@ export const TelegramAutoAuth = () => {
             <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
             <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Debug overlay
+  if (showDebug) {
+    return (
+      <div className="fixed top-4 right-4 z-50 bg-black/90 text-white p-4 rounded-lg text-xs max-w-xs">
+        <div className="flex justify-between items-center mb-2">
+          <h3 className="font-bold">Telegram Debug</h3>
+          <button 
+            onClick={() => setShowDebug(false)}
+            className="text-white/70 hover:text-white"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="space-y-1">
+          <div>Auth Attempted: {hasAttemptedAuth.current ? '✅' : '❌'}</div>
+          <div>Loading: {isLoading ? '⏳' : '✅'}</div>
+          <div>Telegram Available: {isTelegramAvailable ? '✅' : '❌'}</div>
+          <div>Telegram User: {telegramUser ? `✅ ${telegramUser.first_name}` : '❌'}</div>
+          <div>Session: {session?.user ? `✅ ${session.user.email}` : '❌'}</div>
+          <div>User Type: {session?.user?.type || 'N/A'}</div>
+          <div>Telegram ID: {session?.user?.telegramId || 'N/A'}</div>
+          <div>Auth Loading: {isAuthLoading ? '⏳' : '✅'}</div>
+          <div>Authenticating: {isAuthenticating ? '⏳' : '✅'}</div>
         </div>
       </div>
     );

@@ -4,7 +4,7 @@ import { Langfuse, LangfuseTraceClient } from "langfuse";
 
 // Environment variables
 const PINECONE_API_KEY = process.env.PINECONE_API_KEY || '';
-const RAILWAY_EMBEDDING_SERVICE_URL = process.env.RAILWAY_EMBEDDING_SERVICE_URL || 'http://localhost:3001';
+const RAILWAY_EMBEDDING_SERVICE_URL = process.env.RAILWAY_EMBEDDING_SERVICE_URL || 'https://vectorservice-production.up.railway.app';
 
 // Initialize Langfuse
 const langfuse = new Langfuse({
@@ -126,13 +126,30 @@ async function getEmbedding(text: string, parentTrace?: LangfuseTraceClient): Pr
   }
 }
 
+// Enhanced query cleaning and preprocessing
+function cleanAndPreprocessQuery(query: string): string {
+  // Remove text within brackets like [Answer in Russian], [Translate to Arabic], etc.
+  let cleanQuery = query.replace(/\[.*?\]/g, '').trim();
+  
+  // Remove common prefixes that might interfere with search
+  cleanQuery = cleanQuery.replace(/^(please|can you|could you|what is|what are|how to|how do|tell me about|explain|describe)\s+/i, '');
+  
+  // Remove trailing question marks and punctuation for better matching
+  cleanQuery = cleanQuery.replace(/[?!.]+$/, '').trim();
+  
+  // Normalize whitespace
+  cleanQuery = cleanQuery.replace(/\s+/g, ' ').trim();
+  
+  return cleanQuery;
+}
+
 async function improveUserQueries(
   query: string, 
   history: string,
   selectedChatModel: string,
   parentTrace?: LangfuseTraceClient,
   previousAttempts?: string[]
-): Promise<string[]> {
+): Promise<string> {
   const span = parentTrace?.span({
     name: "improve-user-queries",
     input: { 
@@ -145,9 +162,17 @@ async function improveUserQueries(
   });
 
   try {
+    // Enhanced query preprocessing
+    const cleanQuery = cleanAndPreprocessQuery(query);
+    
+    console.log('[vector-search] Query preprocessing:', {
+      original: query,
+      cleaned: cleanQuery
+    });
+    
     // Build the request body with previous attempts if available
     let requestBody: any = { 
-      query, 
+      query: cleanQuery, 
       history, 
       selectedChatModel 
     };
@@ -164,12 +189,26 @@ async function improveUserQueries(
       requestBody.instructions = `This is attempt ${attemptNumber}/3. Previous attempts found no results:\n${previousAttemptsText}\n\nPlease try a completely different approach with different keywords, synonyms, or broader/narrower terms. Be creative and think of alternative ways to express the same concept.`;
     }
     
+    console.log('[vector-search] Making request to embedding service:', {
+      url: `${RAILWAY_EMBEDDING_SERVICE_URL}/improve-queries`,
+      requestBody,
+      timestamp: new Date().toISOString()
+    });
+
     const response = await fetch(`${RAILWAY_EMBEDDING_SERVICE_URL}/improve-queries`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(requestBody),
+    });
+
+    console.log('[vector-search] Embedding service response:', {
+      status: response.status,
+      statusText: response.statusText,
+      ok: response.ok,
+      headers: Object.fromEntries(response.headers.entries()),
+      timestamp: new Date().toISOString()
     });
 
     if (!response.ok) {
@@ -181,38 +220,65 @@ async function improveUserQueries(
     }
 
     const data = await response.json();
+    
+    console.log('[vector-search] Embedding service response data:', {
+      success: data.success,
+      hasImprovedQuery: !!data.improvedQuery,
+      improvedQueryLength: data.improvedQuery?.length || 0,
+      improvedQueryPreview: data.improvedQuery?.substring(0, 100) + '...',
+      originalQuery: data.originalQuery,
+      provider: data.provider,
+      model: data.model,
+      timestamp: new Date().toISOString()
+    });
+    
     if (!data.success || !data.improvedQuery) {
+      console.error('[vector-search] Invalid response from embedding service:', {
+        success: data.success,
+        improvedQuery: data.improvedQuery,
+        fullResponse: data
+      });
       safeTrace(() => span?.update({ 
         output: { error: "Invalid query improvement response", fallback: true }
       }));
       throw new Error('Invalid query improvement response');
     }
 
-    // Convert single improved query to array format for compatibility
-    const improvedQueries = [data.improvedQuery, data.improvedQuery, data.improvedQuery];
+    const enhancedQuery = data.improvedQuery;
+    
+    console.log('[vector-search] Query enhancement complete:', {
+      original: query,
+      cleaned: cleanQuery,
+      enhanced: enhancedQuery
+    });
 
     safeTrace(() => span?.update({ 
       output: { 
-        improvedQuery: data.improvedQuery,
-        improvedQueries: improvedQueries,
-        count: improvedQueries.length,
+        originalQuery: query,
+        cleanedQuery: cleanQuery,
+        enhancedQuery: enhancedQuery,
         attemptNumber: previousAttempts ? previousAttempts.length + 1 : 1,
         success: true 
       }
     }));
 
-    return improvedQueries;
+    return enhancedQuery;
   } catch (error) {
-    const fallbackQueries = [query, query, query];
-    safeTrace(() => span?.update({ 
-      output: { 
-        error: error instanceof Error ? error.message : String(error),
-        fallbackQueries,
-        fallback: true 
-      }
-    }));
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const fallbackQuery = cleanAndPreprocessQuery(query);
     
-    return fallbackQueries; // fallback to 3x original
+    safeTrace(() => span?.update({ 
+      output: { error: errorMessage, fallback: true }
+    }));
+    console.error('[vector-search] Query improvement FAILED:', {
+      originalQuery: query,
+      cleanedQuery: fallbackQuery,
+      error: errorMessage,
+      stack: error instanceof Error ? error.stack : undefined
+    });
+    // Fallback to cleaned query instead of original
+    console.log('[vector-search] Using fallback query:', fallbackQuery);
+    return fallbackQuery;
   }
 }
 
@@ -674,10 +740,10 @@ async function performAllVectorSearchesWithRetry(
         attempt > 1 ? previousAttempts : undefined
       );
       
-      finalImprovedQueries = improvedQueries;
+      finalImprovedQueries = [improvedQueries];
       
       // Perform the vector searches
-      const searchResults = await performAllVectorSearches(improvedQueries, selectedSources, parentTrace);
+      const searchResults = await performAllVectorSearches(finalImprovedQueries, selectedSources, parentTrace);
       
       // Check if we have sufficient results
       const hasSufficient = hasSufficientResults(
@@ -716,7 +782,7 @@ async function performAllVectorSearchesWithRetry(
       } else {
         // Not sufficient results, prepare for next attempt
         // Store this attempt's queries for the next iteration
-        previousAttempts.push(improvedQueries.join(', '));
+        previousAttempts.push(improvedQueries[0]);
         
         // Add a small delay before retry to avoid overwhelming the service
         if (attempt < maxAttempts) {

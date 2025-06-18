@@ -372,6 +372,69 @@ const PurePreviewMessage = ({
                           
                           {showRawData && (
                             <div className="space-y-4 text-xs font-mono">
+                              {/* NEW: Citation Categorization Data */}
+                              {vectorSearchData.categorization && (
+                                <div>
+                                  <h4 className="font-semibold mb-1 text-green-600">🎯 Citation Categorization Analysis</h4>
+                                  <pre className="bg-background p-2 rounded overflow-auto">
+                                    {JSON.stringify({
+                                      totalCategorized: vectorSearchData.categorization.total,
+                                      categoryDistribution: vectorSearchData.categorization.counts,
+                                      processingTime: `${vectorSearchData.categorization.durationMs}ms`,
+                                                                             categories: {
+                                         direct: "Citations that directly answer the question",
+                                         context: "Citations providing related information and background"
+                                       }
+                                    }, null, 2)}
+                                  </pre>
+                                </div>
+                              )}
+
+                              {/* Enhanced Citations with Categories */}
+                              {vectorSearchData.citations && (
+                                <div>
+                                  <h4 className="font-semibold mb-1">📚 Citations with Relevance Categories ({vectorSearchData.citations.length} total):</h4>
+                                  <div className="bg-background p-2 rounded overflow-auto max-h-96">
+                                    {vectorSearchData.citations.map((citation: any, index: number) => (
+                                      <div key={index} className="mb-3 p-2 border border-border rounded">
+                                        <div className="flex items-center gap-2 mb-1">
+                                          <span className="font-semibold">Citation {index + 1}</span>
+                                          {citation.category && (
+                                                                                         <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                                               citation.category === 'direct' ? 'bg-green-100 text-green-800' :
+                                               citation.category === 'context' ? 'bg-blue-100 text-blue-800' :
+                                               'bg-gray-100 text-gray-800'
+                                             }`}>
+                                              {citation.category?.toUpperCase() || 'UNCATEGORIZED'}
+                                            </span>
+                                          )}
+                                          <span className="text-xs text-muted-foreground">
+                                            Score: {citation.score?.toFixed(3) || 'N/A'}
+                                          </span>
+                                          {citation.relevanceScore && (
+                                            <span className="text-xs text-muted-foreground">
+                                              Relevance: {citation.relevanceScore.toFixed(3)}
+                                            </span>
+                                          )}
+                                        </div>
+                                        {citation.categoryDescription && (
+                                          <div className="text-xs text-muted-foreground mb-2 italic">
+                                            💡 {citation.categoryDescription}
+                                          </div>
+                                        )}
+                                        <div className="text-xs">
+                                          <strong>Text:</strong> {citation.text?.substring(0, 200)}...
+                                        </div>
+                                        <div className="text-xs mt-1">
+                                          <strong>Type:</strong> {determineCitationType(citation)} | 
+                                          <strong> Source:</strong> {citation.metadata?.source_file || citation.namespace || 'Unknown'}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
                               {/* Search Results Count */}
                               {vectorSearchData.citations && (
                                 <div>
@@ -388,12 +451,12 @@ const PurePreviewMessage = ({
                                 </div>
                               )}
 
-                              {/* Raw Citations */}
-                              {vectorSearchData.citations && (
+                              {/* Raw Vector Search Data */}
+                              {vectorSearchData && (
                                 <div>
-                                  <h4 className="font-semibold mb-1">{t('message.rawCitations')} ({vectorSearchData.citations.length} {t('message.total')}):</h4>
+                                  <h4 className="font-semibold mb-1">🔍 Complete Vector Search Data:</h4>
                                   <pre className="bg-background p-2 rounded overflow-auto max-h-96">
-                                    {JSON.stringify(vectorSearchData.citations, null, 2)}
+                                    {JSON.stringify(vectorSearchData, null, 2)}
                                   </pre>
                                 </div>
                               )}

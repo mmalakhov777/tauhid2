@@ -21,6 +21,19 @@ export function SourcePreviewCards({
 }: SourcePreviewCardsProps) {
   const eligibleCitations = filterEligibleCitations(vectorSearchData.citations);
 
+  // Sort citations by category priority: direct first, then context
+  const sortedCitations = eligibleCitations.sort((a, b) => {
+    const categoryA = a.citation.category || 'context';
+    const categoryB = b.citation.category || 'context';
+    
+    // Direct citations come first
+    if (categoryA === 'direct' && categoryB !== 'direct') return -1;
+    if (categoryB === 'direct' && categoryA !== 'direct') return 1;
+    
+    // If both are same category, maintain original order
+    return 0;
+  });
+
   // Function to clean numbers from text
   const cleanNumbers = (text: string | undefined) => {
     if (!text) return '';
@@ -30,7 +43,7 @@ export function SourcePreviewCards({
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-1.5 mb-2">
       {/* First 3 citations */}
-      {eligibleCitations.slice(0, 3).map((item: {citation: any, i: number}) => {
+      {sortedCitations.slice(0, 3).map((item: {citation: any, i: number}) => {
         const { citation, i } = item;
         const type = determineCitationType(citation);
         const isYouTube = type === 'YT';
@@ -67,6 +80,7 @@ export function SourcePreviewCards({
               setHighlightedCitation(null);
             }}
           >
+
             {isYouTube ? (
               // YouTube layout - Cover fills entire card
               <>
@@ -329,7 +343,7 @@ export function SourcePreviewCards({
       })}
       
       {/* More sources card if there are more than 3 */}
-      {eligibleCitations.length > 3 && (
+      {sortedCitations.length > 3 && (
         <div 
           key="more-sources-card"
           className="rounded-md border border-border bg-secondary/50 p-2 text-xs cursor-pointer hover:bg-secondary/70 transition-all duration-200 flex items-center justify-center shadow-sm hover:shadow-md h-20 w-full"
@@ -337,7 +351,7 @@ export function SourcePreviewCards({
         >
           <div className="text-center">
             <div className="text-lg font-bold text-foreground">
-              +{eligibleCitations.length - 3}
+              +{sortedCitations.length - 3}
             </div>
             <div className="text-[9px] text-muted-foreground">
               more sources

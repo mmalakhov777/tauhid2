@@ -48,7 +48,10 @@ export function AppSidebar({ user }: { user: User | undefined }) {
   console.log('[AppSidebar Debug] User type:', user?.type);
   console.log('[AppSidebar Debug] User email:', user?.email);
   console.log('[AppSidebar Debug] User telegramId:', user?.telegramId);
+  console.log('[AppSidebar Debug] User telegramFirstName:', user?.telegramFirstName);
+  console.log('[AppSidebar Debug] User telegramUsername:', user?.telegramUsername);
   console.log('[AppSidebar Debug] Is guest?', user?.type === 'guest' || user?.email?.startsWith('guest_'));
+  console.log('[AppSidebar Debug] Is telegram user?', user?.email?.startsWith('telegram_') && user?.email?.endsWith('@telegram.local'));
   
   // Add custom styles for ultra-transparent glass effect
   React.useEffect(() => {

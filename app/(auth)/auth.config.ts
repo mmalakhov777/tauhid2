@@ -20,6 +20,15 @@ export const authConfig = {
       if (user) {
         token.id = user.id as string;
         token.type = user.type;
+        // Store all Telegram user data in JWT token
+        token.telegramId = user.telegramId;
+        token.telegramUsername = user.telegramUsername;
+        token.telegramFirstName = user.telegramFirstName;
+        token.telegramLastName = user.telegramLastName;
+        token.telegramPhotoUrl = user.telegramPhotoUrl;
+        token.telegramLanguageCode = user.telegramLanguageCode;
+        token.telegramIsPremium = user.telegramIsPremium;
+        token.telegramAllowsWriteToPm = user.telegramAllowsWriteToPm;
       }
       
       // Log session updates for debugging
@@ -34,6 +43,15 @@ export const authConfig = {
       if (session.user && token) {
         session.user.id = token.id;
         session.user.type = token.type;
+        // Include all Telegram user data in session
+        session.user.telegramId = token.telegramId as number | null;
+        session.user.telegramUsername = token.telegramUsername as string | null;
+        session.user.telegramFirstName = token.telegramFirstName as string | null;
+        session.user.telegramLastName = token.telegramLastName as string | null;
+        session.user.telegramPhotoUrl = token.telegramPhotoUrl as string | null;
+        session.user.telegramLanguageCode = token.telegramLanguageCode as string | null;
+        session.user.telegramIsPremium = token.telegramIsPremium as boolean | null;
+        session.user.telegramAllowsWriteToPm = token.telegramAllowsWriteToPm as boolean | null;
       }
       
       return session;

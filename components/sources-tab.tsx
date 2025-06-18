@@ -20,6 +20,19 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
   const [isQueryMappingExpanded, setIsQueryMappingExpanded] = useState(false);
   const eligibleCitations = filterEligibleCitations(vectorSearchData.citations);
 
+  // Sort citations by category priority: direct first, then context
+  const sortedCitations = eligibleCitations.sort((a, b) => {
+    const categoryA = a.citation.category || 'context';
+    const categoryB = b.citation.category || 'context';
+    
+    // Direct citations come first
+    if (categoryA === 'direct' && categoryB !== 'direct') return -1;
+    if (categoryB === 'direct' && categoryA !== 'direct') return 1;
+    
+    // If both are same category, maintain original order
+    return 0;
+  });
+
   // Function to clean numbers from text
   const cleanNumbers = (text: string | undefined) => {
     if (!text) return '';
@@ -27,12 +40,12 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
   };
 
   // Separate citations by type to avoid mixing different types in same row
-  const youTubeCitations = eligibleCitations.filter((item: {citation: any, i: number}) => {
+  const youTubeCitations = sortedCitations.filter((item: {citation: any, i: number}) => {
     const type = determineCitationType(item.citation);
     return type === 'YT' || type === 'youtube';
   });
 
-  const islamQACitations = eligibleCitations.filter((item: {citation: any, i: number}) => {
+  const islamQACitations = sortedCitations.filter((item: {citation: any, i: number}) => {
     const type = determineCitationType(item.citation);
     if (type !== 'islamqa_fatwa') return false;
     
@@ -70,12 +83,12 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
     }
   });
 
-  const risaleCitations = eligibleCitations.filter((item: {citation: any, i: number}) => {
+  const risaleCitations = sortedCitations.filter((item: {citation: any, i: number}) => {
     const type = determineCitationType(item.citation);
     return type === 'RIS' || type === 'risale';
   });
 
-  const classicalCitations = eligibleCitations.filter((item: {citation: any, i: number}) => {
+  const classicalCitations = sortedCitations.filter((item: {citation: any, i: number}) => {
     const type = determineCitationType(item.citation);
     return type === 'CLS' || type === 'classic';
   });
@@ -83,7 +96,7 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
   // Combine RIS and CLS citations into one array
   const combinedRisaleAndClassicalCitations = [...risaleCitations, ...classicalCitations];
 
-  const otherCitations = eligibleCitations.filter((item: {citation: any, i: number}) => {
+  const otherCitations = sortedCitations.filter((item: {citation: any, i: number}) => {
     const type = determineCitationType(item.citation);
     return !['YT', 'youtube', 'islamqa_fatwa', 'RIS', 'risale', 'CLS', 'classic'].includes(type);
   });
@@ -117,7 +130,7 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
               return (
                 <div 
                   key={`source-${citation.id || i}`} 
-                  className="rounded-lg border border-border bg-card/50 flex flex-col transition-all duration-200 cursor-pointer hover:bg-card/70 hover:shadow-md overflow-hidden shadow-sm"
+                  className="rounded-lg border border-border bg-card/50 flex flex-col transition-all duration-200 cursor-pointer hover:bg-card/70 hover:shadow-md overflow-hidden shadow-sm relative"
                   onClick={() => {
                     console.log('🎯 Preview card clicked - Citation Index:', i);
                     console.log('🎯 Preview card clicked - Citation Data:', citation);
@@ -150,6 +163,18 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                       
                       {/* Content - 60% */}
                       <div className="flex-1 flex flex-col justify-center gap-2 p-3">
+                        {/* Category Badge */}
+                        {citation.category && (
+                          <div className="mb-1">
+                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${
+                              citation.category === 'direct' ? 'bg-green-100 text-green-800' :
+                              citation.category === 'context' ? 'bg-blue-100 text-blue-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {citation.category?.toUpperCase() || 'UNCATEGORIZED'}
+                            </span>
+                          </div>
+                        )}
                         {/* Book name as title */}
                         {citation.metadata?.book_name && (
                           <div className="text-sm font-semibold text-card-foreground line-clamp-2">
@@ -187,6 +212,18 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                       
                       {/* Content - 60% */}
                       <div className="flex-1 flex flex-col justify-center gap-2 py-3 pr-3">
+                        {/* Category Badge */}
+                        {citation.category && (
+                          <div className="mb-1">
+                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${
+                              citation.category === 'direct' ? 'bg-green-100 text-green-800' :
+                              citation.category === 'context' ? 'bg-blue-100 text-blue-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {citation.category?.toUpperCase() || 'UNCATEGORIZED'}
+                            </span>
+                          </div>
+                        )}
                         {/* Source as title */}
                         {citation.metadata?.source && (
                           <div className="text-sm font-semibold text-card-foreground line-clamp-2">
@@ -223,6 +260,18 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                       
                       {/* Content - 60% */}
                       <div className="flex-1 flex flex-col justify-center gap-2 py-3 pr-3">
+                        {/* Category Badge */}
+                        {citation.category && (
+                          <div className="mb-1">
+                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${
+                              citation.category === 'direct' ? 'bg-green-100 text-green-800' :
+                              citation.category === 'context' ? 'bg-blue-100 text-blue-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {citation.category?.toUpperCase() || 'UNCATEGORIZED'}
+                            </span>
+                          </div>
+                        )}
                         {/* Source as title */}
                         {citation.metadata?.source && (
                           <div className="text-sm font-semibold text-card-foreground line-clamp-2">
@@ -259,6 +308,18 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                       
                       {/* Content - 60% */}
                       <div className="flex-1 flex flex-col justify-center gap-2 py-3 pr-3">
+                        {/* Category Badge */}
+                        {citation.category && (
+                          <div className="mb-1">
+                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${
+                              citation.category === 'direct' ? 'bg-green-100 text-green-800' :
+                              citation.category === 'context' ? 'bg-blue-100 text-blue-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {citation.category?.toUpperCase() || 'UNCATEGORIZED'}
+                            </span>
+                          </div>
+                        )}
                         {/* Source as title */}
                         {citation.metadata?.source && (
                           <div className="text-sm font-semibold text-card-foreground line-clamp-2">
@@ -295,6 +356,18 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                       
                       {/* Content - 60% */}
                       <div className="flex-1 flex flex-col justify-center gap-2 py-3 pr-3">
+                        {/* Category Badge */}
+                        {citation.category && (
+                          <div className="mb-1">
+                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${
+                              citation.category === 'direct' ? 'bg-green-100 text-green-800' :
+                              citation.category === 'context' ? 'bg-blue-100 text-blue-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {citation.category?.toUpperCase() || 'UNCATEGORIZED'}
+                            </span>
+                          </div>
+                        )}
                         {/* Source as title */}
                         {citation.metadata?.source && (
                           <div className="text-sm font-semibold text-card-foreground line-clamp-2">
@@ -335,6 +408,18 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                       
                       {/* Content - 60% */}
                       <div className="flex-1 flex flex-col justify-center gap-2 py-3 pr-3">
+                        {/* Category Badge */}
+                        {citation.category && (
+                          <div className="mb-1">
+                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${
+                              citation.category === 'direct' ? 'bg-green-100 text-green-800' :
+                              citation.category === 'context' ? 'bg-blue-100 text-blue-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {citation.category?.toUpperCase() || 'UNCATEGORIZED'}
+                            </span>
+                          </div>
+                        )}
                         {/* Source as title */}
                         {citation.metadata?.source && (
                           <div className="text-sm font-semibold text-card-foreground line-clamp-2">
@@ -375,6 +460,18 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                       
                       {/* Content - 60% */}
                       <div className="flex-1 flex flex-col justify-center gap-2 py-3 pr-3">
+                        {/* Category Badge */}
+                        {citation.category && (
+                          <div className="mb-1">
+                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${
+                              citation.category === 'direct' ? 'bg-green-100 text-green-800' :
+                              citation.category === 'context' ? 'bg-blue-100 text-blue-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {citation.category?.toUpperCase() || 'UNCATEGORIZED'}
+                            </span>
+                          </div>
+                        )}
                         {/* Source as title */}
                         {citation.metadata?.source && (
                           <div className="text-sm font-semibold text-card-foreground line-clamp-2">
@@ -415,6 +512,18 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                       
                       {/* Content - 60% */}
                       <div className="flex-1 flex flex-col justify-center gap-2 py-3 pr-3">
+                        {/* Category Badge */}
+                        {citation.category && (
+                          <div className="mb-1">
+                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${
+                              citation.category === 'direct' ? 'bg-green-100 text-green-800' :
+                              citation.category === 'context' ? 'bg-blue-100 text-blue-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {citation.category?.toUpperCase() || 'UNCATEGORIZED'}
+                            </span>
+                          </div>
+                        )}
                         {/* Source as title */}
                         {citation.metadata?.source && (
                           <div className="text-sm font-semibold text-card-foreground line-clamp-2">
@@ -455,6 +564,18 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                       
                       {/* Content - 60% */}
                       <div className="flex-1 flex flex-col justify-center gap-2 py-3 pr-3">
+                        {/* Category Badge */}
+                        {citation.category && (
+                          <div className="mb-1">
+                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${
+                              citation.category === 'direct' ? 'bg-green-100 text-green-800' :
+                              citation.category === 'context' ? 'bg-blue-100 text-blue-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {citation.category?.toUpperCase() || 'UNCATEGORIZED'}
+                            </span>
+                          </div>
+                        )}
                         {/* Source as title */}
                         {citation.metadata?.source && (
                           <div className="text-sm font-semibold text-card-foreground line-clamp-2">
@@ -495,6 +616,18 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                       
                       {/* Content - 60% */}
                       <div className="flex-1 flex flex-col justify-center gap-2 py-3 pr-3">
+                        {/* Category Badge */}
+                        {citation.category && (
+                          <div className="mb-1">
+                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${
+                              citation.category === 'direct' ? 'bg-green-100 text-green-800' :
+                              citation.category === 'context' ? 'bg-blue-100 text-blue-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {citation.category?.toUpperCase() || 'UNCATEGORIZED'}
+                            </span>
+                          </div>
+                        )}
                         {/* Source as title */}
                         {citation.metadata?.source && (
                           <div className="text-sm font-semibold text-card-foreground line-clamp-2">
@@ -519,6 +652,18 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                   ) : (
                     // Other classical sources
                     <div className="p-3">
+                      {/* Category Badge */}
+                      {citation.category && (
+                        <div className="mb-1">
+                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${
+                            citation.category === 'direct' ? 'bg-green-100 text-green-800' :
+                            citation.category === 'context' ? 'bg-blue-100 text-blue-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {citation.category?.toUpperCase() || 'UNCATEGORIZED'}
+                          </span>
+                        </div>
+                      )}
                       {/* Source text preview */}
                       <div className="text-xs font-semibold text-card-foreground line-clamp-2">
                         {citation.metadata?.source || citation.text?.slice(0, 60) || '[No text]'}...
@@ -558,7 +703,7 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
               return (
                 <div 
                   key={`source-${citation.id || i}`} 
-                  className="rounded-lg border border-border bg-card/50 flex flex-col transition-all duration-200 cursor-pointer hover:bg-card/70 hover:shadow-md overflow-hidden shadow-sm"
+                  className="rounded-lg border border-border bg-card/50 flex flex-col transition-all duration-200 cursor-pointer hover:bg-card/70 hover:shadow-md overflow-hidden shadow-sm relative"
                   onClick={() => {
                     console.log('🎯 Preview card clicked - Citation Index:', i);
                     console.log('🎯 Preview card clicked - Citation Data:', citation);
@@ -628,6 +773,18 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                       
                       {/* Scholar and Domain */}
                       <div className="flex-1">
+                        {/* Category Badge */}
+                        {citation.category && (
+                          <div className="mb-1">
+                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${
+                              citation.category === 'direct' ? 'bg-green-100 text-green-800' :
+                              citation.category === 'context' ? 'bg-blue-100 text-blue-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {citation.category?.toUpperCase() || 'UNCATEGORIZED'}
+                            </span>
+                          </div>
+                        )}
                         <div className="text-xs font-semibold text-card-foreground line-clamp-2">
                           {(() => {
                             // Extract scholar information up until "Short"
@@ -689,7 +846,7 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
               return (
                 <div 
                   key={`source-${citation.id || i}`} 
-                  className="rounded-lg border border-border bg-card/50 flex flex-col transition-all duration-200 cursor-pointer hover:bg-card/70 hover:shadow-md overflow-hidden shadow-sm"
+                  className="rounded-lg border border-border bg-card/50 flex flex-col transition-all duration-200 cursor-pointer hover:bg-card/70 hover:shadow-md overflow-hidden shadow-sm relative"
                   onClick={() => {
                     console.log('🎯 Preview card clicked - Citation Index:', i);
                     console.log('🎯 Preview card clicked - Citation Data:', citation);
@@ -703,6 +860,18 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                 >
                   {/* Other types */}
                   <div className="p-3">
+                    {/* Category Badge */}
+                    {citation.category && (
+                      <div className="mb-1">
+                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${
+                          citation.category === 'direct' ? 'bg-green-100 text-green-800' :
+                          citation.category === 'context' ? 'bg-blue-100 text-blue-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {citation.category?.toUpperCase() || 'UNCATEGORIZED'}
+                        </span>
+                      </div>
+                    )}
                     {/* Source text preview */}
                     <div className="text-xs font-semibold text-card-foreground line-clamp-2">
                       {citation.text?.slice(0, 60) || '[No text]'}...
@@ -741,7 +910,7 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
               return (
                 <div 
                   key={`source-${citation.id || i}`} 
-                  className="rounded-lg border border-border bg-card/50 flex flex-col transition-all duration-200 cursor-pointer hover:bg-card/70 hover:shadow-md overflow-hidden shadow-sm h-fit"
+                  className="rounded-lg border border-border bg-card/50 flex flex-col transition-all duration-200 cursor-pointer hover:bg-card/70 hover:shadow-md overflow-hidden shadow-sm h-fit relative"
                   onClick={() => {
                     console.log('🎯 Preview card clicked - Citation Index:', i);
                     console.log('🎯 Preview card clicked - Citation Data:', citation);
@@ -767,6 +936,17 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                           <span className="hidden sm:inline">{citation.namespace.replace(/_/g, ' ')}</span>
                         </div>
                       )}
+                      {citation.category && (
+                        <div className="absolute top-1 right-1 md:top-1.5 md:right-1.5">
+                          <span className={`px-1 py-0.5 rounded text-[8px] md:text-[9px] font-medium ${
+                            citation.category === 'direct' ? 'bg-green-100 text-green-800' :
+                            citation.category === 'context' ? 'bg-blue-100 text-blue-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {citation.category?.toUpperCase() || 'UNCATEGORIZED'}
+                          </span>
+                        </div>
+                      )}
                       {citation.metadata?.timestamp && typeof citation.metadata.timestamp === 'number' && !isNaN(citation.metadata.timestamp) && (
                         <div className="absolute bottom-1 left-1 md:bottom-1.5 md:left-1.5 bg-black/80 text-white text-[8px] md:text-[9px] px-1 py-0.5 rounded">
                           {Math.floor(citation.metadata.timestamp / 60)}:{(citation.metadata.timestamp % 60).toString().padStart(2, '0')}
@@ -776,6 +956,18 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                   ) : (
                     /* YouTube without thumbnail */
                     <div className="p-2 md:p-3 space-y-1 flex-1 flex flex-col">
+                      {/* Category Badge */}
+                      {citation.category && (
+                        <div className="mb-1">
+                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${
+                            citation.category === 'direct' ? 'bg-green-100 text-green-800' :
+                            citation.category === 'context' ? 'bg-blue-100 text-blue-800' :
+                            'bg-gray-100 text-gray-800'
+                          }`}>
+                            {citation.category?.toUpperCase() || 'UNCATEGORIZED'}
+                          </span>
+                        </div>
+                      )}
                       <div className="text-[10px] md:text-xs font-semibold text-card-foreground flex items-center gap-1">
                         <Youtube className="size-2.5 md:size-3" />
                         <span className="line-clamp-2">{citation.namespace?.replace(/_/g, ' ')}</span>

@@ -5,6 +5,7 @@ import {
   createDataStreamResponse,
   smoothStream,
   streamText,
+  generateText,
 } from 'ai';
 import { auth, type UserType } from '@/app/(auth)/auth';
 import { type RequestHints, systemPrompt } from '@/lib/ai/prompts';
@@ -72,6 +73,285 @@ const flushTrace = async (trace: any) => {
     console.debug('[langfuse] Flush error:', error);
   }
 };
+
+// Citation categorization interface
+interface CitationAnalysis {
+  category: 'direct' | 'context';
+  description: string;
+  relevanceScore: number;
+  originalCitation: any;
+}
+
+// Function to categorize all citations in a single LLM call
+async function categorizeCitations(
+  citations: any[],
+  userQuestion: string,
+  conversationHistory: string,
+  selectedChatModel: string,
+  parentTrace?: any
+): Promise<CitationAnalysis[]> {
+  const categorizationSpan = parentTrace?.span({
+    name: "categorize-citations-batch",
+    input: { 
+      citationsCount: citations.length,
+      userQuestion: userQuestion.substring(0, 200) + (userQuestion.length > 200 ? '...' : ''),
+      conversationHistoryLength: conversationHistory.length,
+      selectedChatModel
+    }
+  });
+
+  if (citations.length === 0) {
+    safeTrace(() => categorizationSpan?.update({ 
+      output: { 
+        categorizedCitations: [],
+        success: true,
+        reason: "No citations to categorize"
+      }
+    }));
+    return [];
+  }
+
+  try {
+    // Build citations data for analysis - using only text field
+    const citationsData = citations.map((citation, index) => ({
+      index: index + 1,
+      text: citation.text?.substring(0, 500) + (citation.text?.length > 500 ? '...' : '')
+    }));
+
+    // Create the categorization prompt
+    const categorizationPrompt = `You are an expert Islamic scholar analyzing the relevance of citations to a user's question.
+
+TASK: Analyze ALL provided citations and categorize each one's relevance to the user's question.
+
+CATEGORIES (Only 2 categories):
+1. DIRECT - The citation directly answers the specific question asked
+2. CONTEXT - The citation provides related information, background, context, or supporting details that help understand the topic
+
+USER QUESTION: "${userQuestion}"
+
+CONVERSATION HISTORY: "${conversationHistory}"
+
+CITATIONS TO ANALYZE:
+${citationsData.map(c => `
+CITATION ${c.index}:
+Text: "${c.text}"
+`).join('\n')}
+
+ANALYSIS REQUIREMENTS:
+1. Categorize each citation as either: direct OR context
+2. Provide a clear description (15-40 words) explaining HOW each citation relates to the user's question
+3. Assign a relevance score (0.0-1.0) where 1.0 is most relevant
+4. Consider the conversation history for context
+5. If unsure, lean toward "context" rather than "direct"
+
+RESPONSE FORMAT (JSON array only):
+[
+  {
+    "index": 1,
+    "category": "direct",
+    "description": "Brief explanation of how this citation relates to the user's question",
+    "relevanceScore": 0.85
+  },
+  {
+    "index": 2,
+    "category": "context",
+    "description": "Brief explanation of how this citation relates to the user's question",
+    "relevanceScore": 0.65
+  }
+]
+
+Respond with ONLY the JSON array, no additional text.`;
+
+    console.log(`[Citation Categorization] Analyzing ${citations.length} citations in batch`);
+
+    // Use the same LLM as the main chat
+    const result = await generateText({
+      model: myProvider.languageModel(selectedChatModel),
+      messages: [
+        {
+          role: 'system',
+          content: 'You are an expert Islamic scholar analyzing citation relevance. Respond only with valid JSON array.'
+        },
+        {
+          role: 'user',
+          content: categorizationPrompt
+        }
+      ],
+      temperature: 0.3,
+      maxTokens: 2000
+    });
+
+    // Get the response text
+    const responseText = result.text;
+
+    console.log('[Citation Categorization] Raw response:', responseText.substring(0, 200) + '...');
+
+    try {
+      const analysisArray = JSON.parse(responseText.trim());
+      
+      if (!Array.isArray(analysisArray)) {
+        throw new Error('Response is not an array');
+      }
+
+      // Convert to our format and validate
+      const categorizedCitations: CitationAnalysis[] = citations.map((citation, index) => {
+        const analysis = analysisArray.find(a => a.index === index + 1);
+        
+        if (analysis && analysis.category && analysis.description && typeof analysis.relevanceScore === 'number') {
+          const validCategories = ['direct', 'context'];
+          const category = validCategories.includes(analysis.category) ? analysis.category : 'context';
+          
+          return {
+            category: category as 'direct' | 'context',
+            description: analysis.description,
+            relevanceScore: Math.max(0, Math.min(1, analysis.relevanceScore)),
+            originalCitation: citation
+          };
+        } else {
+          // Fallback for missing or invalid analysis
+          return {
+            category: 'context' as const,
+            description: 'Unable to analyze relevance - classified as context',
+            relevanceScore: citation.score || 0.5,
+            originalCitation: citation
+          };
+        }
+      });
+
+      // Calculate category distribution
+      const categoryDistribution = {
+        direct: categorizedCitations.filter(c => c.category === 'direct').length,
+        context: categorizedCitations.filter(c => c.category === 'context').length
+      };
+
+      const averageRelevanceScore = categorizedCitations.reduce((sum, c) => sum + c.relevanceScore, 0) / categorizedCitations.length;
+
+      console.log(`[Citation Categorization] Success: ${categorizedCitations.length} citations categorized`, categoryDistribution);
+
+      safeTrace(() => categorizationSpan?.update({ 
+        output: { 
+          categorizedCitations: categorizedCitations.length,
+          categoryDistribution,
+          averageRelevanceScore,
+          success: true,
+          method: 'single-llm-call'
+        }
+      }));
+
+      return categorizedCitations;
+
+    } catch (parseError) {
+      console.error('[Citation Categorization] Failed to parse response:', parseError);
+      console.error('[Citation Categorization] Raw response was:', responseText);
+      
+      // Fallback categorization for all citations
+      const fallbackCategorizations = citations.map(citation => ({
+        category: 'context' as const,
+        description: 'Unable to analyze relevance - classified as context',
+        relevanceScore: citation.score || 0.5,
+        originalCitation: citation
+      }));
+
+      safeTrace(() => categorizationSpan?.update({ 
+        output: { 
+          categorizedCitations: fallbackCategorizations.length,
+          success: false,
+          error: 'JSON parse error',
+          fallbackUsed: true
+        }
+      }));
+
+      return fallbackCategorizations;
+    }
+
+  } catch (error) {
+    console.error('Error in citation categorization:', error);
+    safeTrace(() => categorizationSpan?.update({ 
+      output: { 
+        error: error instanceof Error ? error.message : String(error),
+        success: false
+      }
+    }));
+    
+    // Return fallback categorization for all citations
+    return citations.map(citation => ({
+      category: 'context' as const,
+      description: 'Error during batch analysis - classified as context',
+      relevanceScore: citation.score || 0.5,
+      originalCitation: citation
+    }));
+  }
+}
+
+// Function to build enhanced context block with categorization
+function buildEnhancedContextBlock(
+  categorizedCitations: CitationAnalysis[],
+  classicContexts: any[],
+  modernContexts: any[],
+  risaleContexts: any[],
+  youtubeContexts: any[],
+  fatwaContexts: any[]
+): string {
+  if (categorizedCitations.length === 0) {
+    return '';
+  }
+
+  // Group categorized citations by their original source type
+  const categorizedBySource = {
+    classic: categorizedCitations.filter(c => classicContexts.includes(c.originalCitation)),
+    modern: categorizedCitations.filter(c => modernContexts.includes(c.originalCitation)),
+    risale: categorizedCitations.filter(c => risaleContexts.includes(c.originalCitation)),
+    youtube: categorizedCitations.filter(c => youtubeContexts.includes(c.originalCitation)),
+    fatwa: categorizedCitations.filter(c => fatwaContexts.includes(c.originalCitation))
+  };
+
+  let contextBlock = `ISLAMIC KNOWLEDGE CONTEXT WITH RELEVANCE ANALYSIS:
+
+The following sources have been analyzed for their relevance to your question:
+- DIRECT: Sources that directly answer your specific question
+- INDIRECT: Sources that provide related information or broader context
+- ANALOGY: Sources that address similar situations or provide analogous guidance
+- IRRELEVANT: Sources that don't meaningfully contribute to answering your question
+
+`;
+
+  let citationIndex = 1;
+
+  // Add each source type with categorization info
+  const addSourceSection = (title: string, contexts: any[], categorized: CitationAnalysis[]) => {
+    if (contexts.length === 0) return;
+    
+    contextBlock += `\n${title}:\n`;
+    
+    contexts.forEach((context, index) => {
+      const analysis = categorized.find(c => c.originalCitation === context);
+      const categoryLabel = analysis ? `[${analysis.category.toUpperCase()}]` : '[UNCATEGORIZED]';
+      const relevanceDesc = analysis ? ` - ${analysis.description}` : '';
+      
+      contextBlock += `[CIT${citationIndex}] ${categoryLabel}${relevanceDesc}\n`;
+      contextBlock += `${context.text}\n\n`;
+      citationIndex++;
+    });
+  };
+
+  addSourceSection('CLASSIC ISLAMIC SOURCES', classicContexts, categorizedBySource.classic);
+  addSourceSection('MODERN ISLAMIC SOURCES', modernContexts, categorizedBySource.modern);
+  addSourceSection('RISALE-I NUR COLLECTION', risaleContexts, categorizedBySource.risale);
+  addSourceSection('ISLAMIC VIDEO CONTENT', youtubeContexts, categorizedBySource.youtube);
+  addSourceSection('ISLAMIC FATWA SOURCES', fatwaContexts, categorizedBySource.fatwa);
+
+  // Add relevance summary
+  const directCount = categorizedCitations.filter(c => c.category === 'direct').length;
+  const contextCount = categorizedCitations.filter(c => c.category === 'context').length;
+
+  contextBlock += `\nRELEVANCE SUMMARY:
+- ${directCount} DIRECT sources that specifically answer your question
+- ${contextCount} CONTEXT sources providing related information and background
+
+PRIORITY GUIDANCE: Focus primarily on DIRECT sources, then use CONTEXT sources to provide comprehensive background and supporting information.`;
+
+  return contextBlock;
+}
 
 export const maxDuration = 60;
 
@@ -670,8 +950,31 @@ REMEMBER: ${languageName} ONLY - NO EXCEPTIONS!`;
           return true;
         });
         
-        // IMPORTANT: Store the filtered citations in messageContextMap for later use
+        // STEP 1: Categorize all citations in parallel
+        const categorizationStartTime = Date.now();
+        console.log(`[Citation Categorization] Starting parallel analysis of ${filteredCitations.length} citations`);
+        
+        const categorizedCitations = await categorizeCitations(
+          filteredCitations,
+          userMessageContent,
+          conversationHistory,
+          selectedChatModel,
+          mainTrace
+        );
+        
+        const categorizationDuration = Date.now() - categorizationStartTime;
+        console.log(`[Citation Categorization] Completed in ${categorizationDuration}ms`);
+        
+        // STEP 2: Store enhanced citation data
+        // Store the categorized citations in messageContextMap for later use
         messageContextMap.set(messageId, filteredCitations);
+        
+        // Store enhanced citation metadata
+        (globalThis as any).__citationAnalysisData = {
+          messageId,
+          categorizedCitations,
+          categorizationDuration
+        };
         
         // Store search results for later saving to database
         const searchResultCounts = {
@@ -682,21 +985,50 @@ REMEMBER: ${languageName} ONLY - NO EXCEPTIONS!`;
           fatwa: filteredCitations.filter((c: any) => c.metadata?.type === 'fatwa' || c.metadata?.type === 'FAT' || c.metadata?.content_type === 'islamqa_fatwa').length
         };
         
+        // Enhanced search result counts with categorization
+        const categorizationCounts = {
+          direct: categorizedCitations.filter(c => c.category === 'direct').length,
+          context: categorizedCitations.filter(c => c.category === 'context').length
+        };
+        
+        // Add categorization data to filtered citations before saving
+        const citationsWithCategorization = filteredCitations.map((citation, index) => {
+          // Find the corresponding categorization for this citation
+          const analysis = categorizedCitations.find(c => c.originalCitation === citation);
+          return {
+            ...citation,
+            // Add categorization data to each citation
+            category: analysis?.category || 'context',
+            categoryDescription: analysis?.description || 'No categorization available',
+            relevanceScore: analysis?.relevanceScore || citation.score
+          };
+        });
+
         // Store vector search data to save after assistant message is created
         (globalThis as any).__vectorSearchDataToSave = {
           chatId: id,
           improvedQueries: searchResults.improvedQueries,
-          citations: filteredCitations, // Use filtered citations
+          citations: citationsWithCategorization, // Use citations with categorization data
           searchResultCounts,
           searchDurationMs,
+          // NEW: Add categorization data
+          categorizedCitations,
+          categorizationCounts,
+          categorizationDurationMs: categorizationDuration
         };
         
-        // Add the final update with filtered citations
+        // Add the final update with filtered citations and categorization
         vectorSearchProgressUpdates.push({
           step: 4, // Final step with all data
           improvedQueries: searchResults.improvedQueries,
           searchResults: searchResultCounts,
-          citations: filteredCitations // Use filtered citations
+          citations: citationsWithCategorization, // Use the same categorized citations
+          // NEW: Add categorization progress
+          categorization: {
+            total: categorizedCitations.length,
+            counts: categorizationCounts,
+            durationMs: categorizationDuration
+          }
         });
       } catch (error) {
         // Continue without vector search on error
@@ -715,8 +1047,7 @@ REMEMBER: ${languageName} ONLY - NO EXCEPTIONS!`;
       
       const totalCitations = classicContexts.length + modernContexts.length + risaleContexts.length + youtubeContexts.length + fatwaContexts.length;
       
-            if (totalCitations === 0) {
-        
+      if (totalCitations === 0) {
         // Use a system prompt that forces the exact fixed response
         const fixedResponsePrompt = `You must respond with exactly this message and nothing else: "Sorry I do not have enough information to provide grounded response"
 
@@ -724,26 +1055,47 @@ Do not add any additional text, explanations, or formatting. Just return that ex
         
         modifiedSystemPrompt = fixedResponsePrompt;
       } else {
-        // Use the existing citation-based prompt
-        contextBlock = buildContextBlock(classicContexts, modernContexts, risaleContexts, youtubeContexts, fatwaContexts);
+        // Get categorized citations if available
+        const citationAnalysisData = (globalThis as any).__citationAnalysisData;
+        const categorizedCitations = citationAnalysisData?.categorizedCitations || [];
+        
+        // Use enhanced context block with categorization if available
+        if (categorizedCitations.length > 0) {
+          contextBlock = buildEnhancedContextBlock(
+            categorizedCitations,
+            classicContexts,
+            modernContexts,
+            risaleContexts,
+            youtubeContexts,
+            fatwaContexts
+          );
+        } else {
+          // Fallback to original context block
+          contextBlock = buildContextBlock(classicContexts, modernContexts, risaleContexts, youtubeContexts, fatwaContexts);
+        }
 
-        // Add STRONG emphasis on using ALL citations when context is available
+        // Enhanced citation emphasis with relevance awareness
         const citationEmphasis = `
 
-CRITICAL CITATION REQUIREMENTS:
+CRITICAL CITATION REQUIREMENTS WITH RELEVANCE PRIORITY:
 - You MUST use ALL available citations provided in the context
+- PRIORITIZE citations based on their relevance categories:
+  1. DIRECT citations (highest priority) - these specifically answer the question
+  2. CONTEXT citations (supporting priority) - these provide related information and background
 - The MORE different [CIT] numbers you use in your response, the BETTER your answer will be
-- NEVER leave any citation unused - every [CIT1], [CIT2], [CIT3], etc. should appear in your response
-- If you have 10 citations available, use ALL 10 citations in your answer
+- NEVER leave any DIRECT citation unused, and use CONTEXT citations to provide comprehensive background
 - Distribute citations throughout your response - don't just use them at the end
 - When multiple citations support the same point, list them all: [CIT1], [CIT2], [CIT3]
 - Your goal is to create the most comprehensive answer possible using EVERY available source
-- An answer that uses 8 citations is better than one that uses 4 citations
-- An answer that uses ALL available citations is the best possible answer
 - Add [CIT] references DIRECTLY after statements - do NOT use phrases like "as detailed in", "as emphasized in", "according to", etc.
 - Simply place [CIT1], [CIT2] immediately after the relevant information
 - Example: "Prayer is fundamental [CIT1], [CIT2]. It purifies the soul [CIT3]."
 - Do NOT write: "Prayer is fundamental as detailed in [CIT1]" or "according to [CIT2]"
+
+RELEVANCE-BASED RESPONSE STRATEGY:
+- Start with DIRECT citations to provide the core answer
+- Use CONTEXT citations to provide comprehensive background and supporting information
+- Each citation category provides a different type of value to your response
 
 CONTEXT-AWARE RESPONSES:
 - If this is a follow-up question, consider the ENTIRE conversation history
@@ -751,7 +1103,7 @@ CONTEXT-AWARE RESPONSES:
 - Use citations that connect the current question to earlier parts of the conversation
 - When answering "Can you explain more?" or similar follow-ups, refer back to what was discussed and expand using ALL available citations
 
-REMEMBER: More citations = Better answer. Use them ALL! Add [CIT] directly without connecting phrases.`;
+REMEMBER: Use DIRECT citations for core answers and CONTEXT citations for comprehensive background!`;
 
         // Append context block and citation emphasis to system prompt
         modifiedSystemPrompt = modifiedSystemPrompt + '\n\n' + contextBlock + citationEmphasis;
@@ -877,18 +1229,40 @@ Do not add any additional text, explanations, or formatting. Just return that ex
                     // Get the context that was used for this response
                     const usedContext = messageId ? getContextByMessageId(messageId) : [];
                     
-                    // Map citations to their actual sources
+                    // Map citations to their actual sources and categorization
                     const citationSourceMap: any = {};
+                    const citationAnalysisData = (globalThis as any).__citationAnalysisData;
+                    const categorizedCitations = citationAnalysisData?.categorizedCitations || [];
+                    
                     uniqueCitations.forEach((citation: string) => {
                       const citationIndex = parseInt(citation.replace(/\[CIT(\d+)\]/, '$1')) - 1;
                       if (usedContext[citationIndex]) {
+                        const analysis = categorizedCitations.find((c: any) => c.originalCitation === usedContext[citationIndex]);
+                        
                         citationSourceMap[citation] = {
                           text: usedContext[citationIndex].text?.substring(0, 200) + '...',
                           metadata: usedContext[citationIndex].metadata,
                           namespace: usedContext[citationIndex].namespace,
-                          score: usedContext[citationIndex].score
+                          score: usedContext[citationIndex].score,
+                          // NEW: Add categorization data
+                          category: analysis?.category || 'uncategorized',
+                          categoryDescription: analysis?.description || 'No categorization available',
+                          relevanceScore: analysis?.relevanceScore || (usedContext[citationIndex].score || 0)
                         };
                       }
+                    });
+                    
+                    // Calculate categorization statistics for used citations
+                    const usedCitationCategories = {
+                      direct: 0,
+                      indirect: 0,
+                      analogy: 0,
+                      irrelevant: 0,
+                      uncategorized: 0
+                    };
+                    
+                    Object.values(citationSourceMap).forEach((citation: any) => {
+                      usedCitationCategories[citation.category as keyof typeof usedCitationCategories]++;
                     });
 
                     // Save only the assistant message (user message already saved)
@@ -936,7 +1310,7 @@ Do not add any additional text, explanations, or formatting. Just return that ex
                         vectorSearchSaved,
                         hasAttachments: !!(assistantMessage.experimental_attachments?.length),
                         attachmentCount: assistantMessage.experimental_attachments?.length || 0,
-                        // NEW: Complete response with sources and refund info
+                        // NEW: Complete response with sources, categorization, and refund info
                         finalResponse: {
                           fullText: fullResponseText.substring(0, 1000) + (fullResponseText.length > 1000 ? '...' : ''),
                           citationsUsed: uniqueCitations,
@@ -945,10 +1319,27 @@ Do not add any additional text, explanations, or formatting. Just return that ex
                           hasContext: usedContext.length > 0,
                           contextSourceCount: usedContext.length,
                           isInsufficientInfoResponse,
-                          messageRefunded: isInsufficientInfoResponse && messageConsumed
+                          messageRefunded: isInsufficientInfoResponse && messageConsumed,
+                          // NEW: Citation categorization data
+                          citationCategorization: {
+                            totalCategorized: categorizedCitations.length,
+                            usedCitationCategories,
+                            categorizationDuration: citationAnalysisData?.categorizationDuration || 0,
+                            averageRelevanceScore: categorizedCitations.length > 0 ? 
+                              categorizedCitations.reduce((sum: number, c: any) => sum + c.relevanceScore, 0) / categorizedCitations.length : 0,
+                            categoryDistribution: {
+                              direct: categorizedCitations.filter((c: any) => c.category === 'direct').length,
+                              indirect: categorizedCitations.filter((c: any) => c.category === 'indirect').length,
+                              analogy: categorizedCitations.filter((c: any) => c.category === 'analogy').length,
+                              irrelevant: categorizedCitations.filter((c: any) => c.category === 'irrelevant').length
+                            }
+                          }
                         }
                       }
                     }));
+                    
+                    // Clean up global citation analysis data
+                    delete (globalThis as any).__citationAnalysisData;
                   } catch (error) {
                     console.error('Failed to save assistant message:', error);
                     safeTrace(() => streamSpan.update({ 
@@ -1075,18 +1466,40 @@ Do not add any additional text, explanations, or formatting. Just return that ex
                     const uniqueCitationsFallback = [...new Set(citationMatchesFallback)] as string[];
                     const usedContextFallback = messageId ? getContextByMessageId(messageId) : [];
                     
-                    // Map citations to their actual sources for fallback
+                    // Map citations to their actual sources and categorization for fallback
                     const citationSourceMapFallback: any = {};
+                    const citationAnalysisDataFallback = (globalThis as any).__citationAnalysisData;
+                    const categorizedCitationsFallback = citationAnalysisDataFallback?.categorizedCitations || [];
+                    
                     uniqueCitationsFallback.forEach((citation: string) => {
                       const citationIndex = parseInt(citation.replace(/\[CIT(\d+)\]/, '$1')) - 1;
                       if (usedContextFallback[citationIndex]) {
+                        const analysis = categorizedCitationsFallback.find((c: any) => c.originalCitation === usedContextFallback[citationIndex]);
+                        
                         citationSourceMapFallback[citation] = {
                           text: usedContextFallback[citationIndex].text?.substring(0, 200) + '...',
                           metadata: usedContextFallback[citationIndex].metadata,
                           namespace: usedContextFallback[citationIndex].namespace,
-                          score: usedContextFallback[citationIndex].score
+                          score: usedContextFallback[citationIndex].score,
+                          // NEW: Add categorization data for fallback
+                          category: analysis?.category || 'uncategorized',
+                          categoryDescription: analysis?.description || 'No categorization available',
+                          relevanceScore: analysis?.relevanceScore || (usedContextFallback[citationIndex].score || 0)
                         };
                       }
+                    });
+                    
+                    // Calculate categorization statistics for used citations in fallback
+                    const usedCitationCategoriesFallback = {
+                      direct: 0,
+                      indirect: 0,
+                      analogy: 0,
+                      irrelevant: 0,
+                      uncategorized: 0
+                    };
+                    
+                    Object.values(citationSourceMapFallback).forEach((citation: any) => {
+                      usedCitationCategoriesFallback[citation.category as keyof typeof usedCitationCategoriesFallback]++;
                     });
 
                     safeTrace(() => streamSpan.update({ 
@@ -1102,7 +1515,7 @@ Do not add any additional text, explanations, or formatting. Just return that ex
                         vectorSearchSaved,
                         hasAttachments: !!(assistantMessage.experimental_attachments?.length),
                         attachmentCount: assistantMessage.experimental_attachments?.length || 0,
-                        // NEW: Complete response with sources and refund info for fallback provider
+                        // NEW: Complete response with sources, categorization, and refund info for fallback provider
                         finalResponse: {
                           fullText: fullResponseTextFallback.substring(0, 1000) + (fullResponseTextFallback.length > 1000 ? '...' : ''),
                           citationsUsed: uniqueCitationsFallback,
@@ -1111,10 +1524,27 @@ Do not add any additional text, explanations, or formatting. Just return that ex
                           hasContext: usedContextFallback.length > 0,
                           contextSourceCount: usedContextFallback.length,
                           isInsufficientInfoResponse,
-                          messageRefunded: isInsufficientInfoResponse && messageConsumed
+                          messageRefunded: isInsufficientInfoResponse && messageConsumed,
+                          // NEW: Citation categorization data for fallback provider
+                          citationCategorization: {
+                            totalCategorized: categorizedCitationsFallback.length,
+                            usedCitationCategories: usedCitationCategoriesFallback,
+                            categorizationDuration: citationAnalysisDataFallback?.categorizationDuration || 0,
+                            averageRelevanceScore: categorizedCitationsFallback.length > 0 ? 
+                              categorizedCitationsFallback.reduce((sum: number, c: any) => sum + c.relevanceScore, 0) / categorizedCitationsFallback.length : 0,
+                            categoryDistribution: {
+                              direct: categorizedCitationsFallback.filter((c: any) => c.category === 'direct').length,
+                              indirect: categorizedCitationsFallback.filter((c: any) => c.category === 'indirect').length,
+                              analogy: categorizedCitationsFallback.filter((c: any) => c.category === 'analogy').length,
+                              irrelevant: categorizedCitationsFallback.filter((c: any) => c.category === 'irrelevant').length
+                            }
+                          }
                         }
                       }
                     }));
+                    
+                    // Clean up global citation analysis data for fallback
+                    delete (globalThis as any).__citationAnalysisData;
                   } catch (error) {
                     console.error('Failed to save assistant message:', error);
                     safeTrace(() => streamSpan.update({ 
