@@ -10,6 +10,7 @@ import {
   foreignKey,
   boolean,
   integer,
+  bigint,
   index,
 } from 'drizzle-orm/pg-core';
 
@@ -17,7 +18,7 @@ export const user = pgTable('User', {
   id: uuid('id').primaryKey().notNull().defaultRandom(),
   email: varchar('email', { length: 64 }).notNull(),
   password: varchar('password', { length: 64 }),
-  telegramId: integer('telegramId').unique(),
+  telegramId: bigint('telegramId', { mode: 'number' }).unique(),
   telegramUsername: varchar('telegramUsername', { length: 32 }),
   telegramFirstName: varchar('telegramFirstName', { length: 64 }),
   telegramLastName: varchar('telegramLastName', { length: 64 }),
@@ -46,7 +47,7 @@ export const telegramBindingCode = pgTable('TelegramBindingCode', {
   expiresAt: timestamp('expiresAt').notNull(),
   createdAt: timestamp('createdAt').notNull().defaultNow(),
   usedAt: timestamp('usedAt'),
-  telegramId: integer('telegramId'),
+  telegramId: bigint('telegramId', { mode: 'number' }),
   telegramUsername: varchar('telegramUsername', { length: 32 }),
   telegramFirstName: varchar('telegramFirstName', { length: 64 }),
   telegramLastName: varchar('telegramLastName', { length: 64 }),

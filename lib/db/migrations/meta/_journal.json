@@ -15,6 +15,27 @@
       "when": 1749150500000,
       "tag": "0001_subscription_responses",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1749151000000,
+      "tag": "0002_telegram_binding_codes",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1749151500000,
+      "tag": "0003_trial_balance_system",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1750322000000,
+      "tag": "0004_fix_telegram_id_bigint",
+      "breakpoints": true
     }
   ]
 }
