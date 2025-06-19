@@ -102,6 +102,13 @@ export const register = async (
 export const telegramAuth = async (
   telegramData: any
 ): Promise<TelegramAuthState> => {
+  console.log('[telegramAuth] Environment check:', {
+    POSTGRES_URL_exists: !!process.env.POSTGRES_URL,
+    POSTGRES_URL_length: process.env.POSTGRES_URL?.length || 0,
+    NODE_ENV: process.env.NODE_ENV,
+    timestamp: new Date().toISOString()
+  });
+
   try {
     console.log('[telegramAuth] Starting auth with data:', {
       telegramId: telegramData.telegramId,

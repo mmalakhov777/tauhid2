@@ -49,6 +49,16 @@ import { entitlementsByUserType } from '../ai/entitlements';
 // use the Drizzle adapter for Auth.js / NextAuth
 // https://authjs.dev/reference/adapter/drizzle
 
+// Log environment variable status
+console.log('[DB] Environment variable check:', {
+  POSTGRES_URL_exists: !!process.env.POSTGRES_URL,
+  POSTGRES_URL_length: process.env.POSTGRES_URL?.length || 0,
+  POSTGRES_URL_preview: process.env.POSTGRES_URL ? 
+    `${process.env.POSTGRES_URL.substring(0, 20)}...` : 'undefined',
+  NODE_ENV: process.env.NODE_ENV,
+  timestamp: new Date().toISOString()
+});
+
 // Configure PostgreSQL client with connection pooling and retry logic
 const client = postgres(process.env.POSTGRES_URL!, {
   max: 10, // Maximum number of connections in the pool
@@ -65,6 +75,8 @@ const client = postgres(process.env.POSTGRES_URL!, {
 });
 
 const db = drizzle(client);
+
+console.log('[DB] Database client initialized successfully');
 
 // Helper function to check if error is a connection error
 function isConnectionError(error: any): boolean {
@@ -120,8 +132,32 @@ export async function getUser(email: string): Promise<Array<User>> {
 
 export async function getUserByTelegramId(telegramId: number): Promise<Array<User>> {
   try {
-    return await db.select().from(user).where(eq(user.telegramId, telegramId));
+    console.log('[DB] getUserByTelegramId called with:', {
+      telegramId,
+      POSTGRES_URL_exists: !!process.env.POSTGRES_URL,
+      timestamp: new Date().toISOString()
+    });
+    
+    const result = await db.select().from(user).where(eq(user.telegramId, telegramId));
+    
+    console.log('[DB] getUserByTelegramId result:', {
+      telegramId,
+      resultCount: result.length,
+      hasResults: result.length > 0,
+      timestamp: new Date().toISOString()
+    });
+    
+    return result;
   } catch (error) {
+    console.error('[DB] getUserByTelegramId error:', {
+      telegramId,
+      error: error,
+      errorMessage: error instanceof Error ? error.message : 'Unknown error',
+      errorStack: error instanceof Error ? error.stack : undefined,
+      POSTGRES_URL_exists: !!process.env.POSTGRES_URL,
+      timestamp: new Date().toISOString()
+    });
+    
     throw new ChatSDKError(
       'bad_request:database',
       'Failed to get user by Telegram ID',
@@ -161,6 +197,14 @@ export async function createUserWithTelegram(
     telegramAllowsWriteToPm?: boolean;
   }
 ) {
+  console.log('[DB] createUserWithTelegram called with:', {
+    email,
+    telegramId: telegramData.telegramId,
+    telegramFirstName: telegramData.telegramFirstName,
+    POSTGRES_URL_exists: !!process.env.POSTGRES_URL,
+    timestamp: new Date().toISOString()
+  });
+
   const hashedPassword = generateHashedPassword('telegram_auth');
 
   // Determine user type based on email (telegram users get regular entitlements)
@@ -168,7 +212,7 @@ export async function createUserWithTelegram(
   const entitlements = entitlementsByUserType[userType];
 
   try {
-    return await db.insert(user).values({ 
+    const result = await db.insert(user).values({ 
       email, 
       password: hashedPassword,
       telegramId: telegramData.telegramId,
@@ -183,7 +227,26 @@ export async function createUserWithTelegram(
       trialMessagesRemaining: entitlements.useTrialBalance ? entitlements.trialMessagesPerDay : 0,
       trialLastResetAt: new Date(),
     });
+    
+    console.log('[DB] createUserWithTelegram success:', {
+      email,
+      telegramId: telegramData.telegramId,
+      telegramFirstName: telegramData.telegramFirstName,
+      timestamp: new Date().toISOString()
+    });
+    
+    return result;
   } catch (error) {
+    console.error('[DB] createUserWithTelegram error:', {
+      email,
+      telegramId: telegramData.telegramId,
+      error: error,
+      errorMessage: error instanceof Error ? error.message : 'Unknown error',
+      errorStack: error instanceof Error ? error.stack : undefined,
+      POSTGRES_URL_exists: !!process.env.POSTGRES_URL,
+      timestamp: new Date().toISOString()
+    });
+    
     throw new ChatSDKError('bad_request:database', 'Failed to create user with Telegram data');
   }
 }
