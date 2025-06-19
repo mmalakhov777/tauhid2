@@ -103,18 +103,32 @@ export const telegramAuth = async (
   telegramData: any
 ): Promise<TelegramAuthState> => {
   try {
+    console.log('[telegramAuth] Starting auth with data:', {
+      telegramId: telegramData.telegramId,
+      username: telegramData.telegramUsername,
+      firstName: telegramData.telegramFirstName
+    });
+    
     const validatedData = telegramAuthSchema.parse(telegramData);
+    console.log('[telegramAuth] Data validation passed');
     
     // Check if user already exists by Telegram ID
     const [existingUser] = await getUserByTelegramId(validatedData.telegramId);
+    console.log('[telegramAuth] Existing user check result:', existingUser ? {
+      id: existingUser.id,
+      email: existingUser.email,
+      telegramId: existingUser.telegramId
+    } : 'No existing user');
     
     if (!existingUser) {
+      console.log('[telegramAuth] Creating new user with Telegram data');
       // Create new user with Telegram data but dummy email
       const dummyEmail = `telegram_${validatedData.telegramId}@telegram.local`;
       await createUserWithTelegram(dummyEmail, validatedData);
       
       // If skipEmail is true, sign them in immediately
       if (validatedData.skipEmail) {
+        console.log('[telegramAuth] Signing in new user with dummy email:', dummyEmail);
         await signIn('credentials', {
           email: dummyEmail,
           password: 'telegram_auth',
@@ -129,8 +143,10 @@ export const telegramAuth = async (
 
     // Check if user has a real email (not the dummy one)
     if (existingUser.email.startsWith('telegram_') && existingUser.email.endsWith('@telegram.local')) {
+      console.log('[telegramAuth] User has dummy email, checking skipEmail flag');
       // If skipEmail is true, sign them in with dummy email
       if (validatedData.skipEmail) {
+        console.log('[telegramAuth] Signing in existing user with dummy email:', existingUser.email);
         await signIn('credentials', {
           email: existingUser.email,
           password: 'telegram_auth',
@@ -144,6 +160,7 @@ export const telegramAuth = async (
     }
 
     // Sign in the user with existing credentials
+    console.log('[telegramAuth] Signing in existing user with real email:', existingUser.email);
     await signIn('credentials', {
       email: existingUser.email,
       password: 'telegram_auth',
@@ -152,7 +169,9 @@ export const telegramAuth = async (
 
     return { status: 'success' };
   } catch (error) {
+    console.error('[telegramAuth] Error during authentication:', error);
     if (error instanceof z.ZodError) {
+      console.error('[telegramAuth] Validation error:', error.errors);
       return { status: 'invalid_data' };
     }
 

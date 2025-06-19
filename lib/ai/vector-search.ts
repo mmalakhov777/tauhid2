@@ -52,14 +52,7 @@ const RISALENUR_NAMESPACES = [
 ];
 
 const YOUTUBE_NAMESPACES = [
-  '4455',
-  'Islam_The_Ultimate_Peace',
-  '2238',
-  'Islamic_Guidance',
-  '2004',
-  'MercifulServant',
-  '1572',
-  'Towards_Eternity'
+  'youtube-qa-pairs'
 ];
 
 const FATWA_NAMESPACES = [

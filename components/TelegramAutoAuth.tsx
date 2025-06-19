@@ -124,6 +124,12 @@ export const TelegramAutoAuth = () => {
         }
 
         try {
+          console.log('[TelegramAutoAuth] Starting authentication with data:', {
+            telegramId: telegramUser.id,
+            username: telegramUser.username,
+            firstName: telegramUser.first_name
+          });
+          
           const result = await telegramAuth({
             telegramId: telegramUser.id,
             telegramUsername: telegramUser.username,
@@ -133,14 +139,20 @@ export const TelegramAutoAuth = () => {
             telegramLanguageCode: telegramUser.language_code,
             telegramIsPremium: telegramUser.is_premium,
             telegramAllowsWriteToPm: telegramUser.allows_write_to_pm,
+            skipEmail: true, // Always skip email for auto-auth
           });
 
+          console.log('[TelegramAutoAuth] Auth result:', result);
+
           if (result.status === 'success') {
+            console.log('[TelegramAutoAuth] Auth successful, updating session...');
             if (webApp) {
               webApp.showAlert('✅ Auth successful! Updating session...');
             }
-            // Remove toast: toast({ type: 'success', description: `Welcome back, ${telegramUser.first_name}!` });
+            
+            console.log('[TelegramAutoAuth] Calling updateSession...');
             await updateSession();
+            console.log('[TelegramAutoAuth] Session updated');
             
             // Don't clear loading state here - let the chat component do it
             setIsAuthenticating(false);
@@ -165,6 +177,7 @@ export const TelegramAutoAuth = () => {
             }
           } else if (result.status === 'needs_email') {
             // New user - create them with dummy email immediately, no form shown
+            console.log('[TelegramAutoAuth] New user detected, creating account...');
             if (webApp) {
               webApp.showAlert('🆕 New user detected, creating account...');
             }
@@ -181,12 +194,17 @@ export const TelegramAutoAuth = () => {
               skipEmail: true,
             });
 
+            console.log('[TelegramAutoAuth] Skip email result:', skipResult);
+
             if (skipResult.status === 'success') {
+              console.log('[TelegramAutoAuth] New user created successfully');
               if (webApp) {
                 webApp.showAlert('✅ New user created successfully!');
               }
-              // Remove toast: toast({ type: 'success', description: `Welcome, ${telegramUser.first_name}! You can start chatting right away.` });
+              
+              console.log('[TelegramAutoAuth] Updating session for new user...');
               await updateSession();
+              console.log('[TelegramAutoAuth] Session updated for new user');
               
               // Don't clear loading state here - let the chat component do it
               setIsAuthenticating(false);
@@ -209,13 +227,25 @@ export const TelegramAutoAuth = () => {
                 setIsAuthLoading(false);
                 router.refresh();
               }
+            } else {
+              console.error('[TelegramAutoAuth] Failed to create new user:', skipResult);
+              if (webApp) {
+                webApp.showAlert(`❌ Failed to create new user: ${skipResult.status}`);
+              }
+              setIsAuthLoading(false);
             }
+          } else {
+            console.error('[TelegramAutoAuth] Unexpected auth result:', result);
+            if (webApp) {
+              webApp.showAlert(`❌ Unexpected auth result: ${result.status}`);
+            }
+            setIsAuthLoading(false);
           }
         } catch (error) {
+          console.error('[TelegramAutoAuth] Auto-authentication error:', error);
           if (webApp) {
             webApp.showAlert(`❌ Auth Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
           }
-          console.error('Auto-authentication error:', error);
           // Silent fail - user can still use manual auth buttons
           setIsAuthLoading(false); // Clear loading on error
         } finally {

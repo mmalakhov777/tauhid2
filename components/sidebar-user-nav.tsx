@@ -35,7 +35,7 @@ export function SidebarUserNav({ user }: { user: User }) {
 
   const isGuest = user.email?.includes('guest-');
   const isTelegramUser = user.email?.startsWith('telegram_') && user.email?.endsWith('@telegram.local');
-  
+
   console.log('[SidebarUserNav Debug] User:', user);
   console.log('[SidebarUserNav Debug] isGuest:', isGuest);
   console.log('[SidebarUserNav Debug] isTelegramUser:', isTelegramUser);
