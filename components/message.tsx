@@ -23,7 +23,8 @@ import { Youtube, BookOpen, ScrollText } from 'lucide-react';
 import { ChevronDownIcon } from './icons';
 import { SourcesTab } from './sources-tab';
 import { SourcePreviewCards } from './source-preview-cards';
-import { determineCitationType, filterEligibleCitations, formatBookOrNamespace, RIS_NAMESPACES, YT_NAMESPACES } from './citation-utils';
+import { QuranTab } from './quran-tab';
+import { determineCitationType, filterEligibleCitations, formatBookOrNamespace, RIS_NAMESPACES, YT_NAMESPACES, TAF_NAMESPACES } from './citation-utils';
 import { SkeletonCard, SkeletonDots, SkeletonText } from './ui/skeleton';
 import { useTelegramHaptics } from '@/hooks/use-telegram-haptics';
 import { useTranslations } from '@/lib/i18n';
@@ -42,6 +43,18 @@ if (typeof window !== 'undefined') {
   };
   console.log('Debug mode available. Use window.toggleDebug() to toggle.');
 }
+
+// Helper function to truncate text to 5 words
+const truncateToWords = (text: string, wordLimit: number = 5): { truncated: string; needsTruncation: boolean } => {
+  const words = text.trim().split(/\s+/);
+  if (words.length <= wordLimit) {
+    return { truncated: text, needsTruncation: false };
+  }
+  return { 
+    truncated: words.slice(0, wordLimit).join(' ') + '...', 
+    needsTruncation: true 
+  };
+};
 
 const PurePreviewMessage = ({
   chatId,
@@ -75,6 +88,7 @@ const PurePreviewMessage = ({
   const [modalCitation, setModalCitation] = useState<{ citation: any; number: number } | null>(null);
   const [debugEnabled, setDebugEnabled] = useState(globalDebugEnabled);
   const [isQueryMappingExpanded, setIsQueryMappingExpanded] = useState(false);
+  const [isUserMessageExpanded, setIsUserMessageExpanded] = useState(false);
   const { impactOccurred, selectionChanged } = useTelegramHaptics();
   const previousContentLengthRef = useRef(0);
   const { t } = useTranslations();
@@ -233,6 +247,10 @@ const PurePreviewMessage = ({
                                 console.log('🔍 Language name:', languageName);
                                 console.log('🔍 Main text:', mainText);
                                 
+                                // Apply truncation to main text
+                                const { truncated, needsTruncation } = truncateToWords(mainText);
+                                const displayText = isUserMessageExpanded ? mainText : truncated;
+                                
                                 return (
                                   <div className="flex flex-col gap-2">
                                     <Markdown onCitationClick={(citationNumber) => {
@@ -250,30 +268,57 @@ const PurePreviewMessage = ({
                                         console.error('❌ Citation not found for number:', citationNumber);
                                       }
                                     }}>
-                                      {mainText}
+                                      {displayText}
                                     </Markdown>
+                                    {needsTruncation && (
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="self-start text-muted-foreground hover:text-foreground text-sm font-normal"
+                                        onClick={() => setIsUserMessageExpanded(!isUserMessageExpanded)}
+                                      >
+                                        {isUserMessageExpanded ? t('message.showLess') : t('message.showMore')}
+                                      </Button>
+                                    )}
                                     {/* Language badge hidden but functionality preserved */}
                                   </div>
                                 );
                               }
+                              
+                              // Apply truncation to regular text
+                              const { truncated, needsTruncation } = truncateToWords(text);
+                              const displayText = isUserMessageExpanded ? text : truncated;
+                              
                               return (
-                                <Markdown onCitationClick={(citationNumber) => {
-                                  const citation = vectorSearchData.citations[citationNumber - 1];
-                                  if (citation) {
-                                    console.log('🔍 Citation clicked in text - Citation Number:', citationNumber);
-                                    console.log('🔍 Citation clicked in text - Citation Data:', citation);
-                                    console.log('🔍 Citation clicked in text - Citation Metadata:', citation.metadata);
-                                    console.log('🔍 Citation clicked in text - Citation Namespace:', citation.namespace);
-                                    setModalCitation({ 
-                                      citation, 
-                                      number: citationNumber
-                                    });
-                                  } else {
-                                    console.error('❌ Citation not found for number:', citationNumber);
-                                  }
-                                }}>
-                                  {text}
-                                </Markdown>
+                                <div className="flex flex-col gap-2">
+                                  <Markdown onCitationClick={(citationNumber) => {
+                                    const citation = vectorSearchData.citations[citationNumber - 1];
+                                    if (citation) {
+                                      console.log('🔍 Citation clicked in text - Citation Number:', citationNumber);
+                                      console.log('🔍 Citation clicked in text - Citation Data:', citation);
+                                      console.log('🔍 Citation clicked in text - Citation Metadata:', citation.metadata);
+                                      console.log('🔍 Citation clicked in text - Citation Namespace:', citation.namespace);
+                                      setModalCitation({ 
+                                        citation, 
+                                        number: citationNumber
+                                      });
+                                    } else {
+                                      console.error('❌ Citation not found for number:', citationNumber);
+                                    }
+                                  }}>
+                                    {displayText}
+                                  </Markdown>
+                                  {needsTruncation && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="self-start text-muted-foreground hover:text-foreground text-sm font-normal"
+                                      onClick={() => setIsUserMessageExpanded(!isUserMessageExpanded)}
+                                    >
+                                      {isUserMessageExpanded ? t('message.showLess') : t('message.showMore')}
+                                    </Button>
+                                  )}
+                                </div>
                               );
                             })()}
                           </div>
@@ -292,31 +337,62 @@ const PurePreviewMessage = ({
                                   />
                                 </div>
 
-                                {/* Tabs */}
-                                <div className="flex border-b">
-                                  <button
-                                    onClick={() => handleTabChange('response')}
-                                    className={cn(
-                                      "px-4 py-2 text-sm font-medium border-b-2 transition-colors",
-                                      activeTab === 'response' 
-                                        ? "border-foreground text-foreground" 
-                                        : "border-transparent text-muted-foreground hover:text-foreground"
-                                    )}
-                                  >
-                                    {t('message.response')}
-                                  </button>
-                                  <button
-                                    onClick={() => handleTabChange('sources')}
-                                    className={cn(
-                                      "px-4 py-2 text-sm font-medium border-b-2 transition-colors",
-                                      activeTab === 'sources' 
-                                        ? "border-foreground text-foreground" 
-                                        : "border-transparent text-muted-foreground hover:text-foreground"
-                                    )}
-                                  >
-                                    {t('message.sources')} ({filterEligibleCitations(vectorSearchData.citations).length})
-                                  </button>
-                                </div>
+                                {(() => {
+                                  // Check if tafsir citations exist
+                                  const eligibleCitations = filterEligibleCitations(vectorSearchData.citations);
+                                  const hasTafsirCitations = eligibleCitations.some((item: {citation: any, i: number}) => {
+                                    const type = determineCitationType(item.citation);
+                                    return type === 'TAF' || type === 'tafsirs';
+                                  });
+                                  const tafsirCount = eligibleCitations.filter((item: {citation: any, i: number}) => {
+                                    const type = determineCitationType(item.citation);
+                                    return type === 'TAF' || type === 'tafsirs';
+                                  }).length;
+
+                                  return (
+                                    <>
+                                      {/* Tabs */}
+                                      <div className="flex border-b">
+                                        <button
+                                          onClick={() => handleTabChange('response')}
+                                          className={cn(
+                                            "px-4 py-2 text-sm font-medium border-b-2 transition-colors",
+                                            activeTab === 'response' 
+                                              ? "border-foreground text-foreground" 
+                                              : "border-transparent text-muted-foreground hover:text-foreground"
+                                          )}
+                                        >
+                                          {t('message.response')}
+                                        </button>
+                                        <button
+                                          onClick={() => handleTabChange('sources')}
+                                          className={cn(
+                                            "px-4 py-2 text-sm font-medium border-b-2 transition-colors",
+                                            activeTab === 'sources' 
+                                              ? "border-foreground text-foreground" 
+                                              : "border-transparent text-muted-foreground hover:text-foreground"
+                                          )}
+                                        >
+                                          {t('message.sources')} ({filterEligibleCitations(vectorSearchData.citations).length})
+                                        </button>
+                                        {/* Quran tab hidden */}
+                                        {false && hasTafsirCitations && (
+                                          <button
+                                            onClick={() => handleTabChange('quran')}
+                                            className={cn(
+                                              "px-4 py-2 text-sm font-medium border-b-2 transition-colors",
+                                              activeTab === 'quran' 
+                                                ? "border-foreground text-foreground" 
+                                                : "border-transparent text-muted-foreground hover:text-foreground"
+                                            )}
+                                          >
+                                            {t('message.quran')} ({tafsirCount})
+                                          </button>
+                                        )}
+                                      </div>
+                                    </>
+                                  );
+                                })()}
 
                                 {/* Tab Content */}
                                 <div className="mt-4">
@@ -344,6 +420,14 @@ const PurePreviewMessage = ({
 
                                   {activeTab === 'sources' && (
                                     <SourcesTab
+                                      vectorSearchData={vectorSearchData}
+                                      setModalCitation={setModalCitation}
+                                    />
+                                  )}
+
+                                  {/* Quran tab content hidden */}
+                                  {false && activeTab === 'quran' && (
+                                    <QuranTab
                                       vectorSearchData={vectorSearchData}
                                       setModalCitation={setModalCitation}
                                     />

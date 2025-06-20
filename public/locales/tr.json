@@ -346,11 +346,14 @@
     "editMessage": "Mesajı düzenle",
     "response": "Yanıt",
     "sources": "Kaynaklar",
+    "quran": "Kuran",
     "rawDebugData": "Ham hata ayıklama verileri",
     "searchResultsCount": "Arama sonuçları sayısı (hesaplanan):",
     "rawCitations": "Ham alıntılar",
     "total": "toplam",
-    "thinkingAndSearching": "Düşünüyor ve arıyor..."
+    "thinkingAndSearching": "Düşünüyor ve arıyor...",
+    "showMore": "Daha fazla göster",
+    "showLess": "Daha az göster"
   },
   "errors": {
     "somethingWentWrong": "Bir şeyler yanlış gitti",

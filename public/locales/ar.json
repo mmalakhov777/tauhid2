@@ -346,11 +346,14 @@
     "editMessage": "تعديل الرسالة",
     "response": "الرد",
     "sources": "المصادر",
+    "quran": "القرآن",
     "rawDebugData": "بيانات التصحيح الخام",
     "searchResultsCount": "عدد نتائج البحث (محسوبة):",
     "rawCitations": "الاقتباسات الخام",
     "total": "الإجمالي",
-    "thinkingAndSearching": "جاري التفكير والبحث..."
+    "thinkingAndSearching": "جاري التفكير والبحث...",
+    "showMore": "عرض المزيد",
+    "showLess": "عرض أقل"
   },
   "errors": {
     "somethingWentWrong": "حدث خطأ ما",

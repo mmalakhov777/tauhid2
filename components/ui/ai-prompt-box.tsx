@@ -44,7 +44,7 @@ interface TextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement
 const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(({ className, ...props }, ref) => (
   <textarea
     className={cn(
-      "flex w-full rounded-md border-none bg-transparent px-3 py-2.5 text-base text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50 min-h-[44px] resize-none",
+      "flex w-full rounded-md border-none bg-transparent px-3 py-3 text-base text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0 disabled:cursor-not-allowed disabled:opacity-50 min-h-[56px] resize-none",
       className
     )}
     ref={ref}
@@ -265,10 +265,12 @@ const PromptInput = React.forwardRef<HTMLDivElement, PromptInputProps>(
           <div
             ref={ref}
             className={cn(
-              "rounded-3xl border p-2 shadow-lg transition-all duration-300",
-              // Default styling that can be overridden
-              !className?.includes('bg-') && "bg-background",
-              !className?.includes('border-') && "border-border",
+              "rounded-3xl p-3 transition-all duration-300",
+              // Default styling that can be overridden - use transparent background
+              !className?.includes('bg-') && "bg-white/10 backdrop-blur-md",
+              // Default border styling - will be overridden by className if needed
+              "border border-white/20",
+              // Add border for loading state
               isLoading && "border-destructive/70",
               className
             )}

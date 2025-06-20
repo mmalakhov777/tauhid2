@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -138,11 +139,16 @@ export function SourceSelector({
         >
           <BookOpen className="h-4 w-4" />
           {getButtonText()}
-          <ChevronDownIcon className="h-4 w-4" />
+          <motion.div
+            animate={{ rotate: open ? 180 : 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <ChevronDownIcon className="h-4 w-4" />
+          </motion.div>
         </Button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="start" className="min-w-[300px] bg-white/10 dark:bg-gray-900/10 backdrop-blur-md border border-white/20 shadow-lg rounded-xl p-2">
+      <DropdownMenuContent align="start" className="min-w-[300px] !bg-white/10 !backdrop-blur-md !border !border-white/15 !shadow-lg !rounded-xl p-2" style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}>
         <DropdownMenuLabel>{t('sources.searchSources')}</DropdownMenuLabel>
         <DropdownMenuSeparator />
         

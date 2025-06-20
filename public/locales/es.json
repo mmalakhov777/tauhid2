@@ -350,7 +350,9 @@
     "searchResultsCount": "Recuento de resultados de búsqueda (calculado):",
     "rawCitations": "Citas sin procesar",
     "total": "total",
-    "thinkingAndSearching": "Pensando y buscando..."
+    "thinkingAndSearching": "Pensando y buscando...",
+    "showMore": "Mostrar más",
+    "showLess": "Mostrar menos"
   },
   "errors": {
     "somethingWentWrong": "Algo salió mal",

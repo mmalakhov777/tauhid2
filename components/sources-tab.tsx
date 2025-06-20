@@ -153,7 +153,7 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
               return (
                 <div 
                   key={`tafsir-${citation.id || i}`} 
-                  className="rounded-lg border border-border bg-card/50 flex flex-col transition-all duration-200 cursor-pointer hover:bg-card/70 hover:shadow-md overflow-hidden shadow-sm relative"
+                  className="rounded-lg bg-white/15 hover:bg-white/25 flex flex-col transition-all duration-200 cursor-pointer hover:shadow-md overflow-hidden shadow-sm relative"
                   onClick={() => {
                     console.log('🎯 Tafsir card clicked - Citation Index:', i);
                     console.log('🎯 Tafsir card clicked - Citation Data:', citation);
@@ -295,7 +295,7 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
               return (
                 <div 
                   key={`source-${citation.id || i}`} 
-                  className="rounded-lg border border-border bg-card/50 flex flex-col transition-all duration-200 cursor-pointer hover:bg-card/70 hover:shadow-md overflow-hidden shadow-sm relative"
+                  className="rounded-lg bg-white/15 hover:bg-white/25 flex flex-col transition-all duration-200 cursor-pointer hover:shadow-md overflow-hidden shadow-sm relative"
                   onClick={() => {
                     console.log('🎯 Preview card clicked - Citation Index:', i);
                     console.log('🎯 Preview card clicked - Citation Data:', citation);
@@ -769,7 +769,7 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
               return (
                 <div 
                   key={`source-${citation.id || i}`} 
-                  className="rounded-lg border border-border bg-card/50 flex flex-col transition-all duration-200 cursor-pointer hover:bg-card/70 hover:shadow-md overflow-hidden shadow-sm h-fit relative"
+                  className="rounded-lg bg-white/15 hover:bg-white/25 flex flex-col transition-all duration-200 cursor-pointer hover:shadow-md overflow-hidden shadow-sm h-fit relative"
                   onClick={() => {
                     console.log('🎯 Preview card clicked - Citation Index:', i);
                     console.log('🎯 Preview card clicked - Citation Data:', citation);
@@ -790,14 +790,10 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                         className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-300"
                       />
                       
-                      {/* YouTube Play Button - Big Red Icon in Center */}
-                      <div className="absolute inset-0 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
-                        <div className="relative">
-                          {/* Red Rounded Rectangle Background - Like Real YouTube */}
-                          <div className="w-12 h-8 md:w-14 md:h-10 bg-red-600 rounded-lg flex items-center justify-center shadow-lg">
-                            {/* White Triangle Play Icon */}
-                            <div className="w-0 h-0 border-l-[6px] md:border-l-[7px] border-l-white border-t-[4px] md:border-t-[5px] border-t-transparent border-b-[4px] md:border-b-[5px] border-b-transparent ml-0.5"></div>
-                          </div>
+                      {/* YouTube Play Button Overlay - Match source-preview-cards style */}
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <div className="bg-red-600/90 rounded-full p-1.5 shadow-lg">
+                          <div className="w-0 h-0 border-l-[6px] border-l-white border-t-[4px] border-t-transparent border-b-[4px] border-b-transparent ml-0.5" />
                         </div>
                       </div>
                       
@@ -843,7 +839,7 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
               return (
                 <div 
                   key={`source-${citation.id || i}`} 
-                  className="rounded-lg border border-border bg-card/50 flex flex-col transition-all duration-200 cursor-pointer hover:bg-card/70 hover:shadow-md overflow-hidden shadow-sm relative"
+                  className="rounded-lg bg-white/15 hover:bg-white/25 flex flex-col transition-all duration-200 cursor-pointer hover:shadow-md overflow-hidden shadow-sm relative"
                   onClick={() => {
                     console.log('🎯 Preview card clicked - Citation Index:', i);
                     console.log('🎯 Preview card clicked - Citation Data:', citation);
@@ -974,7 +970,7 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
               return (
                 <div 
                   key={`source-${citation.id || i}`} 
-                  className="rounded-lg border border-border bg-card/50 flex flex-col transition-all duration-200 cursor-pointer hover:bg-card/70 hover:shadow-md overflow-hidden shadow-sm relative"
+                  className="rounded-lg bg-white/15 hover:bg-white/25 flex flex-col transition-all duration-200 cursor-pointer hover:shadow-md overflow-hidden shadow-sm relative"
                   onClick={() => {
                     console.log('🎯 Preview card clicked - Citation Index:', i);
                     console.log('🎯 Preview card clicked - Citation Data:', citation);

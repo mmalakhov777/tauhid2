@@ -1,6 +1,7 @@
 'use client';
 
 import { type ReactNode, useMemo, useState } from 'react';
+import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -79,11 +80,16 @@ export function VisibilitySelector({
         >
           {selectedVisibility?.icon}
           {width && width > 768 && selectedVisibility?.label}
-          <ChevronDownIcon />
+          <motion.div
+            animate={{ rotate: open ? 180 : 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <ChevronDownIcon />
+          </motion.div>
         </Button>
       </DropdownMenuTrigger>
 
-      <DropdownMenuContent align="start" className="min-w-[300px] bg-white/10 dark:bg-gray-900/10 backdrop-blur-md border border-white/20 shadow-lg rounded-xl p-2">
+      <DropdownMenuContent align="start" className="min-w-[300px] !bg-white/10 !backdrop-blur-md !border !border-white/15 !shadow-lg !rounded-xl p-2" style={{ backgroundColor: 'rgba(255, 255, 255, 0.1)' }}>
         {visibilities.map((visibility) => (
           <DropdownMenuItem
             data-testid={`visibility-selector-item-${visibility.id}`}

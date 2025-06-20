@@ -383,15 +383,15 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                     }}
                     className="flex flex-row gap-3 items-center"
                   >
-                    <div className="rounded-md cursor-pointer flex items-center gap-3 transition-colors duration-200">
-                      <Image
-                        src="/images/glasslogo.webp"
-                        alt="Logo"
-                        width={350}
-                        height={150}
-                        className="h-56 w-auto"
-                      />
-                    </div>
+                                  <div className="rounded-md cursor-pointer flex items-center gap-3 transition-colors duration-200">
+                <Image
+                  src="/assets/modernlogo.png"
+                  alt="Logo"
+                  width={350}
+                  height={150}
+                  className="h-56 w-auto"
+                />
+              </div>
                   </button>
                 </div>
               </SidebarMenu>
@@ -487,7 +487,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
               >
                 <div className="rounded-md cursor-pointer flex items-center gap-3 transition-colors duration-200">
                   <Image
-                    src="/images/glasslogo.webp"
+                    src="/assets/modernlogo.png"
                     alt="Logo"
                     width={350}
                     height={150}

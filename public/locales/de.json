@@ -350,7 +350,9 @@
     "searchResultsCount": "Anzahl der Suchergebnisse (berechnet):",
     "rawCitations": "Rohe Zitierungen",
     "total": "gesamt",
-    "thinkingAndSearching": "Denken und Suchen..."
+    "thinkingAndSearching": "Denken und Suchen...",
+    "showMore": "Mehr anzeigen",
+    "showLess": "Weniger anzeigen"
   },
   "errors": {
     "somethingWentWrong": "Etwas ist schiefgelaufen",

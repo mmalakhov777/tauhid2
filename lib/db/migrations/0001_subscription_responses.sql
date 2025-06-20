@@ -17,17 +17,27 @@ CREATE TABLE IF NOT EXISTS "SubscriptionResponse" (
 );
 
 -- Add foreign key constraint
-DO $$ BEGIN
- ALTER TABLE "SubscriptionResponse" ADD CONSTRAINT "SubscriptionResponse_userId_User_id_fk" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE cascade ON UPDATE no action;
-EXCEPTION
- WHEN duplicate_object THEN null;
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'SubscriptionResponse_userId_User_id_fk'
+        AND table_name = 'SubscriptionResponse'
+    ) THEN
+        ALTER TABLE "SubscriptionResponse" ADD CONSTRAINT "SubscriptionResponse_userId_User_id_fk" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE cascade ON UPDATE no action;
+    END IF;
 END $$;
 
 -- Add check constraint for currentStep enum
-DO $$ BEGIN
- ALTER TABLE "SubscriptionResponse" ADD CONSTRAINT "SubscriptionResponse_currentStep_check" CHECK ("currentStep" IN ('limit', 'purpose', 'info', 'beta'));
-EXCEPTION
- WHEN duplicate_object THEN null;
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'SubscriptionResponse_currentStep_check'
+        AND table_name = 'SubscriptionResponse'
+    ) THEN
+        ALTER TABLE "SubscriptionResponse" ADD CONSTRAINT "SubscriptionResponse_currentStep_check" CHECK ("currentStep" IN ('limit', 'purpose', 'info', 'beta'));
+    END IF;
 END $$;
 
 -- Create indexes

@@ -21,17 +21,27 @@ CREATE TABLE IF NOT EXISTS "TelegramBindingCode" (
 );
 
 -- Add foreign key constraint
-DO $$ BEGIN
- ALTER TABLE "TelegramBindingCode" ADD CONSTRAINT "TelegramBindingCode_userId_User_id_fk" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE cascade ON UPDATE no action;
-EXCEPTION
- WHEN duplicate_object THEN null;
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'TelegramBindingCode_userId_User_id_fk'
+        AND table_name = 'TelegramBindingCode'
+    ) THEN
+        ALTER TABLE "TelegramBindingCode" ADD CONSTRAINT "TelegramBindingCode_userId_User_id_fk" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE cascade ON UPDATE no action;
+    END IF;
 END $$;
 
 -- Add unique constraint on binding code (to prevent duplicates)
-DO $$ BEGIN
- ALTER TABLE "TelegramBindingCode" ADD CONSTRAINT "TelegramBindingCode_bindingCode_unique" UNIQUE("bindingCode");
-EXCEPTION
- WHEN duplicate_object THEN null;
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'TelegramBindingCode_bindingCode_unique'
+        AND table_name = 'TelegramBindingCode'
+    ) THEN
+        ALTER TABLE "TelegramBindingCode" ADD CONSTRAINT "TelegramBindingCode_bindingCode_unique" UNIQUE("bindingCode");
+    END IF;
 END $$;
 
 -- Create indexes for performance
@@ -42,4 +52,4 @@ CREATE INDEX IF NOT EXISTS "idx_telegram_binding_code_is_used" ON "TelegramBindi
 
 -- Create partial index for active (non-expired, non-used) codes
 CREATE INDEX IF NOT EXISTS "idx_telegram_binding_code_active" ON "TelegramBindingCode" ("bindingCode", "expiresAt") 
-WHERE "isUsed" = false AND "expiresAt" > now(); 
+WHERE "isUsed" = false; 

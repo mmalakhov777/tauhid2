@@ -40,10 +40,13 @@ DO $$ BEGIN
 END $$;
 
 -- Add unique constraint on telegramId if it doesn't exist
-DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name = 'User_telegramId_unique') THEN
-    ALTER TABLE "User" ADD CONSTRAINT "User_telegramId_unique" UNIQUE("telegramId");
-  END IF;
-EXCEPTION
-  WHEN duplicate_table THEN null;
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'User_telegramId_unique'
+        AND table_name = 'User'
+    ) THEN
+        ALTER TABLE "User" ADD CONSTRAINT "User_telegramId_unique" UNIQUE("telegramId");
+    END IF;
 END $$; 

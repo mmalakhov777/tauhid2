@@ -351,11 +351,14 @@
     "editMessage": "Edit message",
     "response": "Response",
     "sources": "Sources",
+    "quran": "Quran",
     "rawDebugData": "Raw Debug Data",
     "searchResultsCount": "Search Results Count (computed):",
     "rawCitations": "Raw Citations",
     "total": "total",
-    "thinkingAndSearching": "Thinking and searching..."
+    "thinkingAndSearching": "Thinking and searching...",
+    "showMore": "Show more",
+    "showLess": "Show less"
   },
   "errors": {
     "somethingWentWrong": "Something went wrong",

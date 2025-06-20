@@ -346,11 +346,14 @@
     "editMessage": "Редактировать сообщение",
     "response": "Ответ",
     "sources": "Источники",
+    "quran": "Коран",
     "rawDebugData": "Сырые отладочные данные",
     "searchResultsCount": "Количество результатов поиска (вычислено):",
     "rawCitations": "Сырые цитаты",
     "total": "всего",
-    "thinkingAndSearching": "Думаю и ищу..."
+    "thinkingAndSearching": "Думаю и ищу...",
+    "showMore": "Показать больше",
+    "showLess": "Показать меньше"
   },
   "errors": {
     "somethingWentWrong": "Что-то пошло не так",

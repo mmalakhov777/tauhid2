@@ -350,7 +350,9 @@
     "searchResultsCount": "Nombre de résultats de recherche (calculé) :",
     "rawCitations": "Citations brutes",
     "total": "total",
-    "thinkingAndSearching": "Réflexion et recherche en cours..."
+    "thinkingAndSearching": "Réflexion et recherche en cours...",
+    "showMore": "Afficher plus",
+    "showLess": "Afficher moins"
   },
   "errors": {
     "somethingWentWrong": "Un problème est survenu",

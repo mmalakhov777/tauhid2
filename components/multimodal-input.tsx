@@ -578,11 +578,11 @@ function PureMultimodalInput({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
             transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-            className="absolute bottom-36 left-[45%] -translate-x-1/2 z-20 flex justify-center items-center"
+            className="absolute bottom-44 left-[45%] -translate-x-1/2 z-20 flex justify-center items-center"
           >
             <Button
               data-testid="scroll-to-bottom-button"
-              className="rounded-full shadow-lg"
+              className="rounded-full bg-white/15 hover:bg-white/25 border-white/20 hover:border-white/30 backdrop-blur-md shadow-lg hover:shadow-xl transition-all duration-300"
               size="icon"
               variant="outline"
               onClick={(event) => {
@@ -603,13 +603,13 @@ function PureMultimodalInput({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 10 }}
             transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-            className="absolute bottom-36 left-0 right-0 z-20 flex justify-center items-center gap-3"
+            className="absolute bottom-44 left-0 right-0 z-20 flex justify-center items-center gap-3"
           >
             {/* Show sidebar toggle button on mobile */}
             {width && width <= 768 && (
               <Button
                 data-testid="sidebar-toggle-button"
-                className="rounded-full shadow-lg"
+                className="rounded-full bg-white/15 hover:bg-white/25 border-white/20 hover:border-white/30 backdrop-blur-md shadow-lg hover:shadow-xl transition-all duration-300"
                 size="icon"
                 variant="outline"
                 onClick={(event) => {
@@ -623,7 +623,7 @@ function PureMultimodalInput({
             
             <Button
               data-testid="new-chat-button"
-              className="rounded-full shadow-lg px-4 py-2 h-auto"
+              className="rounded-full bg-muted hover:bg-muted/80 border border-border hover:border-border shadow-none hover:shadow-none transition-all duration-300 px-4 py-2 h-auto"
               variant="outline"
               onClick={(event) => {
                 event.preventDefault();
@@ -637,7 +637,7 @@ function PureMultimodalInput({
             
             <Button
               data-testid="share-chat-button"
-              className="rounded-full shadow-lg px-4 py-2 h-auto"
+              className="rounded-full bg-muted hover:bg-muted/80 border border-border hover:border-border shadow-none hover:shadow-none transition-all duration-300 px-4 py-2 h-auto disabled:opacity-50 disabled:hover:bg-muted"
               variant="outline"
               disabled={isSharing}
               onClick={(event) => {
@@ -692,8 +692,10 @@ function PureMultimodalInput({
             'w-full',
             // Make input bigger when shown with suggested actions (empty state)
             messages.length === 0 && '[&_textarea]:min-h-[60px] [&_textarea]:text-lg',
-            // Apply glass styling when in empty state (with suggested actions)
-            messages.length === 0 && 'bg-white/10 backdrop-blur-md border-white/20 shadow-lg',
+            // Apply glass styling when in empty state (with suggested actions) - no shadow
+            messages.length === 0 && '!bg-white/10 !backdrop-blur-md !border-white/20 !shadow-none',
+            // Use muted background for normal chat state - with gray borders, no shadows
+            messages.length > 0 && '!bg-muted !border !border-border !shadow-none',
             className,
           )}
           showStopButton={status === 'submitted' || status === 'streaming'}
@@ -708,14 +710,26 @@ function PureMultimodalInput({
           <VisibilitySelector
             chatId={chatId}
             selectedVisibilityType={selectedVisibilityType}
-            className="!h-8 !text-xs !px-2 !bg-white/5 !backdrop-blur-md !border !border-white/20 hover:!bg-white/10 !transition-all !duration-200 !rounded-full"
+            className={cx(
+              "!h-8 !text-xs !px-2 !transition-all !duration-300 !rounded-full !shadow-none hover:!shadow-none",
+              // Default state (empty chat with suggested actions) - transparent glass
+              messages.length === 0 && "!bg-white/10 hover:!bg-white/20 !backdrop-blur-md !border !border-white/20 hover:!border-white/30",
+              // Normal chat state (with messages) - gray background with borders
+              messages.length > 0 && "!bg-muted hover:!bg-muted/80 !border !border-border hover:!border-border"
+            )}
           />
           <SchoolSelector
             selectedSchools={selectedSchools}
             onSchoolsChange={setSelectedSchools}
             selectedSources={selectedSources}
             onSourcesChange={setSelectedSources}
-            className="!h-8 !text-xs !px-2 !bg-white/5 !backdrop-blur-md !border !border-white/20 hover:!bg-white/10 !transition-all !duration-200 !rounded-full"
+            className={cx(
+              "!h-8 !text-xs !px-2 !transition-all !duration-300 !rounded-full !shadow-none hover:!shadow-none",
+              // Default state (empty chat with suggested actions) - transparent glass
+              messages.length === 0 && "!bg-white/10 hover:!bg-white/20 !backdrop-blur-md !border !border-white/20 hover:!border-white/30",
+              // Normal chat state (with messages) - gray background with borders
+              messages.length > 0 && "!bg-muted hover:!bg-muted/80 !border !border-border hover:!border-border"
+            )}
           />
         </div>
       </div>
@@ -758,7 +772,7 @@ function PureMultimodalInput({
           
           {/* Modal Content */}
           <div className={cx(
-            "relative bg-background border rounded-2xl shadow-2xl animate-in fade-in-0 zoom-in-95 duration-300",
+            "relative bg-white/15 backdrop-blur-md border border-white/20 rounded-2xl shadow-2xl animate-in fade-in-0 zoom-in-95 duration-300",
             width && width <= 768 
               ? "w-[calc(100vw-2rem)] max-w-[280px] p-4 gap-4" 
               : "w-full max-w-lg p-6 gap-6"
@@ -790,7 +804,7 @@ function PureMultimodalInput({
                <Button
                  onClick={handleMakePublicAndShare}
                  disabled={isMakingPublic}
-                 className="flex items-center justify-center gap-2 w-full sm:w-auto text-xs py-2"
+                 className="flex items-center justify-center gap-2 w-full sm:w-auto text-xs py-2 bg-white/20 hover:bg-white/30 border-white/30 hover:border-white/40 backdrop-blur-md transition-all duration-300 disabled:opacity-50"
                >
                  {isMakingPublic && <Loader2 className="h-4 w-4 animate-spin" />}
                  {isMakingPublic ? t('chat.makingPublic') : t('chat.makePublicAndShare')}
@@ -799,7 +813,7 @@ function PureMultimodalInput({
                  variant="outline"
                  disabled={isMakingPublic}
                  onClick={() => setShowShareModal(false)}
-                 className="w-full sm:w-auto text-xs py-2"
+                 className="w-full sm:w-auto text-xs py-2 bg-white/10 hover:bg-white/20 border-white/20 hover:border-white/30 backdrop-blur-md transition-all duration-300 disabled:opacity-50"
                >
                  {t('common.cancel')}
                </Button>

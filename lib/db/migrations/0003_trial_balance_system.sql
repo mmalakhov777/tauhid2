@@ -20,17 +20,27 @@ CREATE TABLE IF NOT EXISTS "StarPayment" (
 );
 
 -- Add foreign key constraint
-DO $$ BEGIN
- ALTER TABLE "StarPayment" ADD CONSTRAINT "StarPayment_userId_User_id_fk" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
-EXCEPTION
- WHEN duplicate_object THEN null;
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'StarPayment_userId_User_id_fk'
+        AND table_name = 'StarPayment'
+    ) THEN
+        ALTER TABLE "StarPayment" ADD CONSTRAINT "StarPayment_userId_User_id_fk" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE NO ACTION;
+    END IF;
 END $$;
 
 -- Add unique constraint on telegramPaymentChargeId (to prevent duplicate payments)
-DO $$ BEGIN
- ALTER TABLE "StarPayment" ADD CONSTRAINT "StarPayment_telegramPaymentChargeId_unique" UNIQUE("telegramPaymentChargeId");
-EXCEPTION
- WHEN duplicate_object THEN null;
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'StarPayment_telegramPaymentChargeId_unique'
+        AND table_name = 'StarPayment'
+    ) THEN
+        ALTER TABLE "StarPayment" ADD CONSTRAINT "StarPayment_telegramPaymentChargeId_unique" UNIQUE("telegramPaymentChargeId");
+    END IF;
 END $$;
 
 -- Create indexes for performance
