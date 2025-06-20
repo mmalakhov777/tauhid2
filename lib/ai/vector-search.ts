@@ -36,6 +36,7 @@ const MODERN_INDEX_NAME = process.env.PINECONE_MODERN_INDEX || 'islamqadtaset';
 const RISALENUR_INDEX_NAME = process.env.PINECONE_RISALE_INDEX || 'risale';
 const YOUTUBE_INDEX_NAME = process.env.PINECONE_YOUTUBE_INDEX || 'yt-db';
 const FATWA_INDEX_NAME = process.env.PINECONE_FATWA_INDEX || 'fatwa-sites';
+const TAFSIRS_INDEX_NAME = process.env.PINECONE_TAFSIRS_INDEX || 'tafsirs';
 
 // Namespaces
 const RISALENUR_NAMESPACES = [
@@ -57,6 +58,14 @@ const YOUTUBE_NAMESPACES = [
 
 const FATWA_NAMESPACES = [
   'fatwa-collection'
+];
+
+const TAFSIRS_NAMESPACES = [
+  'Maarif-ul-Quran',
+  'Bayan-ul-Quran',
+  'Kashf-Al-Asrar',
+  'Tazkirul-Quran',
+  'Tanweer-Tafsir'
 ];
 
 // Initialize clients
@@ -158,14 +167,20 @@ async function improveUserQueries(
     // Enhanced query preprocessing
     const cleanQuery = cleanAndPreprocessQuery(query);
     
+    // Create context-aware query by appending conversation history
+    const contextAwareQuery = history.trim() 
+      ? `${cleanQuery} (also be sure to align it to the entire conversation history to find new information: ${history})`
+      : cleanQuery;
+    
     console.log('[vector-search] Query preprocessing:', {
       original: query,
-      cleaned: cleanQuery
+      cleaned: cleanQuery,
+      contextAware: contextAwareQuery.substring(0, 300) + (contextAwareQuery.length > 300 ? '...' : '')
     });
     
-    // Build the request body with previous attempts if available
+    // Build the request body with context-aware query
     let requestBody: any = { 
-      query: cleanQuery, 
+      query: contextAwareQuery, 
       history, 
       selectedChatModel 
     };
@@ -242,6 +257,7 @@ async function improveUserQueries(
     console.log('[vector-search] Query enhancement complete:', {
       original: query,
       cleaned: cleanQuery,
+      contextAware: contextAwareQuery.substring(0, 200) + '...',
       enhanced: enhancedQuery
     });
 
@@ -249,6 +265,7 @@ async function improveUserQueries(
       output: { 
         originalQuery: query,
         cleanedQuery: cleanQuery,
+        contextAwareQuery: contextAwareQuery.substring(0, 200) + '...',
         enhancedQuery: enhancedQuery,
         attemptNumber: previousAttempts ? previousAttempts.length + 1 : 1,
         success: true 
@@ -259,6 +276,10 @@ async function improveUserQueries(
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     const fallbackQuery = cleanAndPreprocessQuery(query);
+    // Create context-aware fallback query too
+    const contextAwareFallback = history.trim() 
+      ? `${fallbackQuery} (also be sure to align it to the entire conversation history to find new information: ${history})`
+      : fallbackQuery;
     
     safeTrace(() => span?.update({ 
       output: { error: errorMessage, fallback: true }
@@ -266,12 +287,13 @@ async function improveUserQueries(
     console.error('[vector-search] Query improvement FAILED:', {
       originalQuery: query,
       cleanedQuery: fallbackQuery,
+      contextAwareFallback: contextAwareFallback.substring(0, 200) + '...',
       error: errorMessage,
       stack: error instanceof Error ? error.stack : undefined
     });
-    // Fallback to cleaned query instead of original
-    console.log('[vector-search] Using fallback query:', fallbackQuery);
-    return fallbackQuery;
+    // Fallback to context-aware cleaned query
+    console.log('[vector-search] Using context-aware fallback query:', contextAwareFallback.substring(0, 200) + '...');
+    return contextAwareFallback;
   }
 }
 
@@ -391,7 +413,7 @@ async function getTopKContextAllNamespaces(
           const namespaceResults = (searchResponse.matches || [])
             .map((m: any, j: number) => ({
               text: m.metadata?.text || '',
-              metadata: m.metadata,
+              metadata: { ...m.metadata, namespace },
               id: m.id || `unknown-id-${j+1}`,
               namespace,
               score: m.score,
@@ -434,7 +456,8 @@ export function buildContextBlock(
   modern: VectorSearchResult[],
   risale: VectorSearchResult[],
   youtube: VectorSearchResult[],
-  fatwa: VectorSearchResult[]
+  fatwa: VectorSearchResult[],
+  tafsirs: VectorSearchResult[]
 ): string {
   // No additional filtering needed - use all results as-is
   const filteredClassic = classic;
@@ -445,10 +468,11 @@ export function buildContextBlock(
   const limitedModern = modern;
   const limitedYoutube = youtube;
   const limitedFatwa = fatwa;
+  const limitedTafsirs = tafsirs;
   
   let contextBlock = 'IMPORTANT: Cite sources using [CITn] format. Use HTML output only.\n\n';
-  contextBlock += 'Context types: [CLS]=Classical, [RIS]=Risale-i Nur, [MOD]=Modern, [YT]=YouTube, [FAT]=Fatwa Sites\n';
-  contextBlock += 'Priority: [CLS] > [RIS] > [FAT] > [MOD] > [YT]\n\n';
+  contextBlock += 'Context types: [CLS]=Classical, [RIS]=Risale-i Nur, [TAF]=Tafsirs, [FAT]=Fatwa Sites, [MOD]=Modern, [YT]=YouTube\n';
+  contextBlock += 'Priority: [CLS] > [RIS] > [TAF] > [FAT] > [MOD] > [YT]\n\n';
   contextBlock += 'Context:\n\n';
   
   let i = 0;
@@ -459,6 +483,10 @@ export function buildContextBlock(
   limitedRisale.forEach((ctx) => {
     // Use full text without truncation
     contextBlock += `[CIT${++i}][RIS] ${ctx.text}\n\n`;
+  });
+  limitedTafsirs.forEach((ctx) => {
+    // Use full text without truncation
+    contextBlock += `[CIT${++i}][TAF] ${ctx.text}\n\n`;
   });
   limitedFatwa.forEach((ctx) => {
     // Use full text without truncation
@@ -480,6 +508,9 @@ export function buildContextBlock(
     contextBlock += `[CIT${++i}] ${ctx.id}\n`;
   });
   limitedRisale.forEach((ctx) => {
+    contextBlock += `[CIT${++i}] ${ctx.id}\n`;
+  });
+  limitedTafsirs.forEach((ctx) => {
     contextBlock += `[CIT${++i}] ${ctx.id}\n`;
   });
   limitedFatwa.forEach((ctx) => {
@@ -528,14 +559,15 @@ function hasSufficientResults(
   modernContexts: VectorSearchResult[],
   risaleContexts: VectorSearchResult[],
   youtubeContexts: VectorSearchResult[],
-  fatwaContexts: VectorSearchResult[]
+  fatwaContexts: VectorSearchResult[],
+  tafsirsContexts: VectorSearchResult[]
 ): boolean {
   const totalResults = classicContexts.length + modernContexts.length + 
-                      risaleContexts.length + youtubeContexts.length + fatwaContexts.length;
+                      risaleContexts.length + youtubeContexts.length + fatwaContexts.length + tafsirsContexts.length;
   
   // Consider we have sufficient results if we have at least 3 results total
-  // OR at least 1 high-quality result from classic/risale/fatwa sources
-  const hasHighQualityResults = classicContexts.length > 0 || risaleContexts.length > 0 || fatwaContexts.length > 0;
+  // OR at least 1 high-quality result from classic/risale/tafsirs/fatwa sources
+  const hasHighQualityResults = classicContexts.length > 0 || risaleContexts.length > 0 || tafsirsContexts.length > 0 || fatwaContexts.length > 0;
   
   return totalResults >= 3 || hasHighQualityResults;
 }
@@ -551,6 +583,7 @@ async function performAllVectorSearches(
   risaleContexts: VectorSearchResult[];
   youtubeContexts: VectorSearchResult[];
   fatwaContexts: VectorSearchResult[];
+  tafsirsContexts: VectorSearchResult[];
 }> {
   const span = parentTrace?.span({
     name: "perform-all-vector-searches",
@@ -570,7 +603,13 @@ async function performAllVectorSearches(
     risale: true,
     youtube: true,
     fatwa: true,
+    tafsirs: true,
   };
+  
+  // Ensure tafsirs is set to true if not specified
+  if (sources.tafsirs === undefined) {
+    sources.tafsirs = true;
+  }
 
   try {
     const allSearchPromises: Promise<VectorSearchResult[]>[] = [];
@@ -611,6 +650,15 @@ async function performAllVectorSearches(
       );
     }
 
+    // Tafsirs searches for all queries (if enabled)
+    if (sources.tafsirs) {
+      allSearchPromises.push(
+        ...improvedQueries.map((q, i) => {
+          return getTopKContextAllNamespaces(TAFSIRS_INDEX_NAME, TAFSIRS_NAMESPACES, q, 5, parentTrace);
+        })
+      );
+    }
+
     // Execute all searches in parallel
     const allResults = await Promise.all(allSearchPromises);
     
@@ -622,6 +670,7 @@ async function performAllVectorSearches(
     const risaleResults = sources.risale ? allResults.slice(resultIndex, resultIndex += numQueries) : [];
     const youtubeResults = sources.youtube ? allResults.slice(resultIndex, resultIndex += numQueries) : [];
     const fatwaResults = sources.fatwa ? allResults.slice(resultIndex, resultIndex += numQueries) : [];
+    const tafsirsResults = sources.tafsirs ? allResults.slice(resultIndex, resultIndex += numQueries) : [];
 
     // Deduplicate by id and also by metadata.original_text
     const dedup = (arr: VectorSearchResult[][], type: string): VectorSearchResult[] => {
@@ -655,7 +704,8 @@ async function performAllVectorSearches(
       modernContexts: dedup(modernResults, 'Modern'),
       risaleContexts: dedup(risaleResults, 'Risale'),
       youtubeContexts: dedup(youtubeResults, 'YouTube'),
-      fatwaContexts: dedup(fatwaResults, 'Fatwa')
+      fatwaContexts: dedup(fatwaResults, 'Fatwa'),
+      tafsirsContexts: dedup(tafsirsResults, 'Tafsirs')
     };
 
 
@@ -667,10 +717,11 @@ async function performAllVectorSearches(
           modern: finalResults.modernContexts.length,
           risale: finalResults.risaleContexts.length,
           youtube: finalResults.youtubeContexts.length,
-          fatwa: finalResults.fatwaContexts.length
+          fatwa: finalResults.fatwaContexts.length,
+          tafsirs: finalResults.tafsirsContexts.length
         },
         totalResults: finalResults.classicContexts.length + finalResults.risaleContexts.length + 
-                     finalResults.youtubeContexts.length + finalResults.fatwaContexts.length,
+                     finalResults.youtubeContexts.length + finalResults.fatwaContexts.length + finalResults.tafsirsContexts.length,
         success: true
       }
     }));
@@ -703,6 +754,7 @@ async function performAllVectorSearchesWithRetry(
   risaleContexts: VectorSearchResult[];
   youtubeContexts: VectorSearchResult[];
   fatwaContexts: VectorSearchResult[];
+  tafsirsContexts: VectorSearchResult[];
   finalImprovedQueries: string[];
   totalAttempts: number;
 }> {
@@ -744,12 +796,13 @@ async function performAllVectorSearchesWithRetry(
         searchResults.modernContexts,
         searchResults.risaleContexts,
         searchResults.youtubeContexts,
-        searchResults.fatwaContexts
+        searchResults.fatwaContexts,
+        searchResults.tafsirsContexts
       );
       
       const totalResults = searchResults.classicContexts.length + searchResults.modernContexts.length + 
                           searchResults.risaleContexts.length + searchResults.youtubeContexts.length + 
-                          searchResults.fatwaContexts.length;
+                          searchResults.fatwaContexts.length + searchResults.tafsirsContexts.length;
       
       if (hasSufficient || attempt === maxAttempts) {
         // We have sufficient results or this is our last attempt
@@ -765,6 +818,7 @@ async function performAllVectorSearchesWithRetry(
               risale: searchResults.risaleContexts.length,
               youtube: searchResults.youtubeContexts.length,
               fatwa: searchResults.fatwaContexts.length,
+              tafsirs: searchResults.tafsirsContexts.length,
               total: totalResults
             },
             hasSufficientResults: hasSufficient
@@ -809,6 +863,7 @@ export interface SourceSelection {
   risale: boolean;
   youtube: boolean;
   fatwa: boolean;
+  tafsirs?: boolean;
 }
 
 export async function performVectorSearchWithProgress(
@@ -855,7 +910,7 @@ export async function performVectorSearchWithProgress(
       parentTrace
     );
     
-    const { classicContexts, modernContexts, risaleContexts, youtubeContexts, fatwaContexts, finalImprovedQueries, totalAttempts } = searchResults;
+    const { classicContexts, modernContexts, risaleContexts, youtubeContexts, fatwaContexts, tafsirsContexts, finalImprovedQueries, totalAttempts } = searchResults;
     
     // Send search results count with attempt info
     const searchResultsCount = {
@@ -864,6 +919,7 @@ export async function performVectorSearchWithProgress(
       risale: risaleContexts.length,
       youtube: youtubeContexts.length,
       fatwa: fatwaContexts.length,
+      tafsirs: tafsirsContexts.length,
       totalAttempts
     };
     
@@ -877,11 +933,11 @@ export async function performVectorSearchWithProgress(
 
     // Generate messageId and store context
     const messageId = uuidv4();
-    const allContexts = [...classicContexts, ...modernContexts, ...risaleContexts, ...youtubeContexts, ...fatwaContexts];
+    const allContexts = [...classicContexts, ...modernContexts, ...risaleContexts, ...youtubeContexts, ...fatwaContexts, ...tafsirsContexts];
     messageContextMap.set(messageId, allContexts);
 
     // Build context block
-    const contextBlock = buildContextBlock(classicContexts, modernContexts, risaleContexts, youtubeContexts, fatwaContexts);
+    const contextBlock = buildContextBlock(classicContexts, modernContexts, risaleContexts, youtubeContexts, fatwaContexts, tafsirsContexts);
 
     if (onProgress) {
       onProgress({
@@ -907,7 +963,14 @@ export async function performVectorSearchWithProgress(
         messageId,
         citationsCount: allContexts.length,
         improvedQueriesCount: finalImprovedQueries.length,
-        searchResultsCount,
+        searchResultsCount: {
+          classic: classicContexts.length,
+          modern: modernContexts.length,
+          risale: risaleContexts.length,
+          youtube: youtubeContexts.length,
+          fatwa: fatwaContexts.length,
+          tafsirs: tafsirsContexts.length
+        },
         contextBlockLength: contextBlock.length,
         totalAttempts,
         success: true

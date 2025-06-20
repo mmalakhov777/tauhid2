@@ -21,16 +21,33 @@ export function SourcePreviewCards({
 }: SourcePreviewCardsProps) {
   const eligibleCitations = filterEligibleCitations(vectorSearchData.citations);
 
-  // Sort citations by category priority: direct first, then context
+  // Sort citations: DIRECT first (all types), then CONTEXT (all types), with type priority within each category
   const sortedCitations = eligibleCitations.sort((a, b) => {
+    const typeA = determineCitationType(a.citation);
+    const typeB = determineCitationType(b.citation);
     const categoryA = a.citation.category || 'context';
     const categoryB = b.citation.category || 'context';
     
-    // Direct citations come first
+    // Define type priority: 1=Tafsir, 2=Books, 3=YouTube, 4=Web-Fatwas, 5=Others
+    const getTypePriority = (type: string) => {
+      if (type === 'TAF' || type === 'tafsirs') return 1; // Tafsirs first
+      if (type === 'RIS' || type === 'risale' || type === 'CLS' || type === 'classic') return 2; // Books second
+      if (type === 'YT' || type === 'youtube') return 3; // YouTube third
+      if (type === 'islamqa_fatwa') return 4; // Web-Fatwas fourth
+      return 5; // Others last
+    };
+    
+    const priorityA = getTypePriority(typeA);
+    const priorityB = getTypePriority(typeB);
+    
+    // FIRST: All direct citations come before all context citations
     if (categoryA === 'direct' && categoryB !== 'direct') return -1;
     if (categoryB === 'direct' && categoryA !== 'direct') return 1;
     
-    // If both are same category, maintain original order
+    // SECOND: Within same category (direct or context), sort by type priority
+    if (priorityA !== priorityB) return priorityA - priorityB;
+    
+    // If both same category and type, maintain original order
     return 0;
   });
 
@@ -48,6 +65,7 @@ export function SourcePreviewCards({
         const type = determineCitationType(citation);
         const isYouTube = type === 'YT';
         const isIslamQA = type === 'islamqa_fatwa';
+        const isTafsir = type === 'TAF' || type === 'tafsirs';
         const isFatawaQaziKhan = type === 'CLS' && (
           citation.metadata?.source_file?.includes('FATAWA-QAZI-KHAN-')
         );
@@ -189,6 +207,79 @@ export function SourcePreviewCards({
                   </div>
                   <div className="flex items-center gap-1 text-[9px] text-muted-foreground mt-auto">
                     <span className="truncate">Fatwa Website</span>
+                  </div>
+                </div>
+              </>
+            ) : isTafsir ? (
+              // Tafsir layout - Bigger cover (50% vs 30% for books)
+              <>
+                {/* Cover Image - 50% (bigger than books) */}
+                <div className="w-[50%] shrink-0">
+                  <div className="relative h-full bg-muted">
+                    <img 
+                      src={`/images/${citation.namespace}.webp`}
+                      alt={`${(() => {
+                        switch (citation.namespace) {
+                          case 'Maarif-ul-Quran':
+                            return 'Maarif-ul-Quran';
+                          case 'Bayan-ul-Quran':
+                            return 'Tafsir Bayan ul Quran';
+                          case 'Kashf-Al-Asrar':
+                            return 'Kashf Al-Asrar Tafsir';
+                          case 'Tazkirul-Quran':
+                            return 'Tazkirul Quran';
+                          case 'Tanweer-Tafsir':
+                            return 'Tafseer Tanwir al-Miqbas';
+                          default:
+                            return 'Tafsir';
+                        }
+                      })()} cover`}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = 'none';
+                        target.parentElement!.innerHTML = '<div class="text-4xl text-muted-foreground flex items-center justify-center h-full">📖</div>';
+                      }}
+                    />
+                  </div>
+                </div>
+                
+                {/* Content - 50% */}
+                <div className="flex-1 p-2 flex flex-col justify-center">
+                  <div className="font-semibold text-card-foreground mb-1 line-clamp-1 text-xs">
+                    {(() => {
+                      switch (citation.namespace) {
+                        case 'Maarif-ul-Quran':
+                          return 'Maarif-ul-Quran';
+                        case 'Bayan-ul-Quran':
+                          return 'Tafsir Bayan ul Quran';
+                        case 'Kashf-Al-Asrar':
+                          return 'Kashf Al-Asrar Tafsir';
+                        case 'Tazkirul-Quran':
+                          return 'Tazkirul Quran';
+                        case 'Tanweer-Tafsir':
+                          return 'Tafseer Tanwir al-Miqbas';
+                        default:
+                          return 'Tafsir';
+                      }
+                    })()}
+                  </div>
+                  {/* Text preview */}
+                  <div className="text-[8px] text-muted-foreground line-clamp-2 italic mb-1">
+                    {cleanNumbers(citation.text)}
+                  </div>
+                  <div className="flex items-center gap-1 text-[9px] text-muted-foreground mt-auto">
+                    <span className="truncate">Tafsir</span>
+                    {(citation.metadata?.surah_number || citation.metadata?.ayah_number) && (
+                      <span className="truncate">
+                        {citation.metadata?.surah_number && citation.metadata?.ayah_number 
+                          ? `${citation.metadata.surah_number}:${citation.metadata.ayah_number}`
+                          : citation.metadata?.surah_number 
+                            ? `S:${citation.metadata.surah_number}`
+                            : `A:${citation.metadata.ayah_number}`
+                        }
+                      </span>
+                    )}
                   </div>
                 </div>
               </>

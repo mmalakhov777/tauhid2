@@ -153,8 +153,10 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
   } else if (citation.namespace) {
     if (['Sozler-Bediuzzaman_Said_Nursi', 'Mektubat-Bediuzzaman_Said_Nursi', 'lemalar-bediuzzaman_said_nursi', 'Hasir_Risalesi-Bediuzzaman_Said_Nursi', 'Otuz_Uc_Pencere-Bediuzzaman_Said_Nursi', 'Hastalar_Risalesi-Bediuzzaman_Said_Nursi', 'ihlas_risaleleri-bediuzzaman_said_nursi', 'enne_ve_zerre_risalesi-bediuzzaman_said_nursi', 'tabiat_risalesi-bediuzzaman_said_nursi', 'kader_risalesi-bediuzzaman_said_nursi'].includes(citation.namespace)) {
       type = 'RIS';
-    } else if (['4455', 'Islam_The_Ultimate_Peace', '2238', 'Islamic_Guidance', '2004', 'MercifulServant', '1572', 'Towards_Eternity'].includes(citation.namespace)) {
+    } else if (['youtube-qa-pairs'].includes(citation.namespace)) {
       type = 'YT';
+    } else if (['Maarif-ul-Quran', 'Bayan-ul-Quran', 'Kashf-Al-Asrar', 'Tazkirul-Quran', 'Tanweer-Tafsir'].includes(citation.namespace)) {
+      type = 'TAF';
     }
   } else if (!citation.metadata?.type && !citation.namespace) {
     type = 'CLS';
@@ -163,11 +165,13 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
   const typeLabels: Record<string, string> = {
     'RIS': safeT('citationModal.typeLabels.risaleNur'),
     'YT': safeT('citationModal.typeLabels.youtube'),
+    'TAF': 'Tafsir',
     'CLS': safeT('citationModal.typeLabels.classicalSource'),
     'classic': safeT('citationModal.typeLabels.classicalSource'),
     'modern': safeT('citationModal.typeLabels.modernSource'),
     'risale': safeT('citationModal.typeLabels.risaleNur'),
     'youtube': safeT('citationModal.typeLabels.youtube'),
+    'tafsirs': 'Tafsir',
     'islamqa_fatwa': safeT('citationModal.typeLabels.islamqaFatwa'),
     'unknown': safeT('citationModal.typeLabels.unknownSource')
   };
@@ -175,6 +179,7 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
   const isYouTube = type === 'YT' || type === 'youtube';
   const isClassical = type === 'CLS' || type === 'classic';
   const isRisale = type === 'RIS' || type === 'risale';
+  const isTafsir = type === 'TAF' || type === 'tafsirs';
   const isIslamQA = type === 'islamqa_fatwa';
   const thumbnailUrl = citation.metadata?.thumbnail_url;
   const videoId = citation.metadata?.video_id;
@@ -409,6 +414,27 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
       } else if (isRisale) {
         // For Risale-i Nur sources, use the book name
         sourceName = citation.metadata?.book_name?.replace(/-/g, ' ').replace(/_/g, ' ') || 'Risale-i Nur';
+      } else if (isTafsir) {
+        // For Tafsir sources, use the namespace to determine the name
+        switch (citation.namespace) {
+          case 'Maarif-ul-Quran':
+            sourceName = 'Maarif-ul-Quran';
+            break;
+          case 'Bayan-ul-Quran':
+            sourceName = 'Tafsir Bayan ul Quran';
+            break;
+          case 'Kashf-Al-Asrar':
+            sourceName = 'Kashf Al-Asrar Tafsir';
+            break;
+          case 'Tazkirul-Quran':
+            sourceName = 'Tazkirul Quran';
+            break;
+          case 'Tanweer-Tafsir':
+            sourceName = 'Tafseer Tanwir al-Miqbas';
+            break;
+          default:
+            sourceName = 'Tafsir';
+        }
       } else if (isYouTube) {
         // For YouTube sources, use the author/channel name
         sourceName = citation.metadata?.author || 'YouTube Video';
@@ -430,6 +456,9 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
       } else if (isRisale) {
         // For Risale-i Nur sources, use the PDF text if available, otherwise fallback to citation text
         originalText = pdfText || citation.text || '[No text available from PDF]';
+      } else if (isTafsir) {
+        // For Tafsir sources, use the text field
+        originalText = citation.text || '[No tafsir text available]';
       } else if (isYouTube) {
         // For YouTube sources, use the transcript if available, otherwise fallback to citation text
         originalText = youtubeTranscript || citation.text || '[No transcript available]';
@@ -445,7 +474,7 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
         selectedLanguage,
         citationNumber,
         sourceName,
-        sourceType: isClassical ? 'classical' : isRisale ? 'risale' : isYouTube ? 'youtube' : 'islamqa',
+        sourceType: isClassical ? 'classical' : isRisale ? 'risale' : isTafsir ? 'tafsir' : isYouTube ? 'youtube' : 'islamqa',
       });
       
       const response = await fetch('/api/fatwa-explanation', {
@@ -592,6 +621,34 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                   ) : isRisale ? (
                     <div className="flex items-center gap-4">
                       {/* Tabs for Risale-i Nur sources */}
+                      <div className="flex bg-muted rounded-lg p-1">
+                        <button
+                          onClick={() => setActiveTab('details')}
+                          className={cn(
+                            "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
+                            activeTab === 'details' 
+                              ? "bg-background text-foreground shadow-sm" 
+                              : "text-muted-foreground hover:text-foreground"
+                          )}
+                        >
+                          {safeT('citationModal.citationDetails')}
+                        </button>
+                        <button
+                          onClick={() => setActiveTab('original')}
+                          className={cn(
+                            "px-3 py-1.5 text-sm font-medium rounded-md transition-colors",
+                            activeTab === 'original' 
+                              ? "bg-background text-foreground shadow-sm" 
+                              : "text-muted-foreground hover:text-foreground"
+                          )}
+                        >
+                          {safeT('citationModal.originalText')}
+                        </button>
+                      </div>
+                    </div>
+                  ) : isTafsir ? (
+                    <div className="flex items-center gap-4">
+                      {/* Tabs for Tafsir sources */}
                       <div className="flex bg-muted rounded-lg p-1">
                         <button
                           onClick={() => setActiveTab('details')}
@@ -1259,6 +1316,168 @@ export function CitationModal({ isOpen, onClose, citation, citationNumber, allMe
                             </div>
                           </div>
                         )}
+                      </div>
+                    )}
+                  </>
+                ) : isTafsir ? (
+                  <>
+                    {/* Citation Details Tab */}
+                    {activeTab === 'details' && (
+                      <>
+                        {/* Tafsir Book Cover and Info */}
+                        <div className="rounded-lg border border-border bg-card/50 overflow-hidden shadow-lg">
+                          <div className="flex gap-0 h-32 sm:h-40">
+                            {/* Cover Image - 40% */}
+                            <div className="w-[40%] flex-shrink-0">
+                              <div className="relative w-full h-full bg-muted">
+                                <img 
+                                  src={`/images/${citation.namespace}.webp`}
+                                  alt={`${(() => {
+                                    switch (citation.namespace) {
+                                      case 'Maarif-ul-Quran':
+                                        return 'Maarif-ul-Quran';
+                                      case 'Bayan-ul-Quran':
+                                        return 'Tafsir Bayan ul Quran';
+                                      case 'Kashf-Al-Asrar':
+                                        return 'Kashf Al-Asrar Tafsir';
+                                      case 'Tazkirul-Quran':
+                                        return 'Tazkirul Quran';
+                                      case 'Tanweer-Tafsir':
+                                        return 'Tafseer Tanwir al-Miqbas';
+                                      default:
+                                        return 'Tafsir';
+                                    }
+                                  })()} cover`}
+                                  className="w-full h-full object-contain"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = 'none';
+                                    target.parentElement!.innerHTML = '<div class="text-4xl text-muted-foreground flex items-center justify-center h-full">📖</div>';
+                                  }}
+                                />
+                              </div>
+                            </div>
+                            
+                            {/* Content - 60% */}
+                            <div className="flex-1 flex flex-col justify-center gap-1.5 p-3">
+                              {/* Tafsir name as title */}
+                              <div className="text-sm font-semibold text-card-foreground leading-tight">
+                                {(() => {
+                                  switch (citation.namespace) {
+                                    case 'Maarif-ul-Quran':
+                                      return 'Maarif-ul-Quran';
+                                    case 'Bayan-ul-Quran':
+                                      return 'Tafsir Bayan ul Quran';
+                                    case 'Kashf-Al-Asrar':
+                                      return 'Kashf Al-Asrar Tafsir';
+                                    case 'Tazkirul-Quran':
+                                      return 'Tazkirul Quran';
+                                    case 'Tanweer-Tafsir':
+                                      return 'Tafseer Tanwir al-Miqbas';
+                                    default:
+                                      return 'Tafsir';
+                                  }
+                                })()}
+                              </div>
+                              
+                              {/* Author and description */}
+                              <div className="text-xs text-muted-foreground italic leading-tight line-clamp-2">
+                                {(() => {
+                                  switch (citation.namespace) {
+                                    case 'Maarif-ul-Quran':
+                                      return 'By Mufti Muhammad Shafi (Hanafi) - A comprehensive Quranic commentary';
+                                    case 'Bayan-ul-Quran':
+                                      return 'By Dr. Israr Ahmad (Hanafi) - Modern Urdu Quranic interpretation';
+                                    case 'Kashf-Al-Asrar':
+                                      return 'By Unknown Author (Hanafi, Sufi) - Mystical Quranic commentary';
+                                    case 'Tazkirul-Quran':
+                                      return 'By Maulana Wahid Uddin Khan (Hanafi) - Contemporary Quranic insights';
+                                    case 'Tanweer-Tafsir':
+                                      return 'By Tanweer (Hanafi) - Classical Arabic Quranic commentary';
+                                    default:
+                                      return 'Quranic commentary and interpretation';
+                                  }
+                                })()}
+                              </div>
+                              
+                                                             {/* Metadata */}
+                               <div className="flex flex-col gap-0.5 text-xs text-muted-foreground mt-auto">
+                                 {/* Source info */}
+                                 <div className="flex items-center gap-2">
+                                   <span className="text-xs">Tafsir Commentary</span>
+                                 </div>
+                                 
+                                 {/* Surah and Ayah numbers */}
+                                 {(citation.metadata?.surah_number || citation.metadata?.ayah_number) && (
+                                   <div className="text-xs">
+                                     {citation.metadata?.surah_number && citation.metadata?.ayah_number 
+                                       ? `Surah ${citation.metadata.surah_number}, Ayah ${citation.metadata.ayah_number}`
+                                       : citation.metadata?.surah_number 
+                                         ? `Surah ${citation.metadata.surah_number}`
+                                         : `Ayah ${citation.metadata.ayah_number}`
+                                     }
+                                   </div>
+                                 )}
+                                 
+                                 {/* Language */}
+                                 <div className="text-xs">
+                                   Language: {(() => {
+                                     switch (citation.namespace) {
+                                       case 'Maarif-ul-Quran':
+                                       case 'Kashf-Al-Asrar':
+                                       case 'Tazkirul-Quran':
+                                         return 'English';
+                                       case 'Bayan-ul-Quran':
+                                         return 'Urdu';
+                                       case 'Tanweer-Tafsir':
+                                         return 'Arabic';
+                                       default:
+                                         return 'Unknown';
+                                     }
+                                   })()}
+                                 </div>
+                               </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Show explanation */}
+                        {showExplanation && (
+                          <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="mt-4"
+                          >
+                            <h3 className="text-sm font-semibold text-muted-foreground mb-3 flex items-center gap-2">
+                              <Sparkles className="w-4 h-4 text-primary" />
+                              {safeT('citationModal.aiExplanation')}
+                            </h3>
+                            {isLoadingExplanation && !explanation ? (
+                              <div className="flex items-center justify-center py-8">
+                                <div className="flex flex-col items-center gap-3">
+                                  <div className="relative">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary/20"></div>
+                                    <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary border-t-transparent absolute inset-0"></div>
+                                  </div>
+                                  <span className="text-sm text-muted-foreground animate-pulse">{safeT('citationModal.analyzingConnection')}</span>
+                                </div>
+                              </div>
+                            ) : (
+                              <Markdown>
+                                {explanation}
+                              </Markdown>
+                            )}
+                          </motion.div>
+                        )}
+                      </>
+                    )}
+
+                    {/* Original Text Tab */}
+                    {activeTab === 'original' && (
+                      <div>
+                        <div className="bg-muted/50 rounded-lg p-4 text-sm leading-relaxed border border-border">
+                          {citation.text || safeT('citationModal.noTextAvailable')}
+                        </div>
                       </div>
                     )}
                   </>

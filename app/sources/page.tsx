@@ -190,6 +190,57 @@ export default function SourcesPage() {
     }
   ];
 
+  // Tafsir Collection
+  const tafsirBooks: Array<{
+    title: string;
+    image: string;
+    description: string;
+    author: string;
+    category: string;
+    link?: string;
+  }> = [
+    {
+      title: 'Maarif-ul-Quran',
+      image: '/images/Maarif-ul-Quran.webp',
+      description: 'A comprehensive Urdu commentary on the Quran by Mufti Muhammad Shafi, providing detailed explanations of Quranic verses with jurisprudential insights and practical applications for contemporary Muslims.',
+      author: 'Mufti Muhammad Shafi',
+      category: 'Quranic Commentary',
+      link: 'https://archive.org/details/maarifulquran-english'
+    },
+    {
+      title: 'Tafsir Bayan ul Quran',
+      image: '/images/Bayan-ul-Quran.webp',
+      description: 'An eloquent Urdu commentary on the Quran by Dr. Israr Ahmed, known for its clear explanations and emphasis on the Quran\'s guidance for individual and collective reformation.',
+      author: 'Dr. Israr Ahmed',
+      category: 'Quranic Commentary',
+      link: 'https://archive.org/details/BayanUlQuranDrIsrarAhmad'
+    },
+    {
+      title: 'Kashf Al-Asrar Tafsir',
+      image: '/images/Kashf-Al-Asrar.webp',
+      description: 'A classical Persian commentary on the Quran by Rashid al-Din Maybudi, combining literal interpretation with mystical insights and spiritual reflections on the divine text.',
+      author: 'Rashid al-Din Maybudi',
+      category: 'Classical Tafsir',
+      link: 'https://archive.org/details/kashf-al-asrar'
+    },
+    {
+      title: 'Tazkirul Quran',
+      image: '/images/Tazkirul-Quran.webp',
+      description: 'A modern Urdu commentary focusing on the Quran\'s moral and spiritual teachings, emphasizing practical guidance for contemporary Muslim life and character development.',
+      author: 'Various Contemporary Scholars',
+      category: 'Contemporary Tafsir',
+      link: 'https://archive.org/details/tazkirul-quran'
+    },
+    {
+      title: 'Tafseer Tanwir al-Miqbas',
+      image: '/images/Tanweer-Tafsir.webp',
+      description: 'An early classical commentary attributed to Ibn Abbas, providing foundational interpretations of Quranic verses that have influenced Islamic scholarship for centuries.',
+      author: 'Attributed to Ibn Abbas',
+      category: 'Classical Tafsir',
+      link: 'https://archive.org/details/tanwir-al-miqbas'
+    }
+  ];
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8 max-w-7xl">
@@ -212,6 +263,48 @@ export default function SourcesPage() {
           </p>
         </div>
 
+        {/* Tafsir Collection */}
+        <section className="mb-12">
+          <h2 className="text-2xl font-semibold mb-6 text-foreground">Quranic Commentaries (Tafsir)</h2>
+          <p className="text-muted-foreground mb-8 max-w-4xl">
+            These authoritative commentaries on the Quran provide deep insights into the meaning and interpretation 
+            of the divine text. They combine classical scholarship with contemporary understanding, offering 
+            comprehensive explanations of Quranic verses and their practical applications.
+          </p>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {tafsirBooks.map((book, index) => (
+              <div key={index} className="bg-card rounded-lg border border-border overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                <div className="aspect-[3/4] relative bg-muted">
+                  <img 
+                    src={book.image} 
+                    alt={`${book.title} cover`}
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+                <div className="p-4">
+                  <h3 className="font-semibold text-foreground mb-2 line-clamp-2">{book.title}</h3>
+                  <p className="text-sm text-muted-foreground mb-2">{book.author}</p>
+                  <span className="inline-block px-2 py-1 bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200 text-xs rounded-full mb-3">
+                    {book.category}
+                  </span>
+                  <p className="text-sm text-muted-foreground line-clamp-3 mb-3">{book.description}</p>
+                  {book.link && (
+                    <a 
+                      href={book.link} 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center text-xs text-blue-600 hover:text-blue-800 underline"
+                    >
+                      View on Archive.org →
+                    </a>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {/* Classical Islamic Texts */}
         <section className="mb-12">
           <h2 className="text-2xl font-semibold mb-6 text-foreground">Classical Islamic Texts</h2>
@@ -228,7 +321,7 @@ export default function SourcesPage() {
                   <img 
                     src={book.image} 
                     alt={`${book.title} cover`}
-                    className="w-full h-full object-contain p-2"
+                    className="w-full h-full object-contain"
                   />
                 </div>
                 <div className="p-4">
@@ -270,7 +363,7 @@ export default function SourcesPage() {
                   <img 
                     src={book.image} 
                     alt={`${book.title} cover`}
-                    className="w-full h-full object-contain p-2"
+                    className="w-full h-full object-contain"
                   />
                 </div>
                 <div className="p-4">

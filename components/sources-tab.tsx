@@ -2,10 +2,11 @@
 
 import { cn } from '@/lib/utils';
 import { Youtube, BookOpen, ScrollText } from 'lucide-react';
-import { determineCitationType, filterEligibleCitations, RIS_NAMESPACES, YT_NAMESPACES } from './citation-utils';
+import { determineCitationType, filterEligibleCitations, RIS_NAMESPACES, YT_NAMESPACES, TAF_NAMESPACES } from './citation-utils';
 import { ChevronDownIcon } from './icons';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useState } from 'react';
+import { SOURCE_DESCRIPTIONS } from './source-descriptions';
 
 interface SourcesTabProps {
   vectorSearchData: {
@@ -20,16 +21,33 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
   const [isQueryMappingExpanded, setIsQueryMappingExpanded] = useState(false);
   const eligibleCitations = filterEligibleCitations(vectorSearchData.citations);
 
-  // Sort citations by category priority: direct first, then context
+  // Sort citations: DIRECT first (all types), then CONTEXT (all types), with type priority within each category
   const sortedCitations = eligibleCitations.sort((a, b) => {
+    const typeA = determineCitationType(a.citation);
+    const typeB = determineCitationType(b.citation);
     const categoryA = a.citation.category || 'context';
     const categoryB = b.citation.category || 'context';
     
-    // Direct citations come first
+    // Define type priority: 1=Tafsir, 2=Books, 3=YouTube, 4=Web-Fatwas, 5=Others
+    const getTypePriority = (type: string) => {
+      if (type === 'TAF' || type === 'tafsirs') return 1; // Tafsirs first
+      if (type === 'RIS' || type === 'risale' || type === 'CLS' || type === 'classic') return 2; // Books second
+      if (type === 'YT' || type === 'youtube') return 3; // YouTube third
+      if (type === 'islamqa_fatwa') return 4; // Web-Fatwas fourth
+      return 5; // Others last
+    };
+    
+    const priorityA = getTypePriority(typeA);
+    const priorityB = getTypePriority(typeB);
+    
+    // FIRST: All direct citations come before all context citations
     if (categoryA === 'direct' && categoryB !== 'direct') return -1;
     if (categoryB === 'direct' && categoryA !== 'direct') return 1;
     
-    // If both are same category, maintain original order
+    // SECOND: Within same category (direct or context), sort by type priority
+    if (priorityA !== priorityB) return priorityA - priorityB;
+    
+    // If both same category and type, maintain original order
     return 0;
   });
 
@@ -40,10 +58,26 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
   };
 
   // Separate citations by type to avoid mixing different types in same row
-  const youTubeCitations = sortedCitations.filter((item: {citation: any, i: number}) => {
-    const type = determineCitationType(item.citation);
-    return type === 'YT' || type === 'youtube';
-  });
+  const youTubeCitations = (() => {
+    const ytCitations = sortedCitations.filter((item: {citation: any, i: number}) => {
+      const type = determineCitationType(item.citation);
+      return type === 'YT' || type === 'youtube';
+    });
+    
+    // Remove duplicates based on video_id
+    const seenVideoIds = new Set<string>();
+    return ytCitations.filter((item: {citation: any, i: number}) => {
+      const videoId = item.citation.metadata?.video_id;
+      if (!videoId) return true; // Keep citations without video_id
+      
+      if (seenVideoIds.has(videoId)) {
+        return false; // Filter out duplicate
+      }
+      
+      seenVideoIds.add(videoId);
+      return true; // Keep first occurrence
+    });
+  })();
 
   const islamQACitations = sortedCitations.filter((item: {citation: any, i: number}) => {
     const type = determineCitationType(item.citation);
@@ -93,17 +127,148 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
     return type === 'CLS' || type === 'classic';
   });
 
-  // Combine RIS and CLS citations into one array
+  const tafsirCitations = sortedCitations.filter((item: {citation: any, i: number}) => {
+    const type = determineCitationType(item.citation);
+    return type === 'TAF' || type === 'tafsirs';
+  });
+
+  // Combine RIS and CLS citations into one array (TAF now has its own section)
   const combinedRisaleAndClassicalCitations = [...risaleCitations, ...classicalCitations];
 
   const otherCitations = sortedCitations.filter((item: {citation: any, i: number}) => {
     const type = determineCitationType(item.citation);
-    return !['YT', 'youtube', 'islamqa_fatwa', 'RIS', 'risale', 'CLS', 'classic'].includes(type);
+    return !['YT', 'youtube', 'islamqa_fatwa', 'RIS', 'risale', 'CLS', 'classic', 'TAF', 'tafsirs'].includes(type);
   });
 
   return (
     <div className="space-y-6">
-      {/* Combined Risale-i Nur and Classical Citations - 2 per row */}
+      {/* Tafsir Citations - 2 per row - Show first */}
+      {tafsirCitations.length > 0 && (
+        <div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {tafsirCitations.map((item: {citation: any, i: number}) => {
+              const { citation, i } = item;
+              const type = determineCitationType(citation);
+              
+              return (
+                <div 
+                  key={`tafsir-${citation.id || i}`} 
+                  className="rounded-lg border border-border bg-card/50 flex flex-col transition-all duration-200 cursor-pointer hover:bg-card/70 hover:shadow-md overflow-hidden shadow-sm relative"
+                  onClick={() => {
+                    console.log('🎯 Tafsir card clicked - Citation Index:', i);
+                    console.log('🎯 Tafsir card clicked - Citation Data:', citation);
+                    console.log('🎯 Tafsir card clicked - Citation Metadata:', citation.metadata);
+                    console.log('🎯 Tafsir card clicked - Citation Namespace:', citation.namespace);
+                    setModalCitation({ 
+                      citation: citation, 
+                      number: i + 1
+                    });
+                  }}
+                >
+                  {/* Tafsir Source Layout - Match modal exactly but smaller */}
+                  <div className="flex gap-0 h-24 sm:h-28">
+                    {/* Cover Image - 40% to match modal */}
+                    <div className="w-[40%] flex-shrink-0">
+                      <div className="relative w-full h-full bg-muted">
+                        <img 
+                          src={`/images/${citation.namespace}.webp`}
+                          alt={`${(() => {
+                            switch (citation.namespace) {
+                              case 'Maarif-ul-Quran':
+                                return 'Maarif-ul-Quran';
+                              case 'Bayan-ul-Quran':
+                                return 'Tafsir Bayan ul Quran';
+                              case 'Kashf-Al-Asrar':
+                                return 'Kashf Al-Asrar Tafsir';
+                              case 'Tazkirul-Quran':
+                                return 'Tazkirul Quran';
+                              case 'Tanweer-Tafsir':
+                                return 'Tafseer Tanwir al-Miqbas';
+                              default:
+                                return 'Tafsir';
+                            }
+                          })()} cover`}
+                          className="w-full h-full object-contain"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            target.parentElement!.innerHTML = '<div class="text-2xl text-muted-foreground flex items-center justify-center h-full">📖</div>';
+                          }}
+                        />
+                      </div>
+                    </div>
+                    
+                    {/* Content - 60% to match modal */}
+                    <div className="flex-1 flex flex-col justify-center gap-1.5 p-2">
+                      {/* Tafsir name as title */}
+                      <div className="text-xs font-semibold text-card-foreground leading-tight">
+                        {(() => {
+                          switch (citation.namespace) {
+                            case 'Maarif-ul-Quran':
+                              return 'Maarif-ul-Quran';
+                            case 'Bayan-ul-Quran':
+                              return 'Tafsir Bayan ul Quran';
+                            case 'Kashf-Al-Asrar':
+                              return 'Kashf Al-Asrar Tafsir';
+                            case 'Tazkirul-Quran':
+                              return 'Tazkirul Quran';
+                            case 'Tanweer-Tafsir':
+                              return 'Tafseer Tanwir al-Miqbas';
+                            default:
+                              return 'Tafsir';
+                          }
+                        })()}
+                      </div>
+                      
+                      {/* Author and description - match modal */}
+                      <div className="text-[10px] text-muted-foreground italic leading-tight line-clamp-2">
+                        {(() => {
+                          switch (citation.namespace) {
+                            case 'Maarif-ul-Quran':
+                              return 'By Mufti Muhammad Shafi (Hanafi) - A comprehensive Quranic commentary';
+                            case 'Bayan-ul-Quran':
+                              return 'By Dr. Israr Ahmad (Hanafi) - Modern Urdu Quranic interpretation';
+                            case 'Kashf-Al-Asrar':
+                              return 'By Unknown Author (Hanafi, Sufi) - Mystical Quranic commentary';
+                            case 'Tazkirul-Quran':
+                              return 'By Maulana Wahid Uddin Khan (Hanafi) - Contemporary Quranic insights';
+                            case 'Tanweer-Tafsir':
+                              return 'By Tanweer (Hanafi) - Classical Arabic Quranic commentary';
+                            default:
+                              return 'Quranic commentary and interpretation';
+                          }
+                        })()}
+                      </div>
+                      
+                      {/* Metadata - match modal */}
+                      <div className="flex flex-col gap-0.5 text-[9px] text-muted-foreground mt-auto">
+                        {/* Source info */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-[9px]">Tafsir Commentary</span>
+                        </div>
+                        
+                        {/* Surah and Ayah numbers */}
+                        {(citation.metadata?.surah_number || citation.metadata?.ayah_number) && (
+                          <div className="text-[9px]">
+                            {citation.metadata?.surah_number && citation.metadata?.ayah_number 
+                              ? `Surah ${citation.metadata.surah_number}, Ayah ${citation.metadata.ayah_number}`
+                              : citation.metadata?.surah_number 
+                                ? `Surah ${citation.metadata.surah_number}`
+                                : `Ayah ${citation.metadata.ayah_number}`
+                            }
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* Combined Risale-i Nur and Classical Citations (Books) - 2 per row - Second priority */}
       {combinedRisaleAndClassicalCitations.length > 0 && (
         <div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -144,15 +309,15 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                 >
                   {/* Render based on citation type */}
                   {isRisale ? (
-                    /* RIS Source Layout with 40/60 split */
-                    <div className="flex gap-0 h-full">
-                      {/* Cover Image - 40% */}
-                      <div className="w-2/5 shrink-0">
-                        <div className="relative size-full overflow-hidden bg-muted">
+                    /* RIS Source Layout - Match modal exactly but smaller */
+                    <div className="flex gap-0 h-24 sm:h-28">
+                      {/* Cover Image - 40% to match modal */}
+                      <div className="w-[40%] flex-shrink-0">
+                        <div className="relative w-full h-full bg-muted">
                           <img 
                             src={`/images/risaleinur/${citation.metadata?.book_name || 'placeholder'}.webp`}
                             alt={`${citation.metadata?.book_name?.replace(/_/g, ' ').replace(/-/g, ' ') || 'Risale-i Nur'} cover`}
-                            className="size-full object-cover"
+                            className="w-full h-full object-contain"
                             onError={(e) => {
                               const target = e.target as HTMLImageElement;
                               target.src = '/images/fatawa-qazi-khan.webp';
@@ -161,243 +326,206 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                         </div>
                       </div>
                       
-                      {/* Content - 60% */}
-                      <div className="flex-1 flex flex-col justify-center gap-2 p-3">
-                        {/* Category Badge */}
-                        {citation.category && (
-                          <div className="mb-1">
-                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${
-                              citation.category === 'direct' ? 'bg-green-100 text-green-800' :
-                              citation.category === 'context' ? 'bg-blue-100 text-blue-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
-                              {citation.category?.toUpperCase() || 'UNCATEGORIZED'}
-                            </span>
-                          </div>
-                        )}
+                      {/* Content - 60% to match modal */}
+                      <div className="flex-1 flex flex-col justify-center gap-1.5 p-2">
                         {/* Book name as title */}
                         {citation.metadata?.book_name && (
-                          <div className="text-sm font-semibold text-card-foreground line-clamp-2">
-                            {citation.metadata.book_name.replace(/_/g, ' ').replace(/-/g, ' ').split(' ').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()).join(' ')}
+                          <div className="text-xs font-semibold text-card-foreground leading-tight">
+                            {citation.metadata.book_name.replace(/-/g, ' ').replace(/_/g, ' ')}
                           </div>
                         )}
                         
-                        {/* Text preview */}
-                        <div className="text-[10px] text-muted-foreground line-clamp-4 italic">
-                          {cleanNumbers(citation.text)}
+                        {/* Description - match modal */}
+                        <div className="text-[10px] text-muted-foreground italic leading-tight line-clamp-2">
+                          A profound work from the Risale-i Nur collection by Bediuzzaman Said Nursi, offering deep insights into Islamic spirituality and theology.
                         </div>
                         
-                        {/* Metadata */}
-                        <div className="flex flex-col gap-0.5 text-[10px] text-muted-foreground mt-auto">
-                          <span className="truncate">Risale-i Nur</span>
+                        {/* Metadata - match modal */}
+                        <div className="flex flex-col gap-0.5 text-[9px] text-muted-foreground mt-auto">
+                          {/* Source info */}
+                          <div className="flex items-center gap-2">
+                            <span className="text-[9px]">Risale-i Nur Collection</span>
+                          </div>
+                          
+                          {/* Author */}
+                          <div className="text-[9px]">
+                            Author: Bediuzzaman Said Nursi
+                          </div>
+                          
+                          {/* Page info */}
                           {citation.metadata?.page_number && (
-                            <div>Page: {citation.metadata.page_number}</div>
+                            <div className="text-[9px]">
+                              Page: {citation.metadata.page_number}
+                            </div>
                           )}
                         </div>
                       </div>
                     </div>
                   ) : isFatawaQaziKhan ? (
-                    /* Classical Source Layout with 40/60 split */
-                    <div className="flex gap-3">
-                      {/* Cover Image - 40% */}
-                      <div className="w-2/5 shrink-0">
-                        <div className="relative size-full rounded-l overflow-hidden bg-muted">
+                    /* Classical Source Layout - Match modal exactly but smaller */
+                    <div className="flex gap-0 h-24 sm:h-28">
+                      {/* Cover Image - 40% to match modal */}
+                      <div className="w-[40%] flex-shrink-0">
+                        <div className="relative w-full h-full bg-muted">
                           <img 
                             src="/images/fatawa-qazi-khan.webp" 
                             alt="Fatawa Qazi Khan cover"
-                            className="size-full object-cover object-center"
+                            className="w-full h-full object-contain"
                           />
                         </div>
                       </div>
                       
-                      {/* Content - 60% */}
-                      <div className="flex-1 flex flex-col justify-center gap-2 py-3 pr-3">
-                        {/* Category Badge */}
-                        {citation.category && (
-                          <div className="mb-1">
-                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${
-                              citation.category === 'direct' ? 'bg-green-100 text-green-800' :
-                              citation.category === 'context' ? 'bg-blue-100 text-blue-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
-                              {citation.category?.toUpperCase() || 'UNCATEGORIZED'}
-                            </span>
-                          </div>
-                        )}
-                        {/* Source as title */}
-                        {citation.metadata?.source && (
-                          <div className="text-sm font-semibold text-card-foreground line-clamp-2">
-                            {citation.metadata.source}
-                          </div>
-                        )}
-                        
-                        {/* Text preview */}
-                        <div className="text-[10px] text-muted-foreground line-clamp-4 italic">
-                          {cleanNumbers(citation.text)}
+                      {/* Content - 60% to match modal */}
+                      <div className="flex-1 flex flex-col justify-center gap-1.5 p-2">
+                        {/* Book name as title */}
+                        <div className="text-xs font-semibold text-card-foreground leading-tight">
+                          Fatawa Qazi Khan
                         </div>
                         
-                        {/* Metadata */}
-                        <div className="flex flex-col gap-0.5 text-[10px] text-muted-foreground mt-auto">
-                          <span className="truncate">Fatawa Qazi Khan</span>
+                        {/* Book description - match modal */}
+                        <div className="text-[10px] text-muted-foreground italic leading-tight line-clamp-2">
+                          {SOURCE_DESCRIPTIONS['Fatawa Qazi Khan']}
+                        </div>
+                        
+                        {/* Metadata - match modal */}
+                        <div className="flex flex-col gap-0.5 text-[9px] text-muted-foreground mt-auto">
+                          {/* Source info */}
+                          <div className="flex items-center gap-2">
+                            <span className="text-[9px]">Classical Islamic Text</span>
+                          </div>
+                          
+                          {/* Volume info */}
                           {citation.metadata?.volume && (
-                            <div>Volume: {citation.metadata.volume}</div>
+                            <div className="text-[9px]">
+                              Volume: {citation.metadata.volume}
+                            </div>
                           )}
                         </div>
                       </div>
                     </div>
                   ) : isRaddulMuhtar ? (
-                    <div className="flex gap-3">
+                    <div className="flex gap-0 h-24 sm:h-28">
                       {/* Cover Image - 40% */}
-                      <div className="w-2/5 shrink-0">
-                        <div className="relative size-full rounded-l overflow-hidden bg-muted">
+                      <div className="w-[40%] flex-shrink-0">
+                        <div className="relative w-full h-full bg-muted">
                           <img 
                             src="/images/raddul-muhtaar.webp" 
                             alt="Rad-ul-Muhtar cover"
-                            className="size-full object-cover object-center"
+                            className="w-full h-full object-contain"
                           />
                         </div>
                       </div>
                       
                       {/* Content - 60% */}
-                      <div className="flex-1 flex flex-col justify-center gap-2 py-3 pr-3">
-                        {/* Category Badge */}
-                        {citation.category && (
-                          <div className="mb-1">
-                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${
-                              citation.category === 'direct' ? 'bg-green-100 text-green-800' :
-                              citation.category === 'context' ? 'bg-blue-100 text-blue-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
-                              {citation.category?.toUpperCase() || 'UNCATEGORIZED'}
-                            </span>
-                          </div>
-                        )}
-                        {/* Source as title */}
-                        {citation.metadata?.source && (
-                          <div className="text-sm font-semibold text-card-foreground line-clamp-2">
-                            {citation.metadata.source}
-                          </div>
-                        )}
+                      <div className="flex-1 flex flex-col justify-center gap-1.5 p-2">
+                        {/* Book name as title */}
+                        <div className="text-xs font-semibold text-card-foreground leading-tight">
+                          Rad-ul-Muhtar
+                        </div>
                         
-                        {/* Text preview */}
-                        <div className="text-[10px] text-muted-foreground line-clamp-4 italic">
-                          {cleanNumbers(citation.text)}
+                        {/* Book description */}
+                        <div className="text-[10px] text-muted-foreground italic leading-tight line-clamp-2">
+                          {SOURCE_DESCRIPTIONS['Rad-ul-Muhtar']}
                         </div>
                         
                         {/* Metadata */}
-                        <div className="flex flex-col gap-0.5 text-[10px] text-muted-foreground mt-auto">
-                          <span className="truncate">Rad-ul-Muhtar</span>
+                        <div className="flex flex-col gap-0.5 text-[9px] text-muted-foreground mt-auto">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[9px]">Classical Islamic Text</span>
+                          </div>
                           {citation.metadata?.volume && (
-                            <div>Volume: {citation.metadata.volume}</div>
+                            <div className="text-[9px]">
+                              Volume: {citation.metadata.volume}
+                            </div>
                           )}
                         </div>
                       </div>
                     </div>
                   ) : isBadaiAlSanai ? (
-                    <div className="flex gap-3">
+                    <div className="flex gap-0 h-24 sm:h-28">
                       {/* Cover Image - 40% */}
-                      <div className="w-2/5 shrink-0">
-                        <div className="relative size-full rounded-l overflow-hidden bg-muted">
+                      <div className="w-[40%] flex-shrink-0">
+                        <div className="relative w-full h-full bg-muted">
                           <img 
                             src="/images/badai-as-sanai-urdu.webp" 
                             alt="Badai-al-Sanai cover"
-                            className="size-full object-cover object-center"
+                            className="w-full h-full object-contain"
                           />
                         </div>
                       </div>
                       
                       {/* Content - 60% */}
-                      <div className="flex-1 flex flex-col justify-center gap-2 py-3 pr-3">
-                        {/* Category Badge */}
-                        {citation.category && (
-                          <div className="mb-1">
-                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${
-                              citation.category === 'direct' ? 'bg-green-100 text-green-800' :
-                              citation.category === 'context' ? 'bg-blue-100 text-blue-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
-                              {citation.category?.toUpperCase() || 'UNCATEGORIZED'}
-                            </span>
-                          </div>
-                        )}
-                        {/* Source as title */}
-                        {citation.metadata?.source && (
-                          <div className="text-sm font-semibold text-card-foreground line-clamp-2">
-                            {citation.metadata.source}
-                          </div>
-                        )}
+                      <div className="flex-1 flex flex-col justify-center gap-1.5 p-2">
+                        {/* Book name as title */}
+                        <div className="text-xs font-semibold text-card-foreground leading-tight">
+                          Badai-al-Sanai
+                        </div>
                         
-                        {/* Text preview */}
-                        <div className="text-[10px] text-muted-foreground line-clamp-4 italic">
-                          {cleanNumbers(citation.text)}
+                        {/* Book description */}
+                        <div className="text-[10px] text-muted-foreground italic leading-tight line-clamp-2">
+                          {SOURCE_DESCRIPTIONS['Badai-al-Sanai']}
                         </div>
                         
                         {/* Metadata */}
-                        <div className="flex flex-col gap-0.5 text-[10px] text-muted-foreground mt-auto">
-                          <span className="truncate">Badai-al-Sanai</span>
+                        <div className="flex flex-col gap-0.5 text-[9px] text-muted-foreground mt-auto">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[9px]">Classical Islamic Text</span>
+                          </div>
                           {citation.metadata?.volume && (
-                            <div>Volume: {citation.metadata.volume}</div>
+                            <div className="text-[9px]">
+                              Volume: {citation.metadata.volume}
+                            </div>
                           )}
                         </div>
                       </div>
                     </div>
                   ) : isSharhWiqayah ? (
-                    <div className="flex gap-3">
+                    <div className="flex gap-0 h-24 sm:h-28">
                       {/* Cover Image - 40% */}
-                      <div className="w-2/5 shrink-0">
-                        <div className="relative size-full rounded-l overflow-hidden bg-muted">
+                      <div className="w-[40%] flex-shrink-0">
+                        <div className="relative w-full h-full bg-muted">
                           <img 
                             src="/images/sharh-al-wiqayah.webp" 
                             alt="Sharh al-Wiqayah cover"
-                            className="size-full object-cover object-center"
+                            className="w-full h-full object-contain"
                           />
                         </div>
                       </div>
                       
                       {/* Content - 60% */}
-                      <div className="flex-1 flex flex-col justify-center gap-2 py-3 pr-3">
-                        {/* Category Badge */}
-                        {citation.category && (
-                          <div className="mb-1">
-                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${
-                              citation.category === 'direct' ? 'bg-green-100 text-green-800' :
-                              citation.category === 'context' ? 'bg-blue-100 text-blue-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
-                              {citation.category?.toUpperCase() || 'UNCATEGORIZED'}
-                            </span>
-                          </div>
-                        )}
-                        {/* Source as title */}
-                        {citation.metadata?.source && (
-                          <div className="text-sm font-semibold text-card-foreground line-clamp-2">
-                            {citation.metadata.source}
-                          </div>
-                        )}
+                      <div className="flex-1 flex flex-col justify-center gap-1.5 p-2">
+                        {/* Book name as title */}
+                        <div className="text-xs font-semibold text-card-foreground leading-tight">
+                          Sharh al-Wiqayah
+                        </div>
                         
-                        {/* Text preview */}
-                        <div className="text-[10px] text-muted-foreground line-clamp-4 italic">
-                          {cleanNumbers(citation.text)}
+                        {/* Book description */}
+                        <div className="text-[10px] text-muted-foreground italic leading-tight line-clamp-2">
+                          {SOURCE_DESCRIPTIONS['Sharh al-Wiqayah']}
                         </div>
                         
                         {/* Metadata */}
-                        <div className="flex flex-col gap-0.5 text-[10px] text-muted-foreground mt-auto">
-                          <span className="truncate">Sharh al-Wiqayah</span>
+                        <div className="flex flex-col gap-0.5 text-[9px] text-muted-foreground mt-auto">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[9px]">Classical Islamic Text</span>
+                          </div>
                           {citation.metadata?.volume && (
-                            <div>Volume: {citation.metadata.volume}</div>
+                            <div className="text-[9px]">
+                              Volume: {citation.metadata.volume}
+                            </div>
                           )}
                         </div>
                       </div>
                     </div>
                   ) : isAlHidaya ? (
-                    <div className="flex gap-3">
+                    <div className="flex gap-0 h-24 sm:h-28">
                       {/* Cover Image - 40% */}
-                      <div className="w-2/5 shrink-0">
-                        <div className="relative size-full rounded-l overflow-hidden bg-muted">
+                      <div className="w-[40%] flex-shrink-0">
+                        <div className="relative w-full h-full bg-muted">
                           <img 
                             src={citation.metadata?.source_file === 'Al_Hidaya_in_English.txt' ? "/images/Al_Hidaya_in_English.webp" : "/images/Al-Hidaya.webp"} 
                             alt="Al-Hidaya cover"
-                            className="size-full object-cover object-center"
+                            className="w-full h-full object-contain"
                             onError={(e) => {
                               const target = e.target as HTMLImageElement;
                               target.src = '/images/fatawa-qazi-khan.webp';
@@ -407,49 +535,39 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                       </div>
                       
                       {/* Content - 60% */}
-                      <div className="flex-1 flex flex-col justify-center gap-2 py-3 pr-3">
-                        {/* Category Badge */}
-                        {citation.category && (
-                          <div className="mb-1">
-                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${
-                              citation.category === 'direct' ? 'bg-green-100 text-green-800' :
-                              citation.category === 'context' ? 'bg-blue-100 text-blue-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
-                              {citation.category?.toUpperCase() || 'UNCATEGORIZED'}
-                            </span>
-                          </div>
-                        )}
-                        {/* Source as title */}
-                        {citation.metadata?.source && (
-                          <div className="text-sm font-semibold text-card-foreground line-clamp-2">
-                            {citation.metadata.source}
-                          </div>
-                        )}
+                      <div className="flex-1 flex flex-col justify-center gap-1.5 p-2">
+                        {/* Book name as title */}
+                        <div className="text-xs font-semibold text-card-foreground leading-tight">
+                          Al-Hidaya
+                        </div>
                         
-                        {/* Text preview */}
-                        <div className="text-[10px] text-muted-foreground line-clamp-4 italic">
-                          {cleanNumbers(citation.text)}
+                        {/* Book description */}
+                        <div className="text-[10px] text-muted-foreground italic leading-tight line-clamp-2">
+                          {SOURCE_DESCRIPTIONS['Al-Hidaya']}
                         </div>
                         
                         {/* Metadata */}
-                        <div className="flex flex-col gap-0.5 text-[10px] text-muted-foreground mt-auto">
-                          <span className="truncate">Al-Hidaya</span>
+                        <div className="flex flex-col gap-0.5 text-[9px] text-muted-foreground mt-auto">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[9px]">Classical Islamic Text</span>
+                          </div>
                           {citation.metadata?.volume && (
-                            <div>Volume: {citation.metadata.volume}</div>
+                            <div className="text-[9px]">
+                              Volume: {citation.metadata.volume}
+                            </div>
                           )}
                         </div>
                       </div>
                     </div>
                   ) : isAlMabsut ? (
-                    <div className="flex gap-3">
+                    <div className="flex gap-0 h-24 sm:h-28">
                       {/* Cover Image - 40% */}
-                      <div className="w-2/5 shrink-0">
-                        <div className="relative size-full rounded-l overflow-hidden bg-muted">
+                      <div className="w-[40%] flex-shrink-0">
+                        <div className="relative w-full h-full bg-muted">
                           <img 
                             src={citation.metadata?.source_file === 'Al-Mabsut_Sarakhsi_Index.txt' ? "/images/Al-Mabsut_Sarakhsi_Index.webp" : "/images/Al-Mabsut_Sarakhsi_HanafiFiqh.webp"} 
                             alt="Al-Mabsut Sarakhsi cover"
-                            className="size-full object-cover object-center"
+                            className="w-full h-full object-contain"
                             onError={(e) => {
                               const target = e.target as HTMLImageElement;
                               target.src = '/images/fatawa-qazi-khan.webp';
@@ -459,49 +577,39 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                       </div>
                       
                       {/* Content - 60% */}
-                      <div className="flex-1 flex flex-col justify-center gap-2 py-3 pr-3">
-                        {/* Category Badge */}
-                        {citation.category && (
-                          <div className="mb-1">
-                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${
-                              citation.category === 'direct' ? 'bg-green-100 text-green-800' :
-                              citation.category === 'context' ? 'bg-blue-100 text-blue-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
-                              {citation.category?.toUpperCase() || 'UNCATEGORIZED'}
-                            </span>
-                          </div>
-                        )}
-                        {/* Source as title */}
-                        {citation.metadata?.source && (
-                          <div className="text-sm font-semibold text-card-foreground line-clamp-2">
-                            {citation.metadata.source}
-                          </div>
-                        )}
+                      <div className="flex-1 flex flex-col justify-center gap-1.5 p-2">
+                        {/* Book name as title */}
+                        <div className="text-xs font-semibold text-card-foreground leading-tight">
+                          Al-Mabsut Sarakhsi
+                        </div>
                         
-                        {/* Text preview */}
-                        <div className="text-[10px] text-muted-foreground line-clamp-4 italic">
-                          {cleanNumbers(citation.text)}
+                        {/* Book description */}
+                        <div className="text-[10px] text-muted-foreground italic leading-tight line-clamp-2">
+                          {SOURCE_DESCRIPTIONS['Al-Mabsut Sarakhsi']}
                         </div>
                         
                         {/* Metadata */}
-                        <div className="flex flex-col gap-0.5 text-[10px] text-muted-foreground mt-auto">
-                          <span className="truncate">Al-Mabsut Sarakhsi</span>
+                        <div className="flex flex-col gap-0.5 text-[9px] text-muted-foreground mt-auto">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[9px]">Classical Islamic Text</span>
+                          </div>
                           {citation.metadata?.volume && (
-                            <div>Volume: {citation.metadata.volume}</div>
+                            <div className="text-[9px]">
+                              Volume: {citation.metadata.volume}
+                            </div>
                           )}
                         </div>
                       </div>
                     </div>
                   ) : isUsulAlFiqhSarakhsi ? (
-                    <div className="flex gap-3">
+                    <div className="flex gap-0 h-24 sm:h-28">
                       {/* Cover Image - 40% */}
-                      <div className="w-2/5 shrink-0">
-                        <div className="relative size-full rounded-l overflow-hidden bg-muted">
+                      <div className="w-[40%] flex-shrink-0">
+                        <div className="relative w-full h-full bg-muted">
                           <img 
                             src="/images/UsulAlFiqh_Sarakhsi_IslamicLawPrinciples.webp" 
                             alt="Usul al-Fiqh Sarakhsi cover"
-                            className="size-full object-cover object-center"
+                            className="w-full h-full object-contain"
                             onError={(e) => {
                               const target = e.target as HTMLImageElement;
                               target.src = '/images/fatawa-qazi-khan.webp';
@@ -511,49 +619,39 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                       </div>
                       
                       {/* Content - 60% */}
-                      <div className="flex-1 flex flex-col justify-center gap-2 py-3 pr-3">
-                        {/* Category Badge */}
-                        {citation.category && (
-                          <div className="mb-1">
-                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${
-                              citation.category === 'direct' ? 'bg-green-100 text-green-800' :
-                              citation.category === 'context' ? 'bg-blue-100 text-blue-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
-                              {citation.category?.toUpperCase() || 'UNCATEGORIZED'}
-                            </span>
-                          </div>
-                        )}
-                        {/* Source as title */}
-                        {citation.metadata?.source && (
-                          <div className="text-sm font-semibold text-card-foreground line-clamp-2">
-                            {citation.metadata.source}
-                          </div>
-                        )}
+                      <div className="flex-1 flex flex-col justify-center gap-1.5 p-2">
+                        {/* Book name as title */}
+                        <div className="text-xs font-semibold text-card-foreground leading-tight">
+                          Usul al-Fiqh Sarakhsi
+                        </div>
                         
-                        {/* Text preview */}
-                        <div className="text-[10px] text-muted-foreground line-clamp-4 italic">
-                          {cleanNumbers(citation.text)}
+                        {/* Book description */}
+                        <div className="text-[10px] text-muted-foreground italic leading-tight line-clamp-2">
+                          {SOURCE_DESCRIPTIONS['Usul al-Fiqh Sarakhsi']}
                         </div>
                         
                         {/* Metadata */}
-                        <div className="flex flex-col gap-0.5 text-[10px] text-muted-foreground mt-auto">
-                          <span className="truncate">Usul al-Fiqh Sarakhsi</span>
+                        <div className="flex flex-col gap-0.5 text-[9px] text-muted-foreground mt-auto">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[9px]">Classical Islamic Text</span>
+                          </div>
                           {citation.metadata?.volume && (
-                            <div>Volume: {citation.metadata.volume}</div>
+                            <div className="text-[9px]">
+                              Volume: {citation.metadata.volume}
+                            </div>
                           )}
                         </div>
                       </div>
                     </div>
                   ) : isNukatZiyadat ? (
-                    <div className="flex gap-3">
+                    <div className="flex gap-0 h-24 sm:h-28">
                       {/* Cover Image - 40% */}
-                      <div className="w-2/5 shrink-0">
-                        <div className="relative size-full rounded-l overflow-hidden bg-muted">
+                      <div className="w-[40%] flex-shrink-0">
+                        <div className="relative w-full h-full bg-muted">
                           <img 
                             src="/images/Nukat_ZiyadatAlZiyadat_HanafiNotes.webp" 
                             alt="Nukat Ziyadat al-Ziyadat cover"
-                            className="size-full object-cover object-center"
+                            className="w-full h-full object-contain"
                             onError={(e) => {
                               const target = e.target as HTMLImageElement;
                               target.src = '/images/fatawa-qazi-khan.webp';
@@ -563,49 +661,39 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                       </div>
                       
                       {/* Content - 60% */}
-                      <div className="flex-1 flex flex-col justify-center gap-2 py-3 pr-3">
-                        {/* Category Badge */}
-                        {citation.category && (
-                          <div className="mb-1">
-                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${
-                              citation.category === 'direct' ? 'bg-green-100 text-green-800' :
-                              citation.category === 'context' ? 'bg-blue-100 text-blue-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
-                              {citation.category?.toUpperCase() || 'UNCATEGORIZED'}
-                            </span>
-                          </div>
-                        )}
-                        {/* Source as title */}
-                        {citation.metadata?.source && (
-                          <div className="text-sm font-semibold text-card-foreground line-clamp-2">
-                            {citation.metadata.source}
-                          </div>
-                        )}
+                      <div className="flex-1 flex flex-col justify-center gap-1.5 p-2">
+                        {/* Book name as title */}
+                        <div className="text-xs font-semibold text-card-foreground leading-tight">
+                          Nukat Ziyadat al-Ziyadat
+                        </div>
                         
-                        {/* Text preview */}
-                        <div className="text-[10px] text-muted-foreground line-clamp-4 italic">
-                          {cleanNumbers(citation.text)}
+                        {/* Book description */}
+                        <div className="text-[10px] text-muted-foreground italic leading-tight line-clamp-2">
+                          {SOURCE_DESCRIPTIONS['Nukat Ziyadat al-Ziyadat']}
                         </div>
                         
                         {/* Metadata */}
-                        <div className="flex flex-col gap-0.5 text-[10px] text-muted-foreground mt-auto">
-                          <span className="truncate">Nukat Ziyadat al-Ziyadat</span>
+                        <div className="flex flex-col gap-0.5 text-[9px] text-muted-foreground mt-auto">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[9px]">Classical Islamic Text</span>
+                          </div>
                           {citation.metadata?.volume && (
-                            <div>Volume: {citation.metadata.volume}</div>
+                            <div className="text-[9px]">
+                              Volume: {citation.metadata.volume}
+                            </div>
                           )}
                         </div>
                       </div>
                     </div>
                   ) : isSharhSiyarAlKabir ? (
-                    <div className="flex gap-3">
+                    <div className="flex gap-0 h-24 sm:h-28">
                       {/* Cover Image - 40% */}
-                      <div className="w-2/5 shrink-0">
-                        <div className="relative size-full rounded-l overflow-hidden bg-muted">
+                      <div className="w-[40%] flex-shrink-0">
+                        <div className="relative w-full h-full bg-muted">
                           <img 
                             src="/images/SharhSiyarAlKabir_Sarakhsi_InternationalLaw.webp" 
                             alt="Sharh Siyar al-Kabir Sarakhsi cover"
-                            className="size-full object-cover object-center"
+                            className="w-full h-full object-contain"
                             onError={(e) => {
                               const target = e.target as HTMLImageElement;
                               target.src = '/images/fatawa-qazi-khan.webp';
@@ -615,36 +703,26 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                       </div>
                       
                       {/* Content - 60% */}
-                      <div className="flex-1 flex flex-col justify-center gap-2 py-3 pr-3">
-                        {/* Category Badge */}
-                        {citation.category && (
-                          <div className="mb-1">
-                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${
-                              citation.category === 'direct' ? 'bg-green-100 text-green-800' :
-                              citation.category === 'context' ? 'bg-blue-100 text-blue-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
-                              {citation.category?.toUpperCase() || 'UNCATEGORIZED'}
-                            </span>
-                          </div>
-                        )}
-                        {/* Source as title */}
-                        {citation.metadata?.source && (
-                          <div className="text-sm font-semibold text-card-foreground line-clamp-2">
-                            {citation.metadata.source}
-                          </div>
-                        )}
+                      <div className="flex-1 flex flex-col justify-center gap-1.5 p-2">
+                        {/* Book name as title */}
+                        <div className="text-xs font-semibold text-card-foreground leading-tight">
+                          Sharh Siyar al-Kabir Sarakhsi
+                        </div>
                         
-                        {/* Text preview */}
-                        <div className="text-[10px] text-muted-foreground line-clamp-4 italic">
-                          {cleanNumbers(citation.text)}
+                        {/* Book description */}
+                        <div className="text-[10px] text-muted-foreground italic leading-tight line-clamp-2">
+                          {SOURCE_DESCRIPTIONS['Sharh Siyar al-Kabir Sarakhsi']}
                         </div>
                         
                         {/* Metadata */}
-                        <div className="flex flex-col gap-0.5 text-[10px] text-muted-foreground mt-auto">
-                          <span className="truncate">Sharh Siyar al-Kabir Sarakhsi</span>
+                        <div className="flex flex-col gap-0.5 text-[9px] text-muted-foreground mt-auto">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[9px]">Classical Islamic Text</span>
+                          </div>
                           {citation.metadata?.volume && (
-                            <div>Volume: {citation.metadata.volume}</div>
+                            <div className="text-[9px]">
+                              Volume: {citation.metadata.volume}
+                            </div>
                           )}
                         </div>
                       </div>
@@ -652,18 +730,6 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                   ) : (
                     // Other classical sources
                     <div className="p-3">
-                      {/* Category Badge */}
-                      {citation.category && (
-                        <div className="mb-1">
-                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${
-                            citation.category === 'direct' ? 'bg-green-100 text-green-800' :
-                            citation.category === 'context' ? 'bg-blue-100 text-blue-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
-                            {citation.category?.toUpperCase() || 'UNCATEGORIZED'}
-                          </span>
-                        </div>
-                      )}
                       {/* Source text preview */}
                       <div className="text-xs font-semibold text-card-foreground line-clamp-2">
                         {citation.metadata?.source || citation.text?.slice(0, 60) || '[No text]'}...
@@ -692,7 +758,81 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
         </div>
       )}
 
-      {/* IslamQA Citations - 2 per row */}
+      {/* YouTube Cards - 2 per row on mobile, 3 per row on desktop - Third priority */}
+      {youTubeCitations.length > 0 && (
+        <div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3">
+            {youTubeCitations.map((item: {citation: any, i: number}) => {
+              const { citation, i } = item;
+              const thumbnailUrl = citation.metadata?.thumbnail_url;
+              
+              return (
+                <div 
+                  key={`source-${citation.id || i}`} 
+                  className="rounded-lg border border-border bg-card/50 flex flex-col transition-all duration-200 cursor-pointer hover:bg-card/70 hover:shadow-md overflow-hidden shadow-sm h-fit relative"
+                  onClick={() => {
+                    console.log('🎯 Preview card clicked - Citation Index:', i);
+                    console.log('🎯 Preview card clicked - Citation Data:', citation);
+                    console.log('🎯 Preview card clicked - Citation Metadata:', citation.metadata);
+                    console.log('🎯 Preview card clicked - Citation Namespace:', citation.namespace);
+                    setModalCitation({ 
+                      citation: citation, 
+                      number: i + 1
+                    });
+                  }}
+                >
+                  {/* YouTube Thumbnail */}
+                  {thumbnailUrl ? (
+                    <div className="relative w-full aspect-video rounded overflow-hidden bg-muted group">
+                      <img 
+                        src={thumbnailUrl} 
+                        alt="YouTube video thumbnail"
+                        className="w-full h-full object-cover grayscale hover:grayscale-0 transition-all duration-300"
+                      />
+                      
+                      {/* YouTube Play Button - Big Red Icon in Center */}
+                      <div className="absolute inset-0 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                        <div className="relative">
+                          {/* Red Rounded Rectangle Background - Like Real YouTube */}
+                          <div className="w-12 h-8 md:w-14 md:h-10 bg-red-600 rounded-lg flex items-center justify-center shadow-lg">
+                            {/* White Triangle Play Icon */}
+                            <div className="w-0 h-0 border-l-[6px] md:border-l-[7px] border-l-white border-t-[4px] md:border-t-[5px] border-t-transparent border-b-[4px] md:border-b-[5px] border-b-transparent ml-0.5"></div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {citation.namespace && (
+                        <div className="absolute top-1 left-1 md:top-1.5 md:left-1.5 bg-black/80 text-white text-[8px] md:text-[9px] px-1 md:px-1.5 py-0.5 rounded flex items-center gap-0.5 md:gap-1">
+                          <Youtube className="size-2 md:size-2.5" />
+                          <span className="hidden sm:inline">YouTube</span>
+                        </div>
+                      )}
+                      {citation.metadata?.timestamp && typeof citation.metadata.timestamp === 'number' && !isNaN(citation.metadata.timestamp) && (
+                        <div className="absolute bottom-1 left-1 md:bottom-1.5 md:left-1.5 bg-black/80 text-white text-[7px] md:text-[8px] px-1 py-0.5 rounded">
+                          {Math.floor(citation.metadata.timestamp / 60)}:{(citation.metadata.timestamp % 60).toString().padStart(2, '0')}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    /* YouTube without thumbnail */
+                    <div className="p-2 md:p-3 space-y-1 flex-1 flex flex-col">
+                      <div className="text-[9px] md:text-[10px] font-semibold text-card-foreground flex items-center gap-1">
+                        <Youtube className="size-2 md:size-2.5" />
+                        <span className="line-clamp-2">YouTube</span>
+                      </div>
+                      <div className="text-[8px] md:text-[9px] text-muted-foreground line-clamp-3">
+                        {cleanNumbers(citation.text)}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* IslamQA Citations (Web-Fatwas) - 2 per row - Fourth priority */}
       {islamQACitations.length > 0 && (
         <div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -715,10 +855,10 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                     });
                   }}
                 >
-                  {/* IslamQA Fatwa Layout - Favicon and Question only */}
-                  <div className="p-3">
-                    <div className="flex items-start gap-3">
-                      {/* Favicon */}
+                  {/* IslamQA Fatwa Layout - Match modal but smaller */}
+                  <div className="p-2">
+                    <div className="flex items-start gap-2">
+                      {/* Favicon - smaller than modal */}
                       {(() => {
                         // Extract domain from URL for favicon
                         const getUrlFromCitation = (citation: any) => {
@@ -734,11 +874,11 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                             const url = new URL(linkToUse);
                             const domain = url.hostname.replace('www.', '');
                             return (
-                              <div className="w-8 h-8 rounded-md flex-shrink-0 relative">
+                              <div className="w-6 h-6 rounded-md flex-shrink-0 relative">
                                 <img 
                                   src={`/favicons/${domain}.png`}
                                   alt={`${domain} favicon`}
-                                  className="w-8 h-8 rounded-md"
+                                  className="w-6 h-6 rounded-md"
                                   onError={(e) => {
                                     const target = e.target as HTMLImageElement;
                                     target.style.display = 'none';
@@ -749,43 +889,31 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                                 />
                                 {/* Fallback icon */}
                                 <div 
-                                  className="w-8 h-8 rounded-md bg-emerald-600 border border-emerald-700 flex items-center justify-center text-white font-semibold text-sm absolute top-0 left-0 shadow-sm"
+                                  className="w-6 h-6 rounded-md bg-emerald-600 border border-emerald-700 flex items-center justify-center text-white font-semibold text-xs absolute top-0 left-0 shadow-sm"
                                   style={{ display: 'none' }}
                                 >
-                                  <ScrollText className="w-4 h-4" />
+                                  <ScrollText className="w-3 h-3" />
                                 </div>
                               </div>
                             );
-                                                      } catch {
-                              return (
-                                <div className="w-8 h-8 rounded-md bg-slate-600 border border-slate-700 flex items-center justify-center text-white font-semibold text-sm flex-shrink-0 shadow-sm">
-                                  <ScrollText className="w-4 h-4" />
-                                </div>
-                              );
-                            }
+                          } catch {
+                            return (
+                              <div className="w-6 h-6 rounded-md bg-slate-600 border border-slate-700 flex items-center justify-center text-white font-semibold text-xs flex-shrink-0 shadow-sm">
+                                <ScrollText className="w-3 h-3" />
+                              </div>
+                            );
+                          }
                         }
                         return (
-                          <div className="w-8 h-8 rounded-md bg-emerald-700 border border-emerald-800 flex items-center justify-center text-white font-semibold text-sm flex-shrink-0 shadow-sm">
-                            <ScrollText className="w-4 h-4" />
+                          <div className="w-6 h-6 rounded-md bg-emerald-700 border border-emerald-800 flex items-center justify-center text-white font-semibold text-xs flex-shrink-0 shadow-sm">
+                            <ScrollText className="w-3 h-3" />
                           </div>
                         );
                       })()}
                       
                       {/* Scholar and Domain */}
                       <div className="flex-1">
-                        {/* Category Badge */}
-                        {citation.category && (
-                          <div className="mb-1">
-                            <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${
-                              citation.category === 'direct' ? 'bg-green-100 text-green-800' :
-                              citation.category === 'context' ? 'bg-blue-100 text-blue-800' :
-                              'bg-gray-100 text-gray-800'
-                            }`}>
-                              {citation.category?.toUpperCase() || 'UNCATEGORIZED'}
-                            </span>
-                          </div>
-                        )}
-                        <div className="text-xs font-semibold text-card-foreground line-clamp-2">
+                        <div className="text-[10px] font-semibold text-card-foreground line-clamp-2">
                           {(() => {
                             // Extract scholar information up until "Short"
                             const text = citation.text || '';
@@ -803,7 +931,7 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                           })()}
                         </div>
                         {/* Domain name */}
-                        <div className="text-[10px] text-muted-foreground mt-1">
+                        <div className="text-[8px] text-muted-foreground mt-1">
                           {(() => {
                             // Extract domain from URL
                             const getUrlFromCitation = (citation: any) => {
@@ -835,7 +963,7 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
         </div>
       )}
 
-      {/* Other Citations - 2 per row */}
+      {/* Other Citations - 2 per row - Fifth priority */}
       {otherCitations.length > 0 && (
         <div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -858,127 +986,27 @@ export function SourcesTab({ vectorSearchData, setModalCitation, showDebug = fal
                     });
                   }}
                 >
-                  {/* Other types */}
-                  <div className="p-3">
-                    {/* Category Badge */}
-                    {citation.category && (
-                      <div className="mb-1">
-                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${
-                          citation.category === 'direct' ? 'bg-green-100 text-green-800' :
-                          citation.category === 'context' ? 'bg-blue-100 text-blue-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {citation.category?.toUpperCase() || 'UNCATEGORIZED'}
-                        </span>
-                      </div>
-                    )}
-                    {/* Source text preview */}
-                    <div className="text-xs font-semibold text-card-foreground line-clamp-2">
+                  {/* Other types - smaller */}
+                  <div className="p-2">
+                    <div className="text-[10px] font-semibold text-card-foreground line-clamp-2">
                       {citation.text?.slice(0, 60) || '[No text]'}...
                     </div>
                     
                     {/* Preview */}
-                    <div className="text-[10px] text-muted-foreground line-clamp-4 mt-1">
+                    <div className="text-[8px] text-muted-foreground line-clamp-4 mt-1">
                       {cleanNumbers(citation.text)}
                     </div>
                     
                     {/* Metadata */}
-                    <div className="flex flex-col gap-0.5 text-[10px] text-muted-foreground mt-auto">
+                    <div className="flex flex-col gap-0.5 text-[8px] text-muted-foreground mt-auto">
                       <div className="flex items-center gap-1">
-                        <span className="px-1 py-0.5 rounded bg-secondary text-secondary-foreground text-[9px]">
+                        <span className="px-1 py-0.5 rounded bg-secondary text-secondary-foreground text-[7px]">
                           {type}
                         </span>
                         <span className="truncate">{citation.metadata?.source || 'Unknown'}</span>
                       </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* YouTube Cards - 2 per row on mobile, 3 per row on desktop - Always below other sources */}
-      {youTubeCitations.length > 0 && (
-        <div>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-3">
-            {youTubeCitations.map((item: {citation: any, i: number}) => {
-              const { citation, i } = item;
-              const thumbnailUrl = citation.metadata?.thumbnail_url;
-              
-              return (
-                <div 
-                  key={`source-${citation.id || i}`} 
-                  className="rounded-lg border border-border bg-card/50 flex flex-col transition-all duration-200 cursor-pointer hover:bg-card/70 hover:shadow-md overflow-hidden shadow-sm h-fit relative"
-                  onClick={() => {
-                    console.log('🎯 Preview card clicked - Citation Index:', i);
-                    console.log('🎯 Preview card clicked - Citation Data:', citation);
-                    console.log('🎯 Preview card clicked - Citation Metadata:', citation.metadata);
-                    console.log('🎯 Preview card clicked - Citation Namespace:', citation.namespace);
-                    setModalCitation({ 
-                      citation: citation, 
-                      number: i + 1
-                    });
-                  }}
-                >
-                  {/* YouTube Thumbnail */}
-                  {thumbnailUrl ? (
-                    <div className="relative w-full aspect-video rounded overflow-hidden bg-muted group">
-                      <img 
-                        src={thumbnailUrl} 
-                        alt="YouTube video thumbnail"
-                        className="w-full h-full object-cover"
-                      />
-                      {citation.namespace && (
-                        <div className="absolute top-1 left-1 md:top-1.5 md:left-1.5 bg-black/80 text-white text-[9px] md:text-[10px] px-1 md:px-1.5 py-0.5 rounded flex items-center gap-0.5 md:gap-1">
-                          <Youtube className="size-2 md:size-2.5" />
-                          <span className="hidden sm:inline">{citation.namespace.replace(/_/g, ' ')}</span>
-                        </div>
-                      )}
-                      {citation.category && (
-                        <div className="absolute top-1 right-1 md:top-1.5 md:right-1.5">
-                          <span className={`px-1 py-0.5 rounded text-[8px] md:text-[9px] font-medium ${
-                            citation.category === 'direct' ? 'bg-green-100 text-green-800' :
-                            citation.category === 'context' ? 'bg-blue-100 text-blue-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
-                            {citation.category?.toUpperCase() || 'UNCATEGORIZED'}
-                          </span>
-                        </div>
-                      )}
-                      {citation.metadata?.timestamp && typeof citation.metadata.timestamp === 'number' && !isNaN(citation.metadata.timestamp) && (
-                        <div className="absolute bottom-1 left-1 md:bottom-1.5 md:left-1.5 bg-black/80 text-white text-[8px] md:text-[9px] px-1 py-0.5 rounded">
-                          {Math.floor(citation.metadata.timestamp / 60)}:{(citation.metadata.timestamp % 60).toString().padStart(2, '0')}
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    /* YouTube without thumbnail */
-                    <div className="p-2 md:p-3 space-y-1 flex-1 flex flex-col">
-                      {/* Category Badge */}
-                      {citation.category && (
-                        <div className="mb-1">
-                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-medium ${
-                            citation.category === 'direct' ? 'bg-green-100 text-green-800' :
-                            citation.category === 'context' ? 'bg-blue-100 text-blue-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
-                            {citation.category?.toUpperCase() || 'UNCATEGORIZED'}
-                          </span>
-                        </div>
-                      )}
-                      <div className="text-[10px] md:text-xs font-semibold text-card-foreground flex items-center gap-1">
-                        <Youtube className="size-2.5 md:size-3" />
-                        <span className="line-clamp-2">{citation.namespace?.replace(/_/g, ' ')}</span>
-                      </div>
-                      <div className="text-[9px] md:text-[10px] text-muted-foreground line-clamp-3">
-                        {cleanNumbers(citation.text)}
-                      </div>
-                    </div>
-                  )}
-                  
-
                 </div>
               );
             })}

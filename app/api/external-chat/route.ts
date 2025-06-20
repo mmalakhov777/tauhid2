@@ -856,17 +856,19 @@ REMEMBER: ${languageName} ONLY - NO EXCEPTIONS!`;
       const risaleContexts = allContexts.filter((ctx: any) => ctx.metadata?.type === 'risale' || ctx.metadata?.type === 'RIS' || (ctx.namespace && ['Sozler-Bediuzzaman_Said_Nursi', 'Mektubat-Bediuzzaman_Said_Nursi', 'lemalar-bediuzzaman_said_nursi', 'Hasir_Risalesi-Bediuzzaman_Said_Nursi', 'Otuz_Uc_Pencere-Bediuzzaman_Said_Nursi', 'Hastalar_Risalesi-Bediuzzaman_Said_Nursi', 'ihlas_risaleleri-bediuzzaman_said_nursi', 'enne_ve_zerre_risalesi-bediuzzaman_said_nursi', 'tabiat_risalesi-bediuzzaman_said_nursi', 'kader_risalesi-bediuzzaman_said_nursi'].includes(ctx.namespace)));
       const youtubeContexts = allContexts.filter((ctx: any) => ctx.metadata?.type === 'youtube' || ctx.metadata?.type === 'YT' || (ctx.namespace && ['youtube-qa-pairs'].includes(ctx.namespace)));
       const fatwaContexts = allContexts.filter((ctx: any) => ctx.metadata?.type === 'fatwa' || ctx.metadata?.type === 'FAT');
+      const tafsirsContexts = allContexts.filter((ctx: any) => ctx.metadata?.type === 'tafsirs' || ctx.metadata?.type === 'TAF' || (ctx.namespace && ['Maarif-ul-Quran', 'Bayan-ul-Quran', 'Kashf-Al-Asrar', 'Tazkirul-Quran'].includes(ctx.namespace)));
       
-      const totalCitations = classicContexts.length + modernContexts.length + risaleContexts.length + youtubeContexts.length + fatwaContexts.length;
+      const totalCitations = classicContexts.length + modernContexts.length + risaleContexts.length + youtubeContexts.length + fatwaContexts.length + tafsirsContexts.length;
       
-      console.log('[external-chat route] Citation breakdown:', {
-        classic: classicContexts.length,
-        modern: modernContexts.length,
-        risale: risaleContexts.length,
-        youtube: youtubeContexts.length,
-        fatwa: fatwaContexts.length,
-        total: totalCitations
-      });
+              console.log('[external-chat route] Citation breakdown:', {
+          classic: classicContexts.length,
+          modern: modernContexts.length,
+          risale: risaleContexts.length,
+          youtube: youtubeContexts.length,
+          fatwa: fatwaContexts.length,
+          tafsirs: tafsirsContexts.length,
+          total: totalCitations
+        });
       
       if (totalCitations === 0) {
         console.log('[external-chat route] No citations found, using fixed response prompt');
@@ -878,7 +880,7 @@ Do not add any additional text, explanations, or formatting. Just return that ex
         modifiedSystemPrompt = fixedResponsePrompt;
       } else {
         console.log('[external-chat route] Using citations-based prompt with', totalCitations, 'citations');
-        contextBlock = buildContextBlock(classicContexts, modernContexts, risaleContexts, youtubeContexts, fatwaContexts);
+        contextBlock = buildContextBlock(classicContexts, modernContexts, risaleContexts, youtubeContexts, fatwaContexts, tafsirsContexts);
 
         const citationEmphasis = `
 
@@ -911,6 +913,14 @@ CONTEXT-AWARE RESPONSES:
 - Citations may relate to both the current question AND previous topics discussed
 - Use citations that connect the current question to earlier parts of the conversation
 - When answering "Can you explain more?" or similar follow-ups, refer back to what was discussed and expand using ALL available citations
+
+CRITICAL: NO FAKE CITATIONS OR MODERN RESEARCH REFERENCES:
+- ABSOLUTELY FORBIDDEN: Never cite, reference, or mention modern research studies, academic papers, or contemporary scientific studies that are not provided in your context
+- ABSOLUTELY FORBIDDEN: Never create fake citations like "Research by Smith (2020)" or "Studies show (Johnson, 2019)" or "Исследования посттравматического роста (Tedeschi, 2004)"
+- ABSOLUTELY FORBIDDEN: Never reference psychological studies, neuroscience research, or any modern academic work unless it is explicitly provided in your available citations
+- ONLY use the Islamic sources and citations that are provided to you in the context ([CIT1], [CIT2], etc.)
+- If you want to connect Islamic wisdom to modern concepts, do so through logical reasoning and universal principles, NOT through citing non-existent research
+- Present Islamic teachings on their own merit and wisdom, without needing validation from modern studies
 
 REMEMBER: More citations = Better answer. Use them ALL! Add [CIT] directly without connecting phrases. Format everything in beautiful Markdown!`;
 

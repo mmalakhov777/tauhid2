@@ -2,6 +2,8 @@ export const RIS_NAMESPACES = ['Sozler-Bediuzzaman_Said_Nursi', 'Mektubat-Bediuz
 
 export const YT_NAMESPACES = ['youtube-qa-pairs'];
 
+export const TAF_NAMESPACES = ['Maarif-ul-Quran', 'Bayan-ul-Quran', 'Kashf-Al-Asrar', 'Tazkirul-Quran', 'Tanweer-Tafsir'];
+
 export const determineCitationType = (citation: any): string => {
   if (citation.metadata?.type) {
     const type = citation.metadata.type.toLowerCase();
@@ -18,6 +20,7 @@ export const determineCitationType = (citation: any): string => {
   if (citation.namespace) {
     if (RIS_NAMESPACES.includes(citation.namespace)) return 'RIS';
     if (YT_NAMESPACES.includes(citation.namespace)) return 'YT';
+    if (TAF_NAMESPACES.includes(citation.namespace)) return 'TAF';
   }
   if (!citation.metadata?.type && !citation.namespace) return 'CLS';
   return 'UNKNOWN';

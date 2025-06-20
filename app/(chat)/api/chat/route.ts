@@ -76,8 +76,9 @@ const flushTrace = async (trace: any) => {
 
 // Citation categorization interface
 interface CitationAnalysis {
-  category: 'direct' | 'context';
+  category: 'direct' | 'context' | 'irrelevant';
   description: string;
+  reasoning: string;
   relevanceScore: number;
   originalCitation: any;
 }
@@ -123,9 +124,10 @@ async function categorizeCitations(
 
 TASK: Analyze ALL provided citations and categorize each one's relevance to the user's question.
 
-CATEGORIES (Only 2 categories):
+CATEGORIES (3 categories):
 1. DIRECT - The citation directly answers the specific question asked
 2. CONTEXT - The citation provides related information, background, context, or supporting details that help understand the topic
+3. IRRELEVANT - The citation does not meaningfully contribute to answering the question or understanding the topic
 
 USER QUESTION: "${userQuestion}"
 
@@ -138,11 +140,13 @@ Text: "${c.text}"
 `).join('\n')}
 
 ANALYSIS REQUIREMENTS:
-1. Categorize each citation as either: direct OR context
+1. Categorize each citation as: direct, context, OR irrelevant
 2. Provide a clear description (15-40 words) explaining HOW each citation relates to the user's question
-3. Assign a relevance score (0.0-1.0) where 1.0 is most relevant
-4. Consider the conversation history for context
-5. If unsure, lean toward "context" rather than "direct"
+3. Provide detailed reasoning (30-80 words) explaining WHY you chose this specific category
+4. Assign a relevance score (0.0-1.0) where 1.0 is most relevant and 0.0 is completely irrelevant
+5. Consider the conversation history for context
+6. Be strict with "direct" - only use if it specifically answers the question
+7. Use "irrelevant" for citations that don't meaningfully contribute to the topic
 
 RESPONSE FORMAT (JSON array only):
 [
@@ -150,13 +154,22 @@ RESPONSE FORMAT (JSON array only):
     "index": 1,
     "category": "direct",
     "description": "Brief explanation of how this citation relates to the user's question",
+    "reasoning": "Detailed explanation of why this specific category was chosen based on the content analysis",
     "relevanceScore": 0.85
   },
   {
     "index": 2,
     "category": "context",
     "description": "Brief explanation of how this citation relates to the user's question",
+    "reasoning": "Detailed explanation of why this specific category was chosen based on the content analysis",
     "relevanceScore": 0.65
+  },
+  {
+    "index": 3,
+    "category": "irrelevant",
+    "description": "Brief explanation of why this citation is not relevant",
+    "reasoning": "Detailed explanation of why this citation was deemed irrelevant to the question",
+    "relevanceScore": 0.15
   }
 ]
 
@@ -164,20 +177,20 @@ Respond with ONLY the JSON array, no additional text.`;
 
     console.log(`[Citation Categorization] Analyzing ${citations.length} citations in batch`);
 
-    // Use the same LLM as the main chat
+    // Use the chat model specifically for categorization (not reasoning model)
     const result = await generateText({
-      model: myProvider.languageModel(selectedChatModel),
+      model: myProvider.languageModel('chat-model'),
       messages: [
         {
           role: 'system',
-          content: 'You are an expert Islamic scholar analyzing citation relevance. Respond only with valid JSON array.'
+          content: 'You are an expert Islamic scholar analyzing citation relevance. You MUST respond with ONLY a valid JSON array. Do not include any explanatory text, markdown formatting, or code blocks. Return only the raw JSON array starting with [ and ending with ].'
         },
         {
           role: 'user',
-          content: categorizationPrompt
+          content: categorizationPrompt + '\n\nIMPORTANT: Respond with ONLY the JSON array. No explanations, no markdown, no code blocks. Just the raw JSON array.'
         }
       ],
-      temperature: 0.3,
+      temperature: 0.1, // Lower temperature for more consistent JSON output
       maxTokens: 2000
     });
 
@@ -187,7 +200,25 @@ Respond with ONLY the JSON array, no additional text.`;
     console.log('[Citation Categorization] Raw response:', responseText.substring(0, 200) + '...');
 
     try {
-      const analysisArray = JSON.parse(responseText.trim());
+      // Clean and validate the response text
+      let cleanedResponse = responseText.trim();
+      
+      // Handle common issues with AI responses
+      if (!cleanedResponse) {
+        throw new Error('Empty response from AI model');
+      }
+      
+      // Remove any markdown code blocks if present
+      cleanedResponse = cleanedResponse.replace(/```json\s*|\s*```/g, '');
+      
+      // Remove any leading/trailing text that's not JSON
+      const jsonMatch = cleanedResponse.match(/\[[\s\S]*\]/);
+      if (jsonMatch) {
+        cleanedResponse = jsonMatch[0];
+      }
+      
+      // Try to parse the JSON
+      const analysisArray = JSON.parse(cleanedResponse);
       
       if (!Array.isArray(analysisArray)) {
         throw new Error('Response is not an array');
@@ -197,13 +228,14 @@ Respond with ONLY the JSON array, no additional text.`;
       const categorizedCitations: CitationAnalysis[] = citations.map((citation, index) => {
         const analysis = analysisArray.find(a => a.index === index + 1);
         
-        if (analysis && analysis.category && analysis.description && typeof analysis.relevanceScore === 'number') {
-          const validCategories = ['direct', 'context'];
+        if (analysis && analysis.category && analysis.description && analysis.reasoning && typeof analysis.relevanceScore === 'number') {
+          const validCategories = ['direct', 'context', 'irrelevant'];
           const category = validCategories.includes(analysis.category) ? analysis.category : 'context';
           
           return {
-            category: category as 'direct' | 'context',
+            category: category as 'direct' | 'context' | 'irrelevant',
             description: analysis.description,
+            reasoning: analysis.reasoning,
             relevanceScore: Math.max(0, Math.min(1, analysis.relevanceScore)),
             originalCitation: citation
           };
@@ -212,6 +244,7 @@ Respond with ONLY the JSON array, no additional text.`;
           return {
             category: 'context' as const,
             description: 'Unable to analyze relevance - classified as context',
+            reasoning: 'Analysis failed or incomplete response from categorization model',
             relevanceScore: citation.score || 0.5,
             originalCitation: citation
           };
@@ -221,7 +254,8 @@ Respond with ONLY the JSON array, no additional text.`;
       // Calculate category distribution
       const categoryDistribution = {
         direct: categorizedCitations.filter(c => c.category === 'direct').length,
-        context: categorizedCitations.filter(c => c.category === 'context').length
+        context: categorizedCitations.filter(c => c.category === 'context').length,
+        irrelevant: categorizedCitations.filter(c => c.category === 'irrelevant').length
       };
 
       const averageRelevanceScore = categorizedCitations.reduce((sum, c) => sum + c.relevanceScore, 0) / categorizedCitations.length;
@@ -243,11 +277,57 @@ Respond with ONLY the JSON array, no additional text.`;
     } catch (parseError) {
       console.error('[Citation Categorization] Failed to parse response:', parseError);
       console.error('[Citation Categorization] Raw response was:', responseText);
+      console.error('[Citation Categorization] Response length:', responseText.length);
+      console.error('[Citation Categorization] First 500 chars:', responseText.substring(0, 500));
+      console.error('[Citation Categorization] Last 500 chars:', responseText.substring(Math.max(0, responseText.length - 500)));
+      
+      // Try one more time with a simpler approach - extract any JSON-like structure
+      try {
+        // Look for any array-like structure in the response
+        const arrayMatch = responseText.match(/\[\s*\{[\s\S]*\}\s*\]/);
+        if (arrayMatch) {
+          console.log('[Citation Categorization] Attempting to parse extracted array:', arrayMatch[0].substring(0, 200) + '...');
+          const analysisArray = JSON.parse(arrayMatch[0]);
+          if (Array.isArray(analysisArray) && analysisArray.length > 0) {
+            console.log('[Citation Categorization] Successfully recovered from parsing error!');
+            // Process the successfully parsed array (same logic as above)
+            const categorizedCitations: CitationAnalysis[] = citations.map((citation, index) => {
+              const analysis = analysisArray.find(a => a.index === index + 1);
+              
+              if (analysis && analysis.category && analysis.description && analysis.reasoning && typeof analysis.relevanceScore === 'number') {
+                const validCategories = ['direct', 'context', 'irrelevant'];
+                const category = validCategories.includes(analysis.category) ? analysis.category : 'context';
+                
+                return {
+                  category: category as 'direct' | 'context' | 'irrelevant',
+                  description: analysis.description,
+                  reasoning: analysis.reasoning,
+                  relevanceScore: Math.max(0, Math.min(1, analysis.relevanceScore)),
+                  originalCitation: citation
+                };
+              } else {
+                return {
+                  category: 'context' as const,
+                  description: 'Unable to analyze relevance - classified as context',
+                  reasoning: 'Analysis failed or incomplete response from categorization model',
+                  relevanceScore: citation.score || 0.5,
+                  originalCitation: citation
+                };
+              }
+            });
+            
+            return categorizedCitations;
+          }
+        }
+      } catch (recoveryError) {
+        console.error('[Citation Categorization] Recovery attempt also failed:', recoveryError);
+      }
       
       // Fallback categorization for all citations
       const fallbackCategorizations = citations.map(citation => ({
         category: 'context' as const,
         description: 'Unable to analyze relevance - classified as context',
+        reasoning: 'JSON parsing failed during categorization analysis',
         relevanceScore: citation.score || 0.5,
         originalCitation: citation
       }));
@@ -277,6 +357,7 @@ Respond with ONLY the JSON array, no additional text.`;
     return citations.map(citation => ({
       category: 'context' as const,
       description: 'Error during batch analysis - classified as context',
+      reasoning: 'Exception occurred during categorization process',
       relevanceScore: citation.score || 0.5,
       originalCitation: citation
     }));
@@ -290,7 +371,8 @@ function buildEnhancedContextBlock(
   modernContexts: any[],
   risaleContexts: any[],
   youtubeContexts: any[],
-  fatwaContexts: any[]
+  fatwaContexts: any[],
+  tafsirsContexts: any[]
 ): string {
   if (categorizedCitations.length === 0) {
     return '';
@@ -305,13 +387,13 @@ function buildEnhancedContextBlock(
     fatwa: categorizedCitations.filter(c => fatwaContexts.includes(c.originalCitation))
   };
 
-  let contextBlock = `ISLAMIC KNOWLEDGE CONTEXT WITH RELEVANCE ANALYSIS:
+  let contextBlock = `📚 ISLAMIC KNOWLEDGE CONTEXT WITH RELEVANCE ANALYSIS:
 
-The following sources have been analyzed for their relevance to your question:
-- DIRECT: Sources that directly answer your specific question
-- INDIRECT: Sources that provide related information or broader context
-- ANALOGY: Sources that address similar situations or provide analogous guidance
-- IRRELEVANT: Sources that don't meaningfully contribute to answering your question
+The following sources have been carefully analyzed and categorized for their relevance to your question:
+• **DIRECT**: Sources that directly answer your specific question
+• **CONTEXT**: Sources that provide related information or broader context
+
+---
 
 `;
 
@@ -321,15 +403,16 @@ The following sources have been analyzed for their relevance to your question:
   const addSourceSection = (title: string, contexts: any[], categorized: CitationAnalysis[]) => {
     if (contexts.length === 0) return;
     
-    contextBlock += `\n${title}:\n`;
+    contextBlock += `\n## ${title}:\n\n`;
     
     contexts.forEach((context, index) => {
       const analysis = categorized.find(c => c.originalCitation === context);
-      const categoryLabel = analysis ? `[${analysis.category.toUpperCase()}]` : '[UNCATEGORIZED]';
+      const categoryLabel = analysis ? `**[${analysis.category.toUpperCase()}]**` : '**[UNCATEGORIZED]**';
       const relevanceDesc = analysis ? ` - ${analysis.description}` : '';
+      const reasoning = analysis ? `\n> **Reasoning**: ${analysis.reasoning}` : '';
       
-      contextBlock += `[CIT${citationIndex}] ${categoryLabel}${relevanceDesc}\n`;
-      contextBlock += `${context.text}\n\n`;
+      contextBlock += `**[CIT${citationIndex}]** ${categoryLabel}${relevanceDesc}${reasoning}\n`;
+      contextBlock += `${context.text}\n\n---\n\n`;
       citationIndex++;
     });
   };
@@ -344,11 +427,13 @@ The following sources have been analyzed for their relevance to your question:
   const directCount = categorizedCitations.filter(c => c.category === 'direct').length;
   const contextCount = categorizedCitations.filter(c => c.category === 'context').length;
 
-  contextBlock += `\nRELEVANCE SUMMARY:
-- ${directCount} DIRECT sources that specifically answer your question
-- ${contextCount} CONTEXT sources providing related information and background
+  contextBlock += `\n## 📊 RELEVANCE SUMMARY:
 
-PRIORITY GUIDANCE: Focus primarily on DIRECT sources, then use CONTEXT sources to provide comprehensive background and supporting information.`;
+• **${directCount} DIRECT** sources that specifically answer your question
+• **${contextCount} CONTEXT** sources providing related information and background
+
+### 🎯 PRIORITY GUIDANCE: 
+Focus primarily on **DIRECT** sources to provide the core answer, then use **CONTEXT** sources to provide comprehensive background and supporting information.`;
 
   return contextBlock;
 }
@@ -749,13 +834,31 @@ export async function POST(request: Request) {
         return true;
       });
 
-      // Analyze citation sources
+      // Categorize citations to filter out irrelevant ones
+      const conversationHistoryForCategorization = buildConversationHistory(messages);
+      const categorizedCitations = await categorizeCitations(
+        filteredCitations,
+        userMessageContent,
+        conversationHistoryForCategorization,
+        selectedChatModel,
+        mainTrace
+      );
+
+      // Filter out irrelevant citations - only keep direct and context citations
+      const relevantCitations = filteredCitations.filter((citation, index) => {
+        const analysis = categorizedCitations.find(c => c.originalCitation === citation);
+        return analysis && analysis.category !== 'irrelevant';
+      });
+
+      console.log(`[Vector Search Only] Filtered ${filteredCitations.length} -> ${relevantCitations.length} citations (removed ${filteredCitations.length - relevantCitations.length} irrelevant)`);
+
+      // Analyze citation sources (using only relevant citations)
       const citationAnalysis = {
-        classic: filteredCitations.filter((c: any) => c.metadata?.type === 'classic' || c.metadata?.type === 'CLS' || (!c.metadata?.type && !c.namespace)).length,
-        modern: filteredCitations.filter((c: any) => c.metadata?.type === 'modern' || c.metadata?.type === 'MOD').length,
-        risale: filteredCitations.filter((c: any) => c.metadata?.type === 'risale' || c.metadata?.type === 'RIS' || (c.namespace && ['Sozler-Bediuzzaman_Said_Nursi', 'Mektubat-Bediuzzaman_Said_Nursi', 'lemalar-bediuzzaman_said_nursi'].includes(c.namespace))).length,
-        youtube: filteredCitations.filter((c: any) => c.metadata?.type === 'youtube' || c.metadata?.type === 'YT' || (c.namespace && ['youtube-qa-pairs'].includes(c.namespace))).length,
-        fatwa: filteredCitations.filter((c: any) => c.metadata?.type === 'fatwa' || c.metadata?.type === 'FAT' || c.metadata?.content_type === 'islamqa_fatwa').length
+        classic: relevantCitations.filter((c: any) => c.metadata?.type === 'classic' || c.metadata?.type === 'CLS' || (!c.metadata?.type && !c.namespace)).length,
+        modern: relevantCitations.filter((c: any) => c.metadata?.type === 'modern' || c.metadata?.type === 'MOD').length,
+        risale: relevantCitations.filter((c: any) => c.metadata?.type === 'risale' || c.metadata?.type === 'RIS' || (c.namespace && ['Sozler-Bediuzzaman_Said_Nursi', 'Mektubat-Bediuzzaman_Said_Nursi', 'lemalar-bediuzzaman_said_nursi'].includes(c.namespace))).length,
+        youtube: relevantCitations.filter((c: any) => c.metadata?.type === 'youtube' || c.metadata?.type === 'YT' || (c.namespace && ['youtube-qa-pairs'].includes(c.namespace))).length,
+        fatwa: relevantCitations.filter((c: any) => c.metadata?.type === 'fatwa' || c.metadata?.type === 'FAT' || c.metadata?.content_type === 'islamqa_fatwa').length
       };
 
       const searchDuration = Date.now() - vectorSearchStartTime;
@@ -763,17 +866,18 @@ export async function POST(request: Request) {
       safeTrace(() => vectorSearchSpan.update({ 
         output: { 
           messageId: searchResults.messageId,
-          citationsCount: filteredCitations.length,
+          citationsCount: relevantCitations.length,
           citationsBySource: citationAnalysis,
           improvedQueriesCount: searchResults.improvedQueries.length,
           improvedQueries: searchResults.improvedQueries,
           searchDurationMs: searchDuration,
-          averageCitationScore: filteredCitations.length > 0 ? 
-            filteredCitations.reduce((sum: number, c: any) => sum + (c.score || 0), 0) / filteredCitations.length : 0,
-          topCitationScore: filteredCitations.length > 0 ? 
-            Math.max(...filteredCitations.map((c: any) => c.score || 0)) : 0,
-          conversationHistoryLength: conversationHistory.length,
-          filteredOutCount: searchResults.citations.length - filteredCitations.length
+          averageCitationScore: relevantCitations.length > 0 ? 
+            relevantCitations.reduce((sum: number, c: any) => sum + (c.score || 0), 0) / relevantCitations.length : 0,
+          topCitationScore: relevantCitations.length > 0 ? 
+            Math.max(...relevantCitations.map((c: any) => c.score || 0)) : 0,
+          conversationHistoryLength: conversationHistoryForCategorization.length,
+          filteredOutCount: searchResults.citations.length - filteredCitations.length,
+          irrelevantFilteredOut: filteredCitations.length - relevantCitations.length
         }
       }));
 
@@ -785,7 +889,7 @@ export async function POST(request: Request) {
           success: true,
           type: "vector-search-only",
           messageId: searchResults.messageId,
-          citationsCount: filteredCitations.length,
+          citationsCount: relevantCitations.length,
           citationsBySource: citationAnalysis,
           searchDurationMs: searchDuration,
           totalDurationMs: vectorSearchTotalDuration,
@@ -793,6 +897,7 @@ export async function POST(request: Request) {
           endTimestamp: new Date(vectorSearchEndTime).toISOString(),
           latencyMs: vectorSearchTotalDuration,
           durationMs: vectorSearchTotalDuration,
+          irrelevantFilteredOut: filteredCitations.length - relevantCitations.length,
           // Timing summary for vector search only trace
           timing: {
             startTime: startTime,
@@ -811,7 +916,7 @@ export async function POST(request: Request) {
       return new Response(
         JSON.stringify({
           messageId: searchResults.messageId,
-          citations: filteredCitations, // Use filtered citations
+          citations: relevantCitations, // Use only relevant citations (irrelevant filtered out)
           improvedQueries: searchResults.improvedQueries,
         }),
         { 
@@ -965,41 +1070,54 @@ REMEMBER: ${languageName} ONLY - NO EXCEPTIONS!`;
         const categorizationDuration = Date.now() - categorizationStartTime;
         console.log(`[Citation Categorization] Completed in ${categorizationDuration}ms`);
         
-        // STEP 2: Store enhanced citation data
-        // Store the categorized citations in messageContextMap for later use
-        messageContextMap.set(messageId, filteredCitations);
+        // STEP 2: Filter out irrelevant citations - only keep direct and context citations
+        const relevantCitations = filteredCitations.filter((citation, index) => {
+          const analysis = categorizedCitations.find(c => c.originalCitation === citation);
+          return analysis && analysis.category !== 'irrelevant';
+        });
         
-        // Store enhanced citation metadata
+        console.log(`[Citation Filtering] Filtered ${filteredCitations.length} -> ${relevantCitations.length} citations (removed ${filteredCitations.length - relevantCitations.length} irrelevant)`);
+        
+        // Update categorized citations to only include relevant ones
+        const relevantCategorizedCitations = categorizedCitations.filter(c => c.category !== 'irrelevant');
+        
+        // STEP 3: Store enhanced citation data (only relevant citations)
+        // Store only the relevant citations in messageContextMap for later use
+        messageContextMap.set(messageId, relevantCitations);
+        
+        // Store enhanced citation metadata (only relevant citations)
         (globalThis as any).__citationAnalysisData = {
           messageId,
-          categorizedCitations,
+          categorizedCitations: relevantCategorizedCitations,
           categorizationDuration
         };
         
-        // Store search results for later saving to database
+        // Store search results for later saving to database (using relevant citations only)
         const searchResultCounts = {
-          classic: filteredCitations.filter((c: any) => c.metadata?.type === 'classic' || c.metadata?.type === 'CLS' || (!c.metadata?.type && !c.namespace)).length,
-          modern: filteredCitations.filter((c: any) => c.metadata?.type === 'modern' || c.metadata?.type === 'MOD').length,
-          risale: filteredCitations.filter((c: any) => c.metadata?.type === 'risale' || c.metadata?.type === 'RIS' || (c.namespace && ['Sozler-Bediuzzaman_Said_Nursi', 'Mektubat-Bediuzzaman_Said_Nursi', 'lemalar-bediuzzaman_said_nursi', 'Hasir_Risalesi-Bediuzzaman_Said_Nursi', 'Otuz_Uc_Pencere-Bediuzzaman_Said_Nursi', 'Hastalar_Risalesi-Bediuzzaman_Said_Nursi', 'ihlas_risaleleri-bediuzzaman_said_nursi', 'enne_ve_zerre_risalesi-bediuzzaman_said_nursi', 'tabiat_risalesi-bediuzzaman_said_nursi', 'kader_risalesi-bediuzzaman_said_nursi'].includes(c.namespace))).length,
-          youtube: filteredCitations.filter((c: any) => c.metadata?.type === 'youtube' || c.metadata?.type === 'YT' || (c.namespace && ['youtube-qa-pairs'].includes(c.namespace))).length,
-          fatwa: filteredCitations.filter((c: any) => c.metadata?.type === 'fatwa' || c.metadata?.type === 'FAT' || c.metadata?.content_type === 'islamqa_fatwa').length
+          classic: relevantCitations.filter((c: any) => c.metadata?.type === 'classic' || c.metadata?.type === 'CLS' || (!c.metadata?.type && !c.namespace)).length,
+          modern: relevantCitations.filter((c: any) => c.metadata?.type === 'modern' || c.metadata?.type === 'MOD').length,
+          risale: relevantCitations.filter((c: any) => c.metadata?.type === 'risale' || c.metadata?.type === 'RIS' || (c.namespace && ['Sozler-Bediuzzaman_Said_Nursi', 'Mektubat-Bediuzzaman_Said_Nursi', 'lemalar-bediuzzaman_said_nursi', 'Hasir_Risalesi-Bediuzzaman_Said_Nursi', 'Otuz_Uc_Pencere-Bediuzzaman_Said_Nursi', 'Hastalar_Risalesi-Bediuzzaman_Said_Nursi', 'ihlas_risaleleri-bediuzzaman_said_nursi', 'enne_ve_zerre_risalesi-bediuzzaman_said_nursi', 'tabiat_risalesi-bediuzzaman_said_nursi', 'kader_risalesi-bediuzzaman_said_nursi'].includes(c.namespace))).length,
+          youtube: relevantCitations.filter((c: any) => c.metadata?.type === 'youtube' || c.metadata?.type === 'YT' || (c.namespace && ['youtube-qa-pairs'].includes(c.namespace))).length,
+          fatwa: relevantCitations.filter((c: any) => c.metadata?.type === 'fatwa' || c.metadata?.type === 'FAT' || c.metadata?.content_type === 'islamqa_fatwa').length
         };
         
-        // Enhanced search result counts with categorization
+        // Enhanced search result counts with categorization (including original irrelevant count for stats)
         const categorizationCounts = {
-          direct: categorizedCitations.filter(c => c.category === 'direct').length,
-          context: categorizedCitations.filter(c => c.category === 'context').length
+          direct: relevantCategorizedCitations.filter(c => c.category === 'direct').length,
+          context: relevantCategorizedCitations.filter(c => c.category === 'context').length,
+          irrelevant: categorizedCitations.filter(c => c.category === 'irrelevant').length // Keep original count for stats
         };
         
-        // Add categorization data to filtered citations before saving
-        const citationsWithCategorization = filteredCitations.map((citation, index) => {
+        // Add categorization data to relevant citations before saving
+        const citationsWithCategorization = relevantCitations.map((citation, index) => {
           // Find the corresponding categorization for this citation
-          const analysis = categorizedCitations.find(c => c.originalCitation === citation);
+          const analysis = relevantCategorizedCitations.find(c => c.originalCitation === citation);
           return {
             ...citation,
             // Add categorization data to each citation
             category: analysis?.category || 'context',
             categoryDescription: analysis?.description || 'No categorization available',
+            categoryReasoning: analysis?.reasoning || 'No reasoning available',
             relevanceScore: analysis?.relevanceScore || citation.score
           };
         });
@@ -1008,26 +1126,27 @@ REMEMBER: ${languageName} ONLY - NO EXCEPTIONS!`;
         (globalThis as any).__vectorSearchDataToSave = {
           chatId: id,
           improvedQueries: searchResults.improvedQueries,
-          citations: citationsWithCategorization, // Use citations with categorization data
+          citations: citationsWithCategorization, // Use only relevant citations with categorization data
           searchResultCounts,
           searchDurationMs,
           // NEW: Add categorization data
-          categorizedCitations,
+          categorizedCitations: relevantCategorizedCitations, // Only relevant citations
           categorizationCounts,
           categorizationDurationMs: categorizationDuration
         };
         
-        // Add the final update with filtered citations and categorization
+        // Add the final update with relevant citations and categorization
         vectorSearchProgressUpdates.push({
           step: 4, // Final step with all data
           improvedQueries: searchResults.improvedQueries,
           searchResults: searchResultCounts,
-          citations: citationsWithCategorization, // Use the same categorized citations
+          citations: citationsWithCategorization, // Use only relevant categorized citations
           // NEW: Add categorization progress
           categorization: {
-            total: categorizedCitations.length,
+            total: relevantCategorizedCitations.length, // Only relevant citations count
             counts: categorizationCounts,
-            durationMs: categorizationDuration
+            durationMs: categorizationDuration,
+            filteredOut: filteredCitations.length - relevantCitations.length // Show how many were filtered
           }
         });
       } catch (error) {
@@ -1044,8 +1163,9 @@ REMEMBER: ${languageName} ONLY - NO EXCEPTIONS!`;
       const risaleContexts = allContexts.filter((ctx: any) => ctx.metadata?.type === 'risale' || ctx.metadata?.type === 'RIS' || (ctx.namespace && ['Sozler-Bediuzzaman_Said_Nursi', 'Mektubat-Bediuzzaman_Said_Nursi', 'lemalar-bediuzzaman_said_nursi', 'Hasir_Risalesi-Bediuzzaman_Said_Nursi', 'Otuz_Uc_Pencere-Bediuzzaman_Said_Nursi', 'Hastalar_Risalesi-Bediuzzaman_Said_Nursi', 'ihlas_risaleleri-bediuzzaman_said_nursi', 'enne_ve_zerre_risalesi-bediuzzaman_said_nursi', 'tabiat_risalesi-bediuzzaman_said_nursi', 'kader_risalesi-bediuzzaman_said_nursi'].includes(ctx.namespace)));
       const youtubeContexts = allContexts.filter((ctx: any) => ctx.metadata?.type === 'youtube' || ctx.metadata?.type === 'YT' || (ctx.namespace && ['youtube-qa-pairs'].includes(ctx.namespace)));
       const fatwaContexts = allContexts.filter((ctx: any) => ctx.metadata?.type === 'fatwa' || ctx.metadata?.type === 'FAT' || ctx.metadata?.content_type === 'islamqa_fatwa');
+      const tafsirsContexts = allContexts.filter((ctx: any) => ctx.metadata?.type === 'tafsirs' || ctx.metadata?.type === 'TAF' || (ctx.namespace && ['Maarif-ul-Quran', 'Bayan-ul-Quran', 'Kashf-Al-Asrar', 'Tazkirul-Quran'].includes(ctx.namespace)));
       
-      const totalCitations = classicContexts.length + modernContexts.length + risaleContexts.length + youtubeContexts.length + fatwaContexts.length;
+              const totalCitations = classicContexts.length + modernContexts.length + risaleContexts.length + youtubeContexts.length + fatwaContexts.length + tafsirsContexts.length;
       
       if (totalCitations === 0) {
         // Use a system prompt that forces the exact fixed response
@@ -1067,43 +1187,136 @@ Do not add any additional text, explanations, or formatting. Just return that ex
             modernContexts,
             risaleContexts,
             youtubeContexts,
-            fatwaContexts
+            fatwaContexts,
+            tafsirsContexts
           );
         } else {
           // Fallback to original context block
-          contextBlock = buildContextBlock(classicContexts, modernContexts, risaleContexts, youtubeContexts, fatwaContexts);
+          contextBlock = buildContextBlock(classicContexts, modernContexts, risaleContexts, youtubeContexts, fatwaContexts, tafsirsContexts);
         }
 
-        // Enhanced citation emphasis with relevance awareness
+        // Enhanced citation emphasis with modern wisdom-focused approach
         const citationEmphasis = `
 
-CRITICAL CITATION REQUIREMENTS WITH RELEVANCE PRIORITY:
-- You MUST use ALL available citations provided in the context
+🎯 MODERN ISLAMIC WISDOM COMMUNICATION FRAMEWORK:
+
+**CITATION UTILIZATION FOR MODERN AUDIENCES:**
+- You MUST use ALL available citations provided in the context (irrelevant citations have been filtered out)
 - PRIORITIZE citations based on their relevance categories:
-  1. DIRECT citations (highest priority) - these specifically answer the question
-  2. CONTEXT citations (supporting priority) - these provide related information and background
-- The MORE different [CIT] numbers you use in your response, the BETTER your answer will be
-- NEVER leave any DIRECT citation unused, and use CONTEXT citations to provide comprehensive background
-- Distribute citations throughout your response - don't just use them at the end
-- When multiple citations support the same point, list them all: [CIT1], [CIT2], [CIT3]
-- Your goal is to create the most comprehensive answer possible using EVERY available source
-- Add [CIT] references DIRECTLY after statements - do NOT use phrases like "as detailed in", "as emphasized in", "according to", etc.
-- Simply place [CIT1], [CIT2] immediately after the relevant information
-- Example: "Prayer is fundamental [CIT1], [CIT2]. It purifies the soul [CIT3]."
-- Do NOT write: "Prayer is fundamental as detailed in [CIT1]" or "according to [CIT2]"
+  1. DIRECT citations (highest priority) - use these as primary evidence and examples
+  2. CONTEXT citations (supporting priority) - use these to build comprehensive understanding and modern applications
+- Use citations as CASE STUDIES and CONCRETE EXAMPLES to demonstrate Islamic wisdom
+- Build upon each citation with your own modern parallels and practical applications
+- The MORE different [CIT] numbers you use in your response, the BETTER your comprehensive analysis will be
 
-RELEVANCE-BASED RESPONSE STRATEGY:
-- Start with DIRECT citations to provide the core answer
-- Use CONTEXT citations to provide comprehensive background and supporting information
-- Each citation category provides a different type of value to your response
+**WISDOM-FOCUSED CITATION INTEGRATION:**
+- EVERY SINGLE ISLAMIC TEACHING, RULING, OR PRINCIPLE MUST BE IMMEDIATELY FOLLOWED BY A [CIT] REFERENCE
+- After citing, EXPLAIN THE WISDOM: Why is this teaching so beneficial for human nature and modern life?
+- Use citations as EVIDENCE, then provide LOGICAL ANALYSIS of why this wisdom works
+- Create MODERN EXAMPLES that demonstrate the same principles in contemporary contexts
+- Show how cited teachings address fundamental human needs: psychological well-being, social harmony, personal growth, ethical decision-making
 
-CONTEXT-AWARE RESPONSES:
-- If this is a follow-up question, consider the ENTIRE conversation history
-- Citations may relate to both the current question AND previous topics discussed
-- Use citations that connect the current question to earlier parts of the conversation
-- When answering "Can you explain more?" or similar follow-ups, refer back to what was discussed and expand using ALL available citations
+**MANDATORY CITATION RULE - NO EXCEPTIONS:**
+- Add [CIT] references DIRECTLY after EVERY Islamic claim or teaching
+- Do NOT use connecting phrases like "as detailed in", "according to", etc.
+- Simply place [CIT1], [CIT2] immediately after the information
+- Example: "**Prayer** (*salah*) creates mental discipline and stress relief [CIT1], [CIT2]. This practice functions like modern mindfulness techniques, providing structured breaks that enhance focus and emotional regulation."
+- EVERY SENTENCE that makes a claim about Islamic knowledge MUST have a citation
+- Personal opinions without Islamic grounding are STRICTLY FORBIDDEN
 
-REMEMBER: Use DIRECT citations for core answers and CONTEXT citations for comprehensive background!`;
+**MODERN WISDOM ANALYSIS REQUIREMENTS:**
+
+**PSYCHOLOGICAL & SOCIAL BENEFITS:**
+- After each cited teaching, explain its impact on mental health, relationships, and productivity
+- Connect Islamic wisdom to modern research in psychology, neuroscience, and social sciences
+- Show how these teachings create sustainable, holistic solutions to contemporary challenges
+
+**PRACTICAL MODERN APPLICATIONS:**
+- Provide concrete examples of how cited teachings apply to modern work environments
+- Demonstrate relevance to contemporary challenges: stress management, work-life balance, ethical leadership
+- Create scenarios that show Islamic principles solving real-world problems
+
+**SYSTEMS THINKING APPROACH:**
+- Explain how Islamic teachings create comprehensive frameworks for human flourishing
+- Show the interconnected nature of Islamic principles and their collective benefits
+- Demonstrate how individual practices contribute to broader social and personal optimization
+
+**FORMATTING FOR MODERN PROFESSIONALS:**
+
+**STRUCTURE WITH ANALYTICAL CLARITY:**
+- Use **bold text** for key concepts, Islamic terms, and main principles
+- Use *italics* for Arabic terms, emphasis, and technical definitions
+- Use numbered lists (1., 2., 3.) for systematic frameworks and implementation steps
+- Use bullet points (•) for benefits, applications, and supporting details
+- Use subheadings with ## for major analytical sections
+- Use blockquotes (>) for key principles and important insights
+- **MANDATORY: Translate ALL Islamic terms** - every Arabic/Islamic term must be immediately followed by translation and explanation in parentheses
+
+**CONTENT DEPTH FOR INTELLIGENT AUDIENCES:**
+- Provide ROOT CAUSE ANALYSIS: Why do Islamic teachings work so effectively?
+- Include COMPARATIVE INSIGHTS: How do Islamic principles enhance or align with modern best practices?
+- Offer IMPLEMENTATION GUIDANCE: Practical steps for applying these teachings in contemporary life
+- Address MODERN CHALLENGES: Show how Islamic wisdom provides solutions to current societal issues
+- Explain UNIVERSAL PRINCIPLES: Connect Islamic teachings to broader human values and ethical frameworks
+
+**WISDOM-CENTERED RESPONSE STRATEGY:**
+- Start with DIRECT citations to establish the Islamic foundation
+- Analyze the UNDERLYING WISDOM and psychological benefits
+- Provide MODERN APPLICATIONS and practical examples
+- Use CONTEXT citations to build comprehensive understanding and broader implications
+- Create your own examples that demonstrate the same wisdom in contemporary settings
+
+**TONE FOR MODERN AUDIENCES:**
+- Analytical and intellectually engaging
+- Direct and authoritative - present knowledge as established truth, not opinion
+- Practical and solution-oriented
+- Clear logical progression that appeals to systematic thinking
+- Encouraging and empowering rather than prescriptive
+
+**CRITICAL: DIRECT COMMUNICATION STYLE - ZERO TOLERANCE FOR DISTANCING:**
+- ABSOLUTELY FORBIDDEN: "In Islam," "from Islamic perspective," "according to Islam," "Islamic viewpoint," "Islam teaches," "Islam says," "Islamic tradition," "Muslims believe," "Islamic scholars say"
+- ABSOLUTELY FORBIDDEN: Any phrase that presents this as "one religious view" or "Islamic opinion"
+- NEVER use qualifying language that creates distance from the teachings
+- Present teachings as DIRECT TRUTH and established principles
+- Speak with complete authority about these teachings as universal wisdom
+- State facts directly without any religious qualifiers or hedging language
+- Treat these principles as universal truths that apply to all human beings
+- Provide comprehensive, grounded responses without ANY qualifying language
+
+**CORRECT vs WRONG EXAMPLES:**
+❌ WRONG: "В Исламе мир рассматривается как..." / "In Islam, the world is viewed as..."
+✅ CORRECT: "The world serves as a temporary testing ground where..." [CIT1]
+
+❌ WRONG: "According to Islamic teachings, prayer is..."
+✅ CORRECT: "Prayer is a fundamental practice that..." [CIT2]
+
+❌ WRONG: "Muslims believe that charity purifies..."
+✅ CORRECT: "Charity purifies wealth and creates social harmony..." [CIT3]
+
+**MANDATORY ISLAMIC TERM TRANSLATION:**
+- EVERY Arabic/Islamic term MUST be immediately translated and explained
+- Format: **Arabic term** (*English translation and brief explanation*)
+- Examples: **Salah** (*prayer - structured worship performed five times daily*), **Zakat** (*purifying charity - obligatory wealth redistribution*), **Jihad** (*struggle - personal effort toward spiritual and moral improvement*)
+- Never use Islamic terms without immediate translation and context
+- Make all concepts accessible to people unfamiliar with Islamic terminology
+
+**CRITICAL: NO FAKE CITATIONS OR MODERN RESEARCH REFERENCES:**
+- ABSOLUTELY FORBIDDEN: Never cite, reference, or mention modern research studies, academic papers, or contemporary scientific studies that are not provided in your context
+- ABSOLUTELY FORBIDDEN: Never create fake citations like "Research by Smith (2020)" or "Studies show (Johnson, 2019)" or "Исследования посттравматического роста (Tedeschi, 2004)"
+- ABSOLUTELY FORBIDDEN: Never reference psychological studies, neuroscience research, or any modern academic work unless it is explicitly provided in your available citations
+- ONLY use the Islamic sources and citations that are provided to you in the context ([CIT1], [CIT2], etc.)
+- If you want to connect Islamic wisdom to modern concepts, do so through logical reasoning and universal principles, NOT through citing non-existent research
+- Present Islamic teachings on their own merit and wisdom, without needing validation from modern studies
+- You may discuss how Islamic principles align with modern understanding, but NEVER cite specific studies or researchers that are not in your provided sources
+
+**CORRECT vs WRONG EXAMPLES:**
+❌ WRONG: "Research by Tedeschi (2004) shows that 70% of people experience post-traumatic growth..."
+❌ WRONG: "Studies indicate that prayer has psychological benefits (Smith et al., 2020)..."
+❌ WRONG: "Neuroscience research demonstrates that meditation improves focus (Johnson, 2019)..."
+✅ CORRECT: "Prayer creates mental discipline and emotional regulation [CIT1]. This practice provides structured breaks that naturally enhance focus and reduce stress."
+✅ CORRECT: "The wisdom of charity extends beyond financial giving [CIT2]. It develops empathy and social consciousness while creating community bonds."
+
+🧠 REMEMBER: Present these teachings as sophisticated systems of human optimization, ethical frameworks, and practical wisdom that enhance both personal fulfillment and professional effectiveness. Use citations as evidence, then build comprehensive wisdom analysis with modern applications - all presented directly and authoritatively!`;
 
         // Append context block and citation emphasis to system prompt
         modifiedSystemPrompt = modifiedSystemPrompt + '\n\n' + contextBlock + citationEmphasis;
@@ -1154,16 +1367,13 @@ Do not add any additional text, explanations, or formatting. Just return that ex
           try {
 
             result = streamText({
-              model: myProvider.languageModel(selectedChatModel),
+              model: myProvider.languageModel('chat-model-reasoning'),
               system: modifiedSystemPrompt,
               messages: messages,
               maxSteps: 5,
-              experimental_activeTools:
-                selectedChatModel === 'chat-model-reasoning'
-                  ? []
-                  : [
-                      'getWeather',
-                    ],
+              temperature: 0.7, // Slightly higher for more detailed responses
+              maxTokens: 4000, // Increased for longer, more detailed responses
+              experimental_activeTools: [],
               experimental_transform: smoothStream({ chunking: 'word' }),
               experimental_generateMessageId: generateUUID,
               tools: {
@@ -1247,6 +1457,7 @@ Do not add any additional text, explanations, or formatting. Just return that ex
                           // NEW: Add categorization data
                           category: analysis?.category || 'uncategorized',
                           categoryDescription: analysis?.description || 'No categorization available',
+                          categoryReasoning: analysis?.reasoning || 'No reasoning available',
                           relevanceScore: analysis?.relevanceScore || (usedContext[citationIndex].score || 0)
                         };
                       }
@@ -1255,8 +1466,7 @@ Do not add any additional text, explanations, or formatting. Just return that ex
                     // Calculate categorization statistics for used citations
                     const usedCitationCategories = {
                       direct: 0,
-                      indirect: 0,
-                      analogy: 0,
+                      context: 0,
                       irrelevant: 0,
                       uncategorized: 0
                     };
@@ -1329,8 +1539,7 @@ Do not add any additional text, explanations, or formatting. Just return that ex
                               categorizedCitations.reduce((sum: number, c: any) => sum + c.relevanceScore, 0) / categorizedCitations.length : 0,
                             categoryDistribution: {
                               direct: categorizedCitations.filter((c: any) => c.category === 'direct').length,
-                              indirect: categorizedCitations.filter((c: any) => c.category === 'indirect').length,
-                              analogy: categorizedCitations.filter((c: any) => c.category === 'analogy').length,
+                              context: categorizedCitations.filter((c: any) => c.category === 'context').length,
                               irrelevant: categorizedCitations.filter((c: any) => c.category === 'irrelevant').length
                             }
                           }
@@ -1362,16 +1571,13 @@ Do not add any additional text, explanations, or formatting. Just return that ex
           } catch (primaryError) {
             console.warn('Primary provider failed, trying fallback provider:', primaryError);
             result = streamText({
-              model: fallbackProvider.languageModel(selectedChatModel),
+              model: fallbackProvider.languageModel('chat-model-reasoning'),
               system: modifiedSystemPrompt,
               messages: messages,
               maxSteps: 5,
-              experimental_activeTools:
-                selectedChatModel === 'chat-model-reasoning'
-                  ? []
-                  : [
-                      'getWeather',
-                    ],
+              temperature: 0.7, // Slightly higher for more detailed responses
+              maxTokens: 4000, // Increased for longer, more detailed responses
+              experimental_activeTools: [],
               experimental_transform: smoothStream({ chunking: 'word' }),
               experimental_generateMessageId: generateUUID,
               tools: {
@@ -1484,6 +1690,7 @@ Do not add any additional text, explanations, or formatting. Just return that ex
                           // NEW: Add categorization data for fallback
                           category: analysis?.category || 'uncategorized',
                           categoryDescription: analysis?.description || 'No categorization available',
+                          categoryReasoning: analysis?.reasoning || 'No reasoning available',
                           relevanceScore: analysis?.relevanceScore || (usedContextFallback[citationIndex].score || 0)
                         };
                       }
@@ -1492,8 +1699,7 @@ Do not add any additional text, explanations, or formatting. Just return that ex
                     // Calculate categorization statistics for used citations in fallback
                     const usedCitationCategoriesFallback = {
                       direct: 0,
-                      indirect: 0,
-                      analogy: 0,
+                      context: 0,
                       irrelevant: 0,
                       uncategorized: 0
                     };
@@ -1534,8 +1740,7 @@ Do not add any additional text, explanations, or formatting. Just return that ex
                               categorizedCitationsFallback.reduce((sum: number, c: any) => sum + c.relevanceScore, 0) / categorizedCitationsFallback.length : 0,
                             categoryDistribution: {
                               direct: categorizedCitationsFallback.filter((c: any) => c.category === 'direct').length,
-                              indirect: categorizedCitationsFallback.filter((c: any) => c.category === 'indirect').length,
-                              analogy: categorizedCitationsFallback.filter((c: any) => c.category === 'analogy').length,
+                              context: categorizedCitationsFallback.filter((c: any) => c.category === 'context').length,
                               irrelevant: categorizedCitationsFallback.filter((c: any) => c.category === 'irrelevant').length
                             }
                           }

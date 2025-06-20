@@ -109,6 +109,32 @@ CRITICAL INSTRUCTIONS:
 5. Show how this source's approach or perspective uniquely supports the overall answer
 6. If this source provides additional context, nuances, or supporting evidence not mentioned in the original response, highlight those
 
+🔥 CONCRETE FACTS AND THESES REQUIREMENT:
+- You MUST provide SPECIFIC, CONCRETE facts from this source
+- Include EXACT details, numbers, names, dates, places, and specific rulings when available
+- State CLEAR theses and conclusions drawn from this source
+- Provide SPECIFIC evidence and reasoning chains
+- Include CONCRETE examples, cases, or scenarios mentioned in the source
+- Give PRECISE information rather than general statements
+- Extract and present SPECIFIC scholarly opinions, methodologies, or legal reasoning
+- Include EXACT quotes or paraphrases of key points when relevant
+- Provide DETAILED explanations of the Islamic principles involved
+- Present CONCRETE applications and practical implications
+
+📚 COMPREHENSIVE DETAIL REQUIREMENTS:
+- Write LONG, DETAILED explanations (aim for 300-500+ words)
+- Provide MULTIPLE layers of analysis and explanation
+- Include BACKGROUND context and historical information when relevant
+- Explain the METHODOLOGY and reasoning process used in the source
+- Discuss DIFFERENT aspects and dimensions of the topic
+- Provide COMPREHENSIVE coverage of all relevant points in the source
+- Include DETAILED examples and case studies when available
+- Explain the BROADER implications and connections to other Islamic concepts
+- Provide THOROUGH analysis of the scholarly reasoning
+- Include EXTENSIVE detail about the Islamic principles and their applications
+- Break down COMPLEX concepts into detailed explanations
+- Provide MULTIPLE perspectives or interpretations when present in the source
+
 RESPONSE STYLE REQUIREMENTS:
 - Be extremely factual and direct
 - NO welcome phrases, greetings, or introductory sentences
@@ -118,10 +144,11 @@ RESPONSE STYLE REQUIREMENTS:
 - Use concise, information-dense sentences
 - Present only the essential facts and analysis
 - Avoid any conversational or explanatory tone
+- Focus on CONCRETE details and SPECIFIC theses
 
 IMPORTANT: Respond in ${languageName}.
 
-Your explanation should provide ADDITIONAL value beyond what the user already read in the AI response. Focus on the unique contribution of this specific source. Be direct and factual only.`;
+Your explanation should provide ADDITIONAL value beyond what the user already read in the AI response. Focus on the unique contribution of this specific source with CONCRETE facts and SPECIFIC theses. Write a COMPREHENSIVE, DETAILED explanation that thoroughly explores all aspects of what this source contributes. Be direct and factual only.`;
 
     const userPrompt = `Here is the context:
 
@@ -147,11 +174,11 @@ Explain what UNIQUE information from this specific source supports the main answ
     try {
       // Try primary provider first
       const result = await streamText({
-        model: myProvider.languageModel(DEFAULT_CHAT_MODEL),
+        model: myProvider.languageModel('explanation-model'),
         system: systemPrompt,
         prompt: userPrompt,
-        temperature: 0.3, // Lower temperature for more focused explanations
-        maxTokens: 1000, // Reasonable limit for explanations
+        temperature: 0.7, // Lower temperature for more focused explanations
+        maxTokens: 3000, // Increased limit for detailed explanations
       });
 
       return result.toTextStreamResponse();
@@ -160,11 +187,11 @@ Explain what UNIQUE information from this specific source supports the main answ
       
       // Fallback to secondary provider
       const result = await streamText({
-        model: fallbackProvider.languageModel(DEFAULT_CHAT_MODEL),
+        model: fallbackProvider.languageModel('explanation-model'),
         system: systemPrompt,
         prompt: userPrompt,
-        temperature: 0.3,
-        maxTokens: 1000,
+        temperature: 0.7,
+        maxTokens: 3000,
       });
 
       return result.toTextStreamResponse();

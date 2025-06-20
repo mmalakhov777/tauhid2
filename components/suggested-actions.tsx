@@ -29,24 +29,24 @@ function PureSuggestedActions({
 
   const suggestedActions = [
     {
-      title: t('suggestions.pillarsOfIslam'),
-      action: t('suggestions.pillarsOfIslam') + '?',
+      title: t('suggestions.meaningOfLife'),
+      action: t('suggestions.meaningOfLife'),
     },
     {
-      title: t('suggestions.fiqhDifferences'),
-      action: t('suggestions.fiqhDifferences'),
+      title: t('suggestions.humanSuffering'),
+      action: t('suggestions.humanSuffering'),
     },
     {
-      title: t('suggestions.wuduConditions'),
-      action: t('suggestions.wuduConditions') + '?',
+      title: t('suggestions.problemOfEvil'),
+      action: t('suggestions.problemOfEvil'),
     },
     {
-      title: t('suggestions.inheritanceLaw'),
-      action: t('suggestions.inheritanceLaw') + '?',
+      title: t('suggestions.afterDeath'),
+      action: t('suggestions.afterDeath'),
     },
     {
-      title: t('suggestions.zakatRulings'),
-      action: t('suggestions.zakatRulings') + '?',
+      title: t('suggestions.findPurpose'),
+      action: t('suggestions.findPurpose'),
     },
   ];
 
